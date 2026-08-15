@@ -12,6 +12,12 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncSession
 
+from odyssey.attachments.contracts import AttachmentStatus, AttachmentUploadStatus
+from odyssey.attachments.models import (
+    AttachmentObjectRecord,
+    AttachmentRecord,
+    AttachmentUploadRecord,
+)
 from odyssey.db.backups import BackupError, verify_database_backup, verify_manifest
 from odyssey.db.models import (
     AssertionRecord,
@@ -25,7 +31,7 @@ from odyssey.db.session import Database
 from odyssey.domain.common import new_uuid7
 from odyssey.operations.kill_switches import KillSwitchKey, KillSwitchService
 
-INTEGRITY_CHECKER_VERSION = "integrity.v1"
+INTEGRITY_CHECKER_VERSION = "integrity.v2"
 
 
 class CheckStatus(StrEnum):
@@ -98,6 +104,10 @@ async def database_checks(connection: AsyncConnection) -> list[IntegrityCheckRes
         )
         triggers = {str(row[0]) for row in trigger_rows.all()}
         required_triggers = {
+            "attachment_chunks_reject_delete",
+            "attachment_chunks_reject_update",
+            "attachment_objects_reject_delete",
+            "attachment_objects_reject_update",
             "integrity_runs_reject_delete",
             "integrity_runs_reject_update",
             "kill_switch_audit_reject_delete",
@@ -152,6 +162,8 @@ async def database_checks(connection: AsyncConnection) -> list[IntegrityCheckRes
     )
     triggers = {str(row[0]) for row in trigger_rows.all()}
     required_triggers = {
+        "attachment_chunks_immutable",
+        "attachment_objects_immutable",
         "integrity_runs_immutable",
         "kill_switch_audit_immutable",
         "ledger_events_immutable",
@@ -276,6 +288,83 @@ async def projection_check(session: AsyncSession) -> IntegrityCheckResult:
     )
 
 
+async def attachment_manifest_check(session: AsyncSession) -> IntegrityCheckResult:
+    available_without_manifest = int(
+        await session.scalar(
+            select(func.count())
+            .select_from(AttachmentRecord)
+            .outerjoin(
+                AttachmentObjectRecord,
+                AttachmentRecord.object_content_sha256 == AttachmentObjectRecord.content_sha256,
+            )
+            .where(
+                AttachmentRecord.status == AttachmentStatus.AVAILABLE,
+                AttachmentObjectRecord.content_sha256.is_(None),
+            )
+        )
+        or 0
+    )
+    manifest_mismatches = int(
+        await session.scalar(
+            select(func.count())
+            .select_from(AttachmentRecord)
+            .join(
+                AttachmentObjectRecord,
+                AttachmentRecord.object_content_sha256 == AttachmentObjectRecord.content_sha256,
+            )
+            .where(
+                (AttachmentRecord.expected_content_sha256 != AttachmentObjectRecord.content_sha256)
+                | (AttachmentRecord.byte_size != AttachmentObjectRecord.byte_size)
+            )
+        )
+        or 0
+    )
+    orphaned_objects = int(
+        await session.scalar(
+            select(func.count())
+            .select_from(AttachmentObjectRecord)
+            .outerjoin(
+                AttachmentRecord,
+                AttachmentObjectRecord.content_sha256 == AttachmentRecord.object_content_sha256,
+            )
+            .where(AttachmentRecord.id.is_(None))
+        )
+        or 0
+    )
+    completed_upload_mismatches = int(
+        await session.scalar(
+            select(func.count())
+            .select_from(AttachmentUploadRecord)
+            .join(
+                AttachmentRecord,
+                AttachmentUploadRecord.attachment_id == AttachmentRecord.id,
+            )
+            .where(
+                AttachmentUploadRecord.status == AttachmentUploadStatus.COMPLETED,
+                AttachmentRecord.status != AttachmentStatus.AVAILABLE,
+            )
+        )
+        or 0
+    )
+    failures = (
+        available_without_manifest
+        + manifest_mismatches
+        + orphaned_objects
+        + completed_upload_mismatches
+    )
+    return IntegrityCheckResult(
+        code="attachments_and_object_manifests",
+        status=CheckStatus.SUCCESS if failures == 0 else CheckStatus.FAIL,
+        summary="Attachment references resolve to verified content-addressed manifests",
+        observed={
+            "available_without_manifest": available_without_manifest,
+            "manifest_mismatches": manifest_mismatches,
+            "orphaned_objects": orphaned_objects,
+            "completed_upload_mismatches": completed_upload_mismatches,
+        },
+    )
+
+
 def backup_freshness_check(
     backup: Path | None, *, now: datetime, maximum_age: timedelta
 ) -> IntegrityCheckResult:
@@ -310,12 +399,6 @@ def backup_freshness_check(
 def deferred_checks() -> list[IntegrityCheckResult]:
     return [
         IntegrityCheckResult(
-            code="attachments_and_object_manifests",
-            status=CheckStatus.NOT_APPLICABLE,
-            summary="No attachment/object ownership tables exist yet",
-            observed={},
-        ),
-        IntegrityCheckResult(
             code="sync_and_tombstone_consistency",
             status=CheckStatus.NOT_APPLICABLE,
             summary="Sync operation and tombstone tables are introduced in Milestone 0.3",
@@ -347,6 +430,7 @@ async def run_integrity_checks(
                 await source_hash_check(session),
                 await provenance_check(session),
                 await projection_check(session),
+                await attachment_manifest_check(session),
                 backup_freshness_check(
                     backup,
                     now=started_at,

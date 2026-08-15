@@ -45,6 +45,7 @@ services:
       ODYSSEY_AUTH_MODE: development
       ODYSSEY_PROACTIVE_ENABLED: "false"
       ODYSSEY_TELEMETRY_EXPORTER: console
+      ODYSSEY_ATTACHMENT_STORAGE_PATH: /var/lib/odyssey/attachments
     depends_on:
       postgres:
         condition: service_healthy
@@ -71,6 +72,8 @@ services:
       retries: 20
     ports:
       - "127.0.0.1:8080:8080"
+    volumes:
+      - attachment-data:/var/lib/odyssey/attachments
 
   worker:
     build:
@@ -80,7 +83,10 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
+    volumes:
+      - attachment-data:/var/lib/odyssey/attachments
 
 volumes:
   postgres-data:
   object-data:
+  attachment-data:

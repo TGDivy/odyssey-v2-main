@@ -2,6 +2,7 @@
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from time import perf_counter
 from uuid import uuid4
 
 import structlog
@@ -21,18 +22,30 @@ from odyssey.api.errors import (
     validation_error_handler,
 )
 from odyssey.api.router import router
+from odyssey.attachments.service import UploadTokenSigner
+from odyssey.attachments.storage import LocalAttachmentStore
 from odyssey.config import Environment, Settings, get_settings
 from odyssey.db.session import Database
 from odyssey.logging import configure_logging, correlation_id_context
 
 
-def create_app(settings: Settings | None = None, database: Database | None = None) -> FastAPI:
+def create_app(
+    settings: Settings | None = None,
+    database: Database | None = None,
+    attachment_store: LocalAttachmentStore | None = None,
+    upload_token_signer: UploadTokenSigner | None = None,
+) -> FastAPI:
     active_settings = settings or get_settings()
     active_database = database or Database(
         "sqlite+aiosqlite:///:memory:"
         if active_settings.env is Environment.TEST
         else active_settings.database_url
     )
+    active_attachment_store = attachment_store or LocalAttachmentStore(
+        active_settings.attachment_storage_path
+    )
+    signing_secret = active_settings.attachment_upload_signing_key.get_secret_value().encode()
+    active_upload_token_signer = upload_token_signer or UploadTokenSigner(signing_secret or None)
     configure_logging(active_settings.log_level)
     logger = structlog.get_logger(__name__)
 
@@ -63,17 +76,28 @@ def create_app(settings: Settings | None = None, database: Database | None = Non
 
     application.dependency_overrides[get_settings] = settings_dependency
     application.state.database = active_database
+    application.state.attachment_store = active_attachment_store
+    application.state.upload_token_signer = active_upload_token_signer
 
     @application.middleware("http")
     async def correlation_middleware(
         request: Request, call_next: RequestResponseEndpoint
     ) -> Response:
+        started_at = perf_counter()
         correlation_id = request.headers.get("X-Correlation-ID") or str(uuid4())
         request.state.correlation_id = correlation_id
         token = correlation_id_context.set(correlation_id)
         try:
             response = await call_next(request)
             response.headers["X-Correlation-ID"] = correlation_id
+            route = request.scope.get("route")
+            logger.info(
+                "http_request_completed",
+                method=request.method,
+                route=getattr(route, "path", "unmatched"),
+                status_code=response.status_code,
+                duration_ms=round((perf_counter() - started_at) * 1000, 2),
+            )
             return response
         finally:
             correlation_id_context.reset(token)
@@ -90,4 +114,10 @@ app = create_app()
 
 
 def run() -> None:
-    uvicorn.run("odyssey.main:app", host="127.0.0.1", port=8080, reload=False)
+    uvicorn.run(
+        "odyssey.main:app",
+        host="127.0.0.1",
+        port=8080,
+        reload=False,
+        access_log=False,
+    )

@@ -44,6 +44,8 @@ def test_integrity_failure_is_persisted_and_freezes_compaction(tmp_path: Path) -
                     """
                 )
             for table in (
+                "attachment_chunks",
+                "attachment_objects",
                 "kill_switch_audit",
                 "integrity_runs",
                 "server_changes",

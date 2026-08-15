@@ -259,5 +259,6 @@ def internal_event_dispatcher() -> OutboxDispatcher:
         "domain-event",
         "imported-domain-event",
         "sync-canonical-change",
+        "attachment-committed",
     )
     return OutboxDispatcher({topic: acknowledge_internal_event for topic in handler_topics})

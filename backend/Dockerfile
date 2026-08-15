@@ -19,4 +19,4 @@ RUN uv sync --frozen --no-dev
 USER 65532:65532
 EXPOSE 8080
 
-CMD ["uv", "run", "--no-sync", "uvicorn", "odyssey.main:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["uv", "run", "--no-sync", "uvicorn", "odyssey.main:app", "--host", "0.0.0.0", "--port", "8080", "--no-access-log"]

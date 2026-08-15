@@ -1,7 +1,9 @@
 import asyncio
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
+from pydantic import ValidationError
 
 from odyssey.api.errors import OdysseyError
 from odyssey.config import Environment, Settings
@@ -34,6 +36,7 @@ def test_diagnostics_excludes_secret_configuration() -> None:
         env=Environment.TEST,
         database_url="postgresql://user:secret@private.example/odyssey",
         storage_secret_key="must-not-leak",
+        attachment_upload_signing_key="must-also-not-leak",
     )
     with TestClient(create_app(settings)) as client:
         response = client.get("/v1/admin/diagnostics")
@@ -41,6 +44,7 @@ def test_diagnostics_excludes_secret_configuration() -> None:
     body = response.text
     assert response.status_code == 200
     assert "must-not-leak" not in body
+    assert "must-also-not-leak" not in body
     assert "private.example" not in body
     assert response.json()["configuration"]["environment"] == "test"
 
@@ -119,3 +123,8 @@ def test_worker_starts_without_credentials(tmp_path: Path) -> None:
         await database.dispose()
 
     asyncio.run(scenario())
+
+
+def test_production_attachment_signing_fails_closed() -> None:
+    with pytest.raises(ValidationError, match="attachment upload signing key"):
+        Settings(env=Environment.PRODUCTION)

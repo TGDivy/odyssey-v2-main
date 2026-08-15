@@ -33,6 +33,326 @@
         "title": "AcceptedOperation",
         "type": "object"
       },
+      "AttachmentChunkResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "byte_size": {
+            "minimum": 1.0,
+            "title": "Byte Size",
+            "type": "integer"
+          },
+          "chunk_index": {
+            "minimum": 0.0,
+            "title": "Chunk Index",
+            "type": "integer"
+          },
+          "chunk_sha256": {
+            "title": "Chunk Sha256",
+            "type": "string"
+          },
+          "created": {
+            "title": "Created",
+            "type": "boolean"
+          },
+          "upload_id": {
+            "format": "uuid",
+            "title": "Upload Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "upload_id",
+          "chunk_index",
+          "byte_size",
+          "chunk_sha256",
+          "created"
+        ],
+        "title": "AttachmentChunkResponse",
+        "type": "object"
+      },
+      "AttachmentCompleteResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "attachment_id": {
+            "format": "uuid",
+            "title": "Attachment Id",
+            "type": "string"
+          },
+          "byte_size": {
+            "minimum": 1.0,
+            "title": "Byte Size",
+            "type": "integer"
+          },
+          "committed_at": {
+            "format": "date-time",
+            "title": "Committed At",
+            "type": "string"
+          },
+          "content_sha256": {
+            "title": "Content Sha256",
+            "type": "string"
+          },
+          "object_ref": {
+            "title": "Object Ref",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/AttachmentStatus"
+          }
+        },
+        "required": [
+          "attachment_id",
+          "status",
+          "content_sha256",
+          "byte_size",
+          "object_ref",
+          "committed_at"
+        ],
+        "title": "AttachmentCompleteResponse",
+        "type": "object"
+      },
+      "AttachmentEncryptionMode": {
+        "enum": [
+          "none",
+          "client_side"
+        ],
+        "title": "AttachmentEncryptionMode",
+        "type": "string"
+      },
+      "AttachmentStatus": {
+        "enum": [
+          "pending_upload",
+          "available",
+          "deleted"
+        ],
+        "title": "AttachmentStatus",
+        "type": "string"
+      },
+      "AttachmentStatusResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "attachment_id": {
+            "format": "uuid",
+            "title": "Attachment Id",
+            "type": "string"
+          },
+          "byte_size": {
+            "minimum": 1.0,
+            "title": "Byte Size",
+            "type": "integer"
+          },
+          "committed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Committed At"
+          },
+          "content_sha256": {
+            "title": "Content Sha256",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "encryption_metadata": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Encryption Metadata",
+            "type": "object"
+          },
+          "encryption_mode": {
+            "$ref": "#/components/schemas/AttachmentEncryptionMode"
+          },
+          "media_type": {
+            "title": "Media Type",
+            "type": "string"
+          },
+          "object_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Object Ref"
+          },
+          "sensitivity_class": {
+            "$ref": "#/components/schemas/DataClass"
+          },
+          "status": {
+            "$ref": "#/components/schemas/AttachmentStatus"
+          }
+        },
+        "required": [
+          "attachment_id",
+          "status",
+          "content_sha256",
+          "byte_size",
+          "media_type",
+          "sensitivity_class",
+          "encryption_mode",
+          "encryption_metadata",
+          "object_ref",
+          "created_at",
+          "committed_at"
+        ],
+        "title": "AttachmentStatusResponse",
+        "type": "object"
+      },
+      "AttachmentUploadRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "attachment_id": {
+            "format": "uuid",
+            "title": "Attachment Id",
+            "type": "string"
+          },
+          "byte_size": {
+            "minimum": 1.0,
+            "title": "Byte Size",
+            "type": "integer"
+          },
+          "content_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Content Sha256",
+            "type": "string"
+          },
+          "encryption_metadata": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Encryption Metadata",
+            "type": "object"
+          },
+          "encryption_mode": {
+            "$ref": "#/components/schemas/AttachmentEncryptionMode",
+            "default": "none"
+          },
+          "media_type": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Media Type",
+            "type": "string"
+          },
+          "sensitivity_class": {
+            "$ref": "#/components/schemas/DataClass",
+            "default": "private"
+          }
+        },
+        "required": [
+          "attachment_id",
+          "content_sha256",
+          "byte_size",
+          "media_type"
+        ],
+        "title": "AttachmentUploadRequest",
+        "type": "object"
+      },
+      "AttachmentUploadResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "attachment_id": {
+            "format": "uuid",
+            "title": "Attachment Id",
+            "type": "string"
+          },
+          "byte_size": {
+            "minimum": 1.0,
+            "title": "Byte Size",
+            "type": "integer"
+          },
+          "chunk_size": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chunk Size"
+          },
+          "content_sha256": {
+            "title": "Content Sha256",
+            "type": "string"
+          },
+          "deduplicated": {
+            "default": false,
+            "title": "Deduplicated",
+            "type": "boolean"
+          },
+          "expected_chunks": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Chunks"
+          },
+          "signed_chunk_url_template": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Signed Chunk Url Template"
+          },
+          "status": {
+            "$ref": "#/components/schemas/AttachmentStatus"
+          },
+          "upload_expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Upload Expires At"
+          },
+          "upload_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Upload Id"
+          }
+        },
+        "required": [
+          "attachment_id",
+          "status",
+          "content_sha256",
+          "byte_size"
+        ],
+        "title": "AttachmentUploadResponse",
+        "type": "object"
+      },
       "CaptureCreateRequest": {
         "additionalProperties": false,
         "properties": {
@@ -763,6 +1083,285 @@
         "summary": "Diagnostics",
         "tags": [
           "system"
+        ]
+      }
+    },
+    "/v1/attachments/uploads": {
+      "post": {
+        "operationId": "initialize_upload_v1_attachments_uploads_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AttachmentUploadRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttachmentUploadResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Initialize Upload",
+        "tags": [
+          "attachments"
+        ]
+      }
+    },
+    "/v1/attachments/uploads/{upload_id}/chunks/{chunk_index}": {
+      "put": {
+        "operationId": "upload_chunk_v1_attachments_uploads__upload_id__chunks__chunk_index__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "upload_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Upload Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "chunk_index",
+            "required": true,
+            "schema": {
+              "title": "Chunk Index",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 32,
+              "title": "Token",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Chunk-SHA256",
+            "required": true,
+            "schema": {
+              "pattern": "^[0-9a-f]{64}$",
+              "title": "X-Chunk-Sha256",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Content-Length",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Content-Length"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "contentMediaType": "application/octet-stream",
+                "title": "Content",
+                "type": "string"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttachmentChunkResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Upload Chunk",
+        "tags": [
+          "attachments"
+        ]
+      }
+    },
+    "/v1/attachments/uploads/{upload_id}/complete": {
+      "post": {
+        "operationId": "complete_upload_v1_attachments_uploads__upload_id__complete_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "upload_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Upload Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttachmentCompleteResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Complete Upload",
+        "tags": [
+          "attachments"
+        ]
+      }
+    },
+    "/v1/attachments/{attachment_id}": {
+      "get": {
+        "operationId": "attachment_status_v1_attachments__attachment_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "attachment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Attachment Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttachmentStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Attachment Status",
+        "tags": [
+          "attachments"
         ]
       }
     },
