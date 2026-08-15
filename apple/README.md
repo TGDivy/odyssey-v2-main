@@ -53,6 +53,14 @@ transactionally until the durable device cursor catches up. Offline diagnostics
 report exact queue age/count, conflicts, cursors, schema compatibility, and the
 attachment backlog without requiring a server call.
 
+`NativeLocalServices` opens the stable Keychain device identity, protected
+Application Support database, migration-backup directory, and capture service
+before any remote configuration is parsed. `NativeRemoteServices` is a separate
+optional layer that accepts HTTPS endpoints (or development loopback HTTP only)
+and composes auth, the memory-only token session, transport, and coordinator.
+Placeholder or unsafe endpoints therefore disable remote work without disabling
+offline capture.
+
 On a Mac with Swift 6.1 or newer and Xcode installed:
 
 ```bash
