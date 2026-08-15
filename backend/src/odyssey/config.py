@@ -1,5 +1,6 @@
 """Typed runtime configuration with payload-safe diagnostics."""
 
+import re
 from enum import StrEnum
 from functools import lru_cache
 from pathlib import Path
@@ -7,6 +8,8 @@ from urllib.parse import unquote, urlsplit
 
 from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+HTTP_HEADER_NAME = re.compile(r"^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$")
 
 
 class Environment(StrEnum):
@@ -60,6 +63,7 @@ class Settings(BaseSettings):
     worker_batch_size: int = Field(default=50, ge=1, le=500)
     worker_lease_seconds: int = Field(default=60, ge=1, le=3600)
     worker_max_attempts: int = Field(default=8, ge=1, le=100)
+    worker_backlog_alert_seconds: int = Field(default=3 * 60 * 60, ge=60)
     attachment_storage_path: Path = Path("./local-data/attachments")
     attachment_upload_signing_key: SecretStr = SecretStr("")
     attachment_chunk_bytes: int = Field(default=4 * 1024 * 1024, ge=1)
@@ -92,7 +96,12 @@ class Settings(BaseSettings):
             encoded_name, separator, encoded_value = encoded_header.partition("=")
             name = unquote(encoded_name).strip()
             value = unquote(encoded_value).strip()
-            if not separator or not name or "\r" in value or "\n" in value:
+            if (
+                not separator
+                or not HTTP_HEADER_NAME.fullmatch(name)
+                or "\r" in value
+                or "\n" in value
+            ):
                 raise ValueError("OTLP headers must be comma-separated name=value pairs")
             headers[name] = value
         return headers
@@ -111,6 +120,7 @@ class Settings(BaseSettings):
             "minimum_client_schema_version": self.minimum_client_schema_version,
             "current_sync_schema_version": self.current_sync_schema_version,
             "worker_batch_size": self.worker_batch_size,
+            "worker_backlog_alert_seconds": self.worker_backlog_alert_seconds,
             "attachment_chunk_bytes": self.attachment_chunk_bytes,
             "maximum_attachment_bytes": self.maximum_attachment_bytes,
             "storage_configured": bool(self.storage_endpoint and self.storage_bucket),

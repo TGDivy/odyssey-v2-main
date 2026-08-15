@@ -47,6 +47,9 @@ def test_diagnostics_excludes_secret_configuration() -> None:
     assert "must-also-not-leak" not in body
     assert "private.example" not in body
     assert response.json()["configuration"]["environment"] == "test"
+    assert response.json()["telemetry"]["payload_capture"] is False
+    assert response.json()["telemetry"]["propagation"] == "w3c_trace_context"
+    assert response.json()["capabilities"]["telemetry_export"] is False
 
 
 def test_not_found_uses_stable_error_envelope() -> None:

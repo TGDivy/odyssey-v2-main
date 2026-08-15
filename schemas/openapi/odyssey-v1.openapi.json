@@ -510,6 +510,9 @@
                 },
                 {
                   "type": "integer"
+                },
+                {
+                  "type": "number"
                 }
               ]
             },
@@ -520,6 +523,20 @@
             "title": "Service",
             "type": "string"
           },
+          "telemetry": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "boolean"
+                }
+              ]
+            },
+            "title": "Telemetry",
+            "type": "object"
+          },
           "version": {
             "title": "Version",
             "type": "string"
@@ -529,7 +546,8 @@
           "service",
           "version",
           "configuration",
-          "capabilities"
+          "capabilities",
+          "telemetry"
         ],
         "title": "DiagnosticsResponse",
         "type": "object"

@@ -2,13 +2,22 @@ import asyncio
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
+from opentelemetry.sdk.metrics import MeterProvider
+from opentelemetry.sdk.metrics.export import InMemoryMetricReader
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 from sqlalchemy import select
 
+from odyssey.config import Environment, Settings
 from odyssey.db.base import Base
 from odyssey.db.models import OutboxRecord
 from odyssey.db.session import Database
 from odyssey.domain.common import new_uuid7
 from odyssey.jobs.outbox import OutboxDispatcher, OutboxJob, OutboxStatus, process_outbox_batch
+from odyssey.telemetry.runtime import TelemetryRuntime
+from odyssey.worker import run as run_worker
 
 
 def outbox_record(*, topic: str, now: datetime) -> OutboxRecord:
@@ -123,6 +132,82 @@ def test_unknown_topic_dead_letters_and_expired_lease_is_reclaimed(tmp_path: Pat
         assert records[expired.id].attempts == 2
         assert records[unknown.id].status == OutboxStatus.DEAD_LETTER
         assert records[unknown.id].last_error_code == "UnknownOutboxTopicError"
+        await database.dispose()
+
+    asyncio.run(scenario())
+
+
+def test_worker_exports_retry_spans_and_queue_metrics(tmp_path: Path) -> None:
+    async def scenario() -> None:
+        database = Database(f"sqlite+aiosqlite:///{tmp_path / 'outbox-telemetry.sqlite'}")
+        async with database.engine.begin() as connection:
+            await connection.run_sync(Base.metadata.create_all)
+        now = datetime.now(UTC)
+        record = outbox_record(topic="synthetic-unknown", now=now - timedelta(hours=4))
+        async with database.sessions() as session, session.begin():
+            session.add(record)
+
+        resource = Resource.create({"service.name": "odyssey-worker-test"})
+        span_exporter = InMemorySpanExporter()
+        tracer_provider = TracerProvider(resource=resource, shutdown_on_exit=False)
+        tracer_provider.add_span_processor(SimpleSpanProcessor(span_exporter))
+        metric_reader = InMemoryMetricReader()
+        meter_provider = MeterProvider(
+            metric_readers=[metric_reader],
+            resource=resource,
+            shutdown_on_exit=False,
+        )
+        telemetry = TelemetryRuntime(
+            tracer_provider=tracer_provider,
+            meter_provider=meter_provider,
+            service_name="odyssey-worker-test",
+            exporter="memory",
+            enabled=True,
+        )
+
+        await run_worker(
+            once=True,
+            settings=Settings(env=Environment.TEST, worker_backlog_alert_seconds=60),
+            database=database,
+            telemetry=telemetry,
+        )
+
+        spans = {span.name: span for span in span_exporter.get_finished_spans()}
+        assert set(spans) == {"outbox process batch", "outbox deliver"}
+        assert spans["outbox deliver"].parent is not None
+        assert (
+            spans["outbox deliver"].parent.span_id == spans["outbox process batch"].context.span_id
+        )
+        assert spans["outbox deliver"].status.is_ok is False
+        assert spans["outbox deliver"].events == ()
+
+        metrics = metric_reader.get_metrics_data()
+        assert metrics is not None
+        exported_metrics = {
+            metric.name: metric
+            for resource_metrics in metrics.resource_metrics
+            for scope_metrics in resource_metrics.scope_metrics
+            for metric in scope_metrics.metrics
+        }
+        retry_points = [
+            point
+            for point in exported_metrics["odyssey.outbox.jobs"].data.data_points
+            if point.attributes == {"outcome": "retry"}
+        ]
+        queue_points = [
+            point
+            for point in exported_metrics["odyssey.outbox.queue.depth"].data.data_points
+            if point.attributes == {"state": "retry"}
+        ]
+        oldest_points = exported_metrics["odyssey.outbox.queue.oldest_age"].data.data_points
+        assert retry_points[0].value == 1
+        assert queue_points[0].value == 1
+        assert oldest_points[0].value >= 4 * 60 * 60
+
+        async with database.sessions() as session:
+            stored = await session.get(OutboxRecord, record.id)
+        assert stored is not None
+        assert stored.status == OutboxStatus.RETRY
         await database.dispose()
 
     asyncio.run(scenario())

@@ -4,7 +4,11 @@ from contextlib import contextmanager
 import pytest
 from fastapi.testclient import TestClient
 from opentelemetry.sdk.metrics import MeterProvider
-from opentelemetry.sdk.metrics.export import InMemoryMetricReader
+from opentelemetry.sdk.metrics.export import (
+    InMemoryMetricReader,
+    MetricExporter,
+    MetricExportResult,
+)
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
@@ -13,7 +17,9 @@ from pydantic import ValidationError
 
 from odyssey.config import Environment, Settings, TelemetryExporter
 from odyssey.main import create_app
-from odyssey.telemetry.runtime import TelemetryRuntime
+from odyssey.telemetry import runtime as runtime_module
+from odyssey.telemetry.alerts import AlertSeverity, evaluate_outbox_alerts
+from odyssey.telemetry.runtime import TelemetryRuntime, create_telemetry_runtime
 
 
 @contextmanager
@@ -118,3 +124,83 @@ def test_otlp_settings_validate_endpoint_and_keep_headers_secret() -> None:
 
     assert settings.telemetry_headers() == {"authorization": "Bearer synthetic-secret"}
     assert "synthetic-secret" not in repr(settings.safe_diagnostics())
+
+
+def test_outbox_operator_alert_policy_is_threshold_based() -> None:
+    alerts = evaluate_outbox_alerts(
+        dead_letter_depth=2,
+        oldest_age_seconds=10_800,
+        backlog_alert_seconds=10_800,
+    )
+
+    assert [(alert.code, alert.severity) for alert in alerts] == [
+        ("OUTBOX_DEAD_LETTERS_PRESENT", AlertSeverity.CRITICAL),
+        ("OUTBOX_BACKLOG_AGE_EXCEEDED", AlertSeverity.WARNING),
+    ]
+    assert (
+        evaluate_outbox_alerts(
+            dead_letter_depth=0,
+            oldest_age_seconds=10_799,
+            backlog_alert_seconds=10_800,
+        )
+        == ()
+    )
+
+
+def test_otlp_runtime_configures_signal_endpoints_without_network(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    exporter_arguments: dict[str, dict[str, object]] = {}
+
+    class MemoryMetricExporter(MetricExporter):
+        def export(
+            self,
+            _metrics_data: object,
+            timeout_millis: float = 10_000,
+            **_kwargs: object,
+        ) -> MetricExportResult:
+            return MetricExportResult.SUCCESS
+
+        def force_flush(self, timeout_millis: float = 10_000) -> bool:
+            return True
+
+        def shutdown(self, timeout_millis: float = 30_000, **_kwargs: object) -> None:
+            return None
+
+    def span_exporter(**kwargs: object) -> InMemorySpanExporter:
+        exporter_arguments["traces"] = kwargs
+        return InMemorySpanExporter()
+
+    def metric_exporter(**kwargs: object) -> MemoryMetricExporter:
+        exporter_arguments["metrics"] = kwargs
+        return MemoryMetricExporter()
+
+    monkeypatch.setattr(runtime_module, "OTLPSpanExporter", span_exporter)
+    monkeypatch.setattr(runtime_module, "OTLPMetricExporter", metric_exporter)
+    settings = Settings(
+        env=Environment.TEST,
+        telemetry_exporter=TelemetryExporter.OTLP_HTTP,
+        telemetry_otlp_endpoint="https://collector.example/base/",
+        telemetry_otlp_headers="authorization=Bearer%20synthetic-secret",
+        telemetry_export_timeout_seconds=7,
+    )
+
+    telemetry = create_telemetry_runtime(
+        settings,
+        service_name="odyssey-api-test",
+        service_version="test",
+    )
+    telemetry.shutdown()
+
+    assert exporter_arguments == {
+        "traces": {
+            "endpoint": "https://collector.example/base/v1/traces",
+            "headers": {"authorization": "Bearer synthetic-secret"},
+            "timeout": 7,
+        },
+        "metrics": {
+            "endpoint": "https://collector.example/base/v1/metrics",
+            "headers": {"authorization": "Bearer synthetic-secret"},
+            "timeout": 7,
+        },
+    }

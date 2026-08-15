@@ -3,17 +3,19 @@
 import asyncio
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 from typing import Any
 from uuid import UUID
 
 import structlog
-from sqlalchemy import and_, or_, select
+from opentelemetry.trace import SpanKind
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from odyssey.db.models import OutboxRecord
 from odyssey.db.session import Database
+from odyssey.telemetry.runtime import TelemetryRuntime
 
 
 class OutboxStatus(StrEnum):
@@ -49,6 +51,24 @@ class OutboxBatchResult:
     completed: int
     retried: int
     dead_lettered: int
+    queue: "OutboxQueueSnapshot"
+
+
+@dataclass(frozen=True, slots=True)
+class OutboxQueueSnapshot:
+    pending: int
+    processing: int
+    retry: int
+    dead_letter: int
+    oldest_age_seconds: float
+
+    def metric_depths(self) -> dict[str, int]:
+        return {
+            "pending": self.pending,
+            "processing": self.processing,
+            "retry": self.retry,
+            "dead_letter": self.dead_letter,
+        }
 
 
 JobHandler = Callable[[OutboxJob], Awaitable[None]]
@@ -69,6 +89,13 @@ class OutboxDispatcher:
 
 
 class OutboxService:
+    tracked_statuses = (
+        OutboxStatus.PENDING,
+        OutboxStatus.PROCESSING,
+        OutboxStatus.RETRY,
+        OutboxStatus.DEAD_LETTER,
+    )
+
     async def claim(
         self,
         session: AsyncSession,
@@ -166,6 +193,48 @@ class OutboxService:
         record.available_at = failed_at + timedelta(seconds=retry_seconds)
         return OutboxStatus.RETRY
 
+    async def queue_snapshot(
+        self,
+        session: AsyncSession,
+        *,
+        now: datetime,
+    ) -> OutboxQueueSnapshot:
+        rows = (
+            await session.execute(
+                select(
+                    OutboxRecord.status,
+                    func.count(),
+                    func.min(OutboxRecord.created_at),
+                )
+                .where(OutboxRecord.status.in_(self.tracked_statuses))
+                .group_by(OutboxRecord.status)
+            )
+        ).all()
+        depths = {status.value: 0 for status in self.tracked_statuses}
+        oldest_actionable_at: datetime | None = None
+        for status, count, oldest_at in rows:
+            depths[str(status)] = int(count)
+            if status in {
+                OutboxStatus.PENDING,
+                OutboxStatus.PROCESSING,
+                OutboxStatus.RETRY,
+            } and (oldest_actionable_at is None or oldest_at < oldest_actionable_at):
+                oldest_actionable_at = oldest_at
+        if oldest_actionable_at is not None and oldest_actionable_at.tzinfo is None:
+            oldest_actionable_at = oldest_actionable_at.replace(tzinfo=UTC)
+        oldest_age_seconds = (
+            max((now - oldest_actionable_at).total_seconds(), 0.0)
+            if oldest_actionable_at is not None
+            else 0.0
+        )
+        return OutboxQueueSnapshot(
+            pending=depths[OutboxStatus.PENDING],
+            processing=depths[OutboxStatus.PROCESSING],
+            retry=depths[OutboxStatus.RETRY],
+            dead_letter=depths[OutboxStatus.DEAD_LETTER],
+            oldest_age_seconds=oldest_age_seconds,
+        )
+
     @staticmethod
     async def lock_job(session: AsyncSession, job: OutboxJob) -> OutboxRecord:
         record = await session.scalar(
@@ -190,6 +259,7 @@ async def process_outbox_batch(
     max_attempts: int = 8,
     base_retry_seconds: int = 5,
     maximum_retry_seconds: int = 900,
+    telemetry: TelemetryRuntime | None = None,
 ) -> OutboxBatchResult:
     service = OutboxService()
     async with database.sessions() as session, session.begin():
@@ -204,7 +274,8 @@ async def process_outbox_batch(
     retried = 0
     dead_lettered = 0
     logger = structlog.get_logger(__name__)
-    for job in jobs:
+
+    async def deliver(job: OutboxJob) -> tuple[OutboxStatus, str | None]:
         try:
             await dispatcher.dispatch(job)
         except Exception as error:
@@ -219,10 +290,6 @@ async def process_outbox_batch(
                     base_retry_seconds=base_retry_seconds,
                     maximum_retry_seconds=maximum_retry_seconds,
                 )
-            if status is OutboxStatus.DEAD_LETTER:
-                dead_lettered += 1
-            else:
-                retried += 1
             logger.warning(
                 "outbox_delivery_failed",
                 outbox_id=str(job.id),
@@ -231,15 +298,63 @@ async def process_outbox_batch(
                 error_code=error_code,
                 terminal=status is OutboxStatus.DEAD_LETTER,
             )
-        else:
-            async with database.sessions() as session, session.begin():
-                await service.complete(session, job=job, completed_at=now)
-            completed += 1
+            return status, error_code
+        async with database.sessions() as session, session.begin():
+            await service.complete(session, job=job, completed_at=now)
+        return OutboxStatus.COMPLETED, None
+
+    async def deliver_jobs() -> None:
+        nonlocal completed, retried, dead_lettered
+        for job in jobs:
+            if telemetry is None:
+                status, _error_code = await deliver(job)
+            else:
+                with telemetry.span(
+                    "outbox deliver",
+                    kind=SpanKind.CONSUMER,
+                    attributes={
+                        "messaging.destination.name": job.topic,
+                        "messaging.message.id": str(job.id),
+                        "messaging.operation.type": "process",
+                        "odyssey.outbox.attempt": job.attempt,
+                    },
+                ) as span:
+                    status, error_code = await deliver(job)
+                    span.set_attribute("odyssey.outbox.outcome", status.value)
+                    if error_code is not None:
+                        telemetry.mark_error(span, error_code)
+            if status is OutboxStatus.COMPLETED:
+                completed += 1
+            elif status is OutboxStatus.DEAD_LETTER:
+                dead_lettered += 1
+            else:
+                retried += 1
+
+    if telemetry is not None and jobs:
+        with telemetry.span(
+            "outbox process batch",
+            kind=SpanKind.CONSUMER,
+            attributes={"odyssey.outbox.claimed": len(jobs)},
+        ) as batch_span:
+            try:
+                await deliver_jobs()
+            except Exception as error:
+                telemetry.mark_error(batch_span, type(error).__name__)
+                raise
+            batch_span.set_attribute("odyssey.outbox.completed", completed)
+            batch_span.set_attribute("odyssey.outbox.retried", retried)
+            batch_span.set_attribute("odyssey.outbox.dead_lettered", dead_lettered)
+    else:
+        await deliver_jobs()
+
+    async with database.sessions() as session:
+        queue = await service.queue_snapshot(session, now=now)
     return OutboxBatchResult(
         claimed=len(jobs),
         completed=completed,
         retried=retried,
         dead_lettered=dead_lettered,
+        queue=queue,
     )
 
 

@@ -14,6 +14,16 @@ The default configuration is safe for credential-free local development. Real
 authentication, storage, integrations, and model providers must be enabled via
 typed environment configuration and the deployment handoff.
 
+## Technical observability
+
+The API and worker emit payload-safe OpenTelemetry traces and metrics through a
+pluggable `none`, `console`, or OTLP HTTP exporter. Compose selects `console`;
+the default Python settings select `none` so tests never contact a collector.
+W3C trace context is propagated through HTTP, while structured JSON logs carry
+matching trace and correlation IDs. Exporter setup, emitted signal names,
+privacy exclusions, alert thresholds, and staging checks are documented in
+[`docs/architecture/observability.md`](../docs/architecture/observability.md).
+
 ## Durable data operations
 
 Run migrations before importing data. This credential-free SQLite example uses
