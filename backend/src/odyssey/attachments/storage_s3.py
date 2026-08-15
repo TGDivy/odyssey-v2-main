@@ -103,6 +103,14 @@ class S3AttachmentStore:
         except Exception as error:
             raise AttachmentStorageError("S3 object read failed") from error
 
+    async def write_object(self, content_sha256: str, content: bytes) -> StoredObject:
+        try:
+            return await asyncio.to_thread(self._write_object, content_sha256, content)
+        except AttachmentStorageError:
+            raise
+        except Exception as error:
+            raise AttachmentStorageError("S3 object write failed") from error
+
     def _validate_configuration(self) -> None:
         self.client.head_bucket(Bucket=self.bucket_name)
         if self.require_versioning:
@@ -229,6 +237,36 @@ class S3AttachmentStore:
         if sha256(content).hexdigest() != content_sha256:
             raise AttachmentObjectChecksumError("stored S3 object checksum is invalid")
         return content
+
+    def _write_object(self, content_sha256: str, content: bytes) -> StoredObject:
+        if sha256(content).hexdigest() != content_sha256:
+            raise AttachmentObjectChecksumError("object content does not match its hash")
+        storage_key = LocalAttachmentStore.object_key(content_sha256)
+        existing = self._head_object(storage_key)
+        if existing is not None:
+            self._validate_object_metadata(
+                existing,
+                expected_content_sha256=content_sha256,
+                expected_byte_size=len(content),
+            )
+            response = existing
+        else:
+            response = self.client.put_object(
+                Bucket=self.bucket_name,
+                Key=storage_key,
+                Body=content,
+                ContentLength=len(content),
+                Metadata={"content-sha256": content_sha256},
+                **self._encryption_arguments(),
+            )
+        return StoredObject(
+            storage_key=storage_key,
+            content_sha256=content_sha256,
+            byte_size=len(content),
+            storage_backend=self.storage_backend,
+            bucket_name=self.bucket_name,
+            version_id=self._version_id(response),
+        )
 
     def _head_object(self, storage_key: str) -> dict[str, Any] | None:
         try:

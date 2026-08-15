@@ -70,6 +70,8 @@ class AttachmentStore(Protocol):
 
     async def read_object(self, content_sha256: str) -> bytes: ...
 
+    async def write_object(self, content_sha256: str, content: bytes) -> StoredObject: ...
+
 
 class LocalAttachmentStore:
     storage_backend = "local"
@@ -103,6 +105,9 @@ class LocalAttachmentStore:
     async def read_object(self, content_sha256: str) -> bytes:
         path = self.root / self.object_key(content_sha256)
         return await asyncio.to_thread(path.read_bytes)
+
+    async def write_object(self, content_sha256: str, content: bytes) -> StoredObject:
+        return await asyncio.to_thread(self._write_object, content_sha256, content)
 
     def _write_chunk(self, upload_id: UUID, chunk_index: int, content: bytes) -> StoredChunk:
         storage_key = self.chunk_key(upload_id, chunk_index)
@@ -185,6 +190,33 @@ class LocalAttachmentStore:
 
     def _remove_upload(self, upload_id: UUID) -> None:
         shutil.rmtree(self.root / "uploads" / str(upload_id), ignore_errors=True)
+
+    def _write_object(self, content_sha256: str, content: bytes) -> StoredObject:
+        if sha256(content).hexdigest() != content_sha256:
+            raise AttachmentObjectChecksumError("object content does not match its hash")
+        storage_key = self.object_key(content_sha256)
+        destination = self.root / storage_key
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        if destination.exists():
+            existing = destination.read_bytes()
+            if existing != content:
+                raise AttachmentObjectChecksumError("existing content-addressed object is invalid")
+        else:
+            temporary = destination.with_name(f".{destination.name}.{uuid4()}.tmp")
+            try:
+                with temporary.open("wb") as output:
+                    output.write(content)
+                    output.flush()
+                    os.fsync(output.fileno())
+                temporary.replace(destination)
+            finally:
+                temporary.unlink(missing_ok=True)
+        return StoredObject(
+            storage_key=storage_key,
+            content_sha256=content_sha256,
+            byte_size=len(content),
+            storage_backend=self.storage_backend,
+        )
 
     @staticmethod
     def chunk_key(upload_id: UUID, chunk_index: int) -> str:

@@ -83,6 +83,14 @@ class GCSAttachmentStore:
         except Exception as error:
             raise AttachmentStorageError("GCS object read failed") from error
 
+    async def write_object(self, content_sha256: str, content: bytes) -> StoredObject:
+        try:
+            return await asyncio.to_thread(self._write_object, content_sha256, content)
+        except AttachmentStorageError:
+            raise
+        except Exception as error:
+            raise AttachmentStorageError("GCS object write failed") from error
+
     def _validate_configuration(self) -> None:
         self.bucket.reload()
         if self.require_versioning and not self.bucket.versioning_enabled:
@@ -184,6 +192,32 @@ class GCSAttachmentStore:
         if sha256(content).hexdigest() != content_sha256:
             raise AttachmentObjectChecksumError("stored GCS object checksum is invalid")
         return content
+
+    def _write_object(self, content_sha256: str, content: bytes) -> StoredObject:
+        if sha256(content).hexdigest() != content_sha256:
+            raise AttachmentObjectChecksumError("object content does not match its hash")
+        storage_key = LocalAttachmentStore.object_key(content_sha256)
+        blob = self._blob(storage_key)
+        if blob.exists():
+            blob.reload()
+            self._validate_blob(
+                blob,
+                expected_content_sha256=content_sha256,
+                expected_byte_size=len(content),
+            )
+        else:
+            blob.metadata = {"content-sha256": content_sha256}
+            try:
+                blob.upload_from_string(content, if_generation_match=0, checksum="crc32c")
+            except PreconditionFailed:
+                blob.reload()
+                self._validate_blob(
+                    blob,
+                    expected_content_sha256=content_sha256,
+                    expected_byte_size=len(content),
+                )
+        blob.reload()
+        return self._stored_object(blob, content_sha256, len(content))
 
     def _blob(self, storage_key: str) -> Any:
         return self.bucket.blob(storage_key, kms_key_name=self.kms_key_name)

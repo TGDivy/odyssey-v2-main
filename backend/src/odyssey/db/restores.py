@@ -14,6 +14,12 @@ from alembic.config import Config
 from sqlalchemy import func, select, text
 from sqlalchemy.engine import URL, make_url
 
+from odyssey.attachments.backups import (
+    ObjectArchiveCopyReport,
+    ObjectArchiveEnvelope,
+    restore_object_archive,
+)
+from odyssey.attachments.storage import AttachmentStore
 from odyssey.config import get_settings
 from odyssey.db.backups import (
     create_sqlite_artifact,
@@ -70,6 +76,8 @@ class CleanRoomRestoreReport:
     restored_schema_revision: str | None
     database_restore: str
     object_restore: str
+    object_manifest_sha256: str | None
+    object_count: int
     migrations: str
     backup_count_validation: str
     backup_count_mismatches: dict[str, dict[str, int]]
@@ -221,6 +229,28 @@ async def rebuild_and_validate(
         await database.dispose()
 
 
+async def restore_archive_objects(
+    database_url: str,
+    *,
+    archive: AttachmentStore,
+    destination: AttachmentStore,
+    envelope: ObjectArchiveEnvelope,
+    restored_at: datetime | None,
+) -> ObjectArchiveCopyReport:
+    database = Database(database_url)
+    try:
+        async with database.sessions() as session:
+            return await restore_object_archive(
+                session,
+                archive=archive,
+                destination=destination,
+                envelope=envelope,
+                restored_at=restored_at,
+            )
+    finally:
+        await database.dispose()
+
+
 def write_restore_report(path: Path, report: CleanRoomRestoreReport) -> None:
     if path.exists():
         raise RestoreError(f"restore report already exists: {path}")
@@ -236,7 +266,15 @@ def clean_room_restore(
     alembic_ini: Path,
     report_path: Path,
     generated_at: datetime | None = None,
+    object_archive: AttachmentStore | None = None,
+    object_destination: AttachmentStore | None = None,
+    object_envelope: ObjectArchiveEnvelope | None = None,
 ) -> CleanRoomRestoreReport:
+    object_inputs = (object_archive, object_destination, object_envelope)
+    if any(value is not None for value in object_inputs) and not all(
+        value is not None for value in object_inputs
+    ):
+        raise RestoreError("object restore requires archive, destination, and manifest")
     backup_report = verify_database_backup(backup)
     native_report = restore_native_database(database_url, backup=backup)
     apply_current_migrations(database_url, alembic_ini=alembic_ini)
@@ -252,6 +290,26 @@ def clean_room_restore(
     }
     if count_mismatches:
         raise RestoreError(f"restored table counts do not match backup: {count_mismatches}")
+    attachment_object_count = integrity_report.table_counts.get("attachment_objects", 0)
+    if attachment_object_count > 0 and object_envelope is None:
+        raise RestoreError(
+            "database contains attachment objects but no object archive was provided"
+        )
+    object_report: ObjectArchiveCopyReport | None = None
+    if (
+        object_archive is not None
+        and object_destination is not None
+        and object_envelope is not None
+    ):
+        object_report = asyncio.run(
+            restore_archive_objects(
+                database_url,
+                archive=object_archive,
+                destination=object_destination,
+                envelope=object_envelope,
+                restored_at=generated_at,
+            )
+        )
     report = CleanRoomRestoreReport(
         recovery_validation="passed",
         generated_at=generated_at or datetime.now(UTC),
@@ -260,7 +318,11 @@ def clean_room_restore(
         backup_schema_revision=backup_report.schema_revision,
         restored_schema_revision=integrity_report.schema_revision,
         database_restore="passed",
-        object_restore="not_applicable_database_only_bundle",
+        object_restore="passed" if object_report is not None else "not_included_database_only",
+        object_manifest_sha256=(
+            object_report.manifest_sha256 if object_report is not None else None
+        ),
+        object_count=object_report.object_count if object_report is not None else 0,
         migrations="current_head_applied",
         backup_count_validation=(
             "passed" if backup_report.table_counts is not None else "unavailable"
