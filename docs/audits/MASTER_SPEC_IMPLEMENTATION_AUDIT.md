@@ -38,7 +38,7 @@ deployment, external account configuration, or physical-device behavior.
 | §12 memory architecture | `partial` | immutable ledger, projections, capture/archive contracts, rebuild and export tools | Admission, retrieval plans, contradiction, condensation, forgetting/redaction, source annotations. |
 | §13 personal learning | `partial` | experiment contracts plus C.6 sample/multiplicity/missingness/temporal/confounder/robustness/context/safety promotion policy | Durable hypothesis/preregistration workflow, analysis runner, replication, preference drift and owner review. |
 | §14 scientific evidence | `contract-only` | `evidence/models.py`; source/claim/appraisal schemas | Evidence ingestion/query, appraisal policy, counterevidence, applicability, citations, updates. |
-| §15 score philosophy | `documented` | Constitution prohibits universal Life Score; no ranking implementation | Optional removable day-alignment experiment with data-quality and comparison guards. |
+| §15 score philosophy | `partial` | Constitution prohibits universal Life Score/people ranking; optional C.5 qualitative day-alignment policy is disabled by default, non-scalar, coverage/exception/comparison guarded and canonical-history independent | Owner-approved experiment flag, product surface and longitudinal harm/usefulness evaluation only if deliberately enabled. |
 | §16 AI philosophy | `contract-only` | `ai/models.py` | Capability router, structured fallbacks, refusal/uncertainty, provenance, evaluations, rollback. |
 | §17 trust and agency | `partial` | standing authorization/policy-decision contracts plus deterministic risk, scope, condition, review, limit, pause and confirmation policy | Durable Trust Center, revocation sync, correction effects and autonomous-action audit UI. |
 | §18 experience architecture | `partial` | iPhone quiet Now, capture, Archive, Workshop/repair surfaces and deterministic guilt-free re-entry surface contract | Tomorrow Map, rendered re-entry, decision/evidence flows, accessibility and complete platform depth. |
@@ -73,7 +73,7 @@ deployment, external account configuration, or physical-device behavior.
 | §48 scenario stress tests | `missing` | isolated sync/recovery tests only | Encode every scenario as deterministic fixtures/replays plus owner-only Apple scenarios. |
 | Appendix A domain contracts | `verified` | Pydantic contracts and generated JSON Schemas | Behavioral validation still belongs to each owning section above. |
 | Appendix B API/events | `partial` | error envelope, auth/capture/sync/attachment/system routes; immutable event registry | Context, decision, intervention, feedback, evidence and encrypted asynchronous export APIs. |
-| Appendix C policies | `partial` | C.1–C.4, C.6 and C.7 deterministic engines exist with focused boundary/replay-style tests | Implement optional C.5 plus the cross-policy golden replay suite. |
+| Appendix C policies | `verified` | C.1–C.7 are versioned deterministic pure policies with focused boundary/replay-style automated tests; C.5 is disabled by default | Cross-policy golden scenarios remain tracked under §29 rather than policy implementation. |
 | Appendix D sources | `documented` | cited research and official-source register | Record source-version/update policy in evidence implementation. |
 | Appendix E traceability/definition of done | `partial` | this audit plus master traceability table | Close every unchecked E.2 row with automated or owner evidence. |
 
