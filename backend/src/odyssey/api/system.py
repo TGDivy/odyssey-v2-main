@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from sqlalchemy.exc import SQLAlchemyError
 
 from odyssey import __version__
+from odyssey.api.auth import OwnerDependency
 from odyssey.api.dependencies import DatabaseDependency, TelemetryDependency
 from odyssey.api.errors import OdysseyError
 from odyssey.config import Settings, get_settings
@@ -57,6 +58,7 @@ async def ready(database: DatabaseDependency) -> ReadyResponse:
 async def diagnostics(
     settings: SettingsDependency,
     telemetry: TelemetryDependency,
+    _owner: OwnerDependency,
 ) -> DiagnosticsResponse:
     return DiagnosticsResponse(
         service="odyssey-api",

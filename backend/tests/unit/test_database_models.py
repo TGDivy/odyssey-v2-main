@@ -3,6 +3,11 @@ from uuid import uuid4
 
 import pytest
 
+from odyssey.auth.persistence import (
+    AuthDeviceAuditRecord,
+    ImmutableAuthAuditError,
+    reject_auth_device_audit_mutation,
+)
 from odyssey.db.models import (
     ImmutableLedgerMutationError,
     LedgerEventRecord,
@@ -35,3 +40,18 @@ def test_orm_rejects_ledger_update_and_delete() -> None:
         reject_ledger_update(None, None, record)
     with pytest.raises(ImmutableLedgerMutationError, match="append-only"):
         reject_ledger_delete(None, None, record)
+
+
+def test_orm_rejects_auth_device_audit_mutation() -> None:
+    record = AuthDeviceAuditRecord(
+        id=uuid4(),
+        device_id=uuid4(),
+        event_type="revoked",
+        occurred_at=datetime.now(UTC),
+        actor_device_id=uuid4(),
+        reason_code="lost",
+        details={},
+    )
+
+    with pytest.raises(ImmutableAuthAuditError, match="append-only"):
+        reject_auth_device_audit_mutation(None, None, record)

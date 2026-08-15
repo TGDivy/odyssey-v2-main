@@ -10,6 +10,7 @@ from fastapi import APIRouter, Header, Request
 from pydantic import AwareDatetime, Field
 from sqlalchemy import select
 
+from odyssey.api.auth import OwnerDependency, require_matching_device
 from odyssey.api.dependencies import SessionDependency
 from odyssey.api.errors import OdysseyError
 from odyssey.db.models import LedgerEventRecord
@@ -65,8 +66,10 @@ async def create_capture(
     body: CaptureCreateRequest,
     request: Request,
     session: SessionDependency,
+    owner: OwnerDependency,
     idempotency_key: Annotated[str, Header(alias="Idempotency-Key", min_length=1)],
 ) -> CaptureCreateResponse:
+    require_matching_device(owner, body.device_id)
     recorded_at = datetime.now(UTC)
     source_payload = {
         "kind": body.kind.value,
@@ -86,7 +89,7 @@ async def create_capture(
         source_kind="user_capture",
         source_id=str(body.capture_id),
         captured_at=body.captured_at,
-        actor=ActorRef(actor_type=ActorType.USER, actor_id="owner"),
+        actor=ActorRef(actor_type=ActorType.USER, actor_id=owner.owner_id),
         transformation_chain=("capture-api.v1",),
         content_hash=content_hash,
         details={

@@ -149,8 +149,8 @@ def test_sync_rejects_batch_key_reuse_and_unconfigured_production_auth(tmp_path:
     )
     with TestClient(production_app) as client:
         unavailable = client.get("/v1/sync/changes")
-    assert unavailable.status_code == 503
-    assert unavailable.json()["error"]["code"] == "AUTH_VERIFIER_NOT_CONFIGURED"
+    assert unavailable.status_code == 401
+    assert unavailable.json()["error"]["code"] == "AUTHENTICATION_REQUIRED"
 
 
 def test_sync_uses_application_schema_window(tmp_path: Path) -> None:

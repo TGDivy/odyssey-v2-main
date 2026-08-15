@@ -33,6 +33,148 @@
         "title": "AcceptedOperation",
         "type": "object"
       },
+      "AccessTokenRefreshRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "device_id": {
+            "format": "uuid",
+            "title": "Device Id",
+            "type": "string"
+          },
+          "refresh_credential": {
+            "maxLength": 512,
+            "minLength": 32,
+            "title": "Refresh Credential",
+            "type": "string"
+          }
+        },
+        "required": [
+          "device_id",
+          "refresh_credential"
+        ],
+        "title": "AccessTokenRefreshRequest",
+        "type": "object"
+      },
+      "AccessTokenResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "access_token": {
+            "title": "Access Token",
+            "type": "string"
+          },
+          "access_token_expires_at": {
+            "format": "date-time",
+            "title": "Access Token Expires At",
+            "type": "string"
+          },
+          "token_type": {
+            "const": "Bearer",
+            "default": "Bearer",
+            "title": "Token Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "access_token",
+          "access_token_expires_at"
+        ],
+        "title": "AccessTokenResponse",
+        "type": "object"
+      },
+      "AppleChallengeRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "device_id": {
+            "format": "uuid",
+            "title": "Device Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "device_id"
+        ],
+        "title": "AppleChallengeRequest",
+        "type": "object"
+      },
+      "AppleChallengeResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "challenge_id": {
+            "format": "uuid",
+            "title": "Challenge Id",
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "nonce": {
+            "title": "Nonce",
+            "type": "string"
+          }
+        },
+        "required": [
+          "challenge_id",
+          "nonce",
+          "expires_at"
+        ],
+        "title": "AppleChallengeResponse",
+        "type": "object"
+      },
+      "AppleExchangeRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "app_version": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "App Version",
+            "type": "string"
+          },
+          "challenge_id": {
+            "format": "uuid",
+            "title": "Challenge Id",
+            "type": "string"
+          },
+          "device_id": {
+            "format": "uuid",
+            "title": "Device Id",
+            "type": "string"
+          },
+          "display_name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Display Name",
+            "type": "string"
+          },
+          "identity_token": {
+            "maxLength": 16384,
+            "minLength": 100,
+            "title": "Identity Token",
+            "type": "string"
+          },
+          "nonce": {
+            "maxLength": 200,
+            "minLength": 32,
+            "title": "Nonce",
+            "type": "string"
+          },
+          "platform": {
+            "$ref": "#/components/schemas/DevicePlatform"
+          }
+        },
+        "required": [
+          "challenge_id",
+          "device_id",
+          "nonce",
+          "identity_token",
+          "display_name",
+          "platform",
+          "app_version"
+        ],
+        "title": "AppleExchangeRequest",
+        "type": "object"
+      },
       "AttachmentChunkResponse": {
         "additionalProperties": false,
         "properties": {
@@ -489,6 +631,180 @@
         ],
         "title": "DataClass",
         "type": "string"
+      },
+      "DeviceEnrollmentResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "access_token": {
+            "title": "Access Token",
+            "type": "string"
+          },
+          "access_token_expires_at": {
+            "format": "date-time",
+            "title": "Access Token Expires At",
+            "type": "string"
+          },
+          "device": {
+            "$ref": "#/components/schemas/DeviceSummary"
+          },
+          "refresh_credential": {
+            "title": "Refresh Credential",
+            "type": "string"
+          },
+          "refresh_credential_expires_at": {
+            "format": "date-time",
+            "title": "Refresh Credential Expires At",
+            "type": "string"
+          },
+          "token_type": {
+            "const": "Bearer",
+            "default": "Bearer",
+            "title": "Token Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "access_token",
+          "access_token_expires_at",
+          "refresh_credential",
+          "refresh_credential_expires_at",
+          "device"
+        ],
+        "title": "DeviceEnrollmentResponse",
+        "type": "object"
+      },
+      "DeviceListResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "devices": {
+            "items": {
+              "$ref": "#/components/schemas/DeviceSummary"
+            },
+            "title": "Devices",
+            "type": "array"
+          }
+        },
+        "required": [
+          "devices"
+        ],
+        "title": "DeviceListResponse",
+        "type": "object"
+      },
+      "DevicePlatform": {
+        "enum": [
+          "ios",
+          "ipados",
+          "macos",
+          "watchos",
+          "visionos"
+        ],
+        "title": "DevicePlatform",
+        "type": "string"
+      },
+      "DeviceRevocationReason": {
+        "enum": [
+          "compromised",
+          "lost",
+          "owner_request",
+          "reinstalled",
+          "retired"
+        ],
+        "title": "DeviceRevocationReason",
+        "type": "string"
+      },
+      "DeviceRevocationRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "reason": {
+            "$ref": "#/components/schemas/DeviceRevocationReason"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "DeviceRevocationRequest",
+        "type": "object"
+      },
+      "DeviceStatus": {
+        "enum": [
+          "active",
+          "revoked"
+        ],
+        "title": "DeviceStatus",
+        "type": "string"
+      },
+      "DeviceSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "app_version": {
+            "title": "App Version",
+            "type": "string"
+          },
+          "device_id": {
+            "format": "uuid",
+            "title": "Device Id",
+            "type": "string"
+          },
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "enrolled_at": {
+            "format": "date-time",
+            "title": "Enrolled At",
+            "type": "string"
+          },
+          "last_authenticated_at": {
+            "format": "date-time",
+            "title": "Last Authenticated At",
+            "type": "string"
+          },
+          "last_seen_at": {
+            "format": "date-time",
+            "title": "Last Seen At",
+            "type": "string"
+          },
+          "platform": {
+            "$ref": "#/components/schemas/DevicePlatform"
+          },
+          "revocation_reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DeviceRevocationReason"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "revoked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revoked At"
+          },
+          "status": {
+            "$ref": "#/components/schemas/DeviceStatus"
+          }
+        },
+        "required": [
+          "device_id",
+          "display_name",
+          "platform",
+          "app_version",
+          "status",
+          "enrolled_at",
+          "last_authenticated_at",
+          "last_seen_at"
+        ],
+        "title": "DeviceSummary",
+        "type": "object"
       },
       "DiagnosticsResponse": {
         "properties": {
@@ -1609,6 +1925,12 @@
         "title": "ValidationError",
         "type": "object"
       }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "scheme": "bearer",
+        "type": "http"
+      }
     }
   },
   "info": {
@@ -1675,6 +1997,11 @@
             "description": "Successful Response"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Diagnostics",
         "tags": [
           "system"
@@ -1684,24 +2011,6 @@
     "/v1/attachments/uploads": {
       "post": {
         "operationId": "initialize_upload_v1_attachments_uploads_post",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -1734,6 +2043,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Initialize Upload",
         "tags": [
           "attachments"
@@ -1855,22 +2169,6 @@
               "title": "Upload Id",
               "type": "string"
             }
-          },
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
           }
         ],
         "responses": {
@@ -1895,6 +2193,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Complete Upload",
         "tags": [
           "attachments"
@@ -1913,22 +2216,6 @@
               "format": "uuid",
               "title": "Attachment Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
             }
           }
         ],
@@ -1954,9 +2241,221 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Attachment Status",
         "tags": [
           "attachments"
+        ]
+      }
+    },
+    "/v1/auth/apple/challenges": {
+      "post": {
+        "operationId": "create_apple_challenge_v1_auth_apple_challenges_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AppleChallengeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppleChallengeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Apple Challenge",
+        "tags": [
+          "authentication"
+        ]
+      }
+    },
+    "/v1/auth/apple/exchange": {
+      "post": {
+        "operationId": "exchange_apple_identity_v1_auth_apple_exchange_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AppleExchangeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceEnrollmentResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Exchange Apple Identity",
+        "tags": [
+          "authentication"
+        ]
+      }
+    },
+    "/v1/auth/devices": {
+      "get": {
+        "operationId": "list_devices_v1_auth_devices_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Devices",
+        "tags": [
+          "authentication"
+        ]
+      }
+    },
+    "/v1/auth/devices/{device_id}/revoke": {
+      "post": {
+        "operationId": "revoke_device_v1_auth_devices__device_id__revoke_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "device_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Device Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceRevocationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Revoke Device",
+        "tags": [
+          "authentication"
+        ]
+      }
+    },
+    "/v1/auth/token/refresh": {
+      "post": {
+        "operationId": "refresh_access_token_v1_auth_token_refresh_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccessTokenRefreshRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessTokenResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Refresh Access Token",
+        "tags": [
+          "authentication"
         ]
       }
     },
@@ -2007,6 +2506,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Create Capture",
         "tags": [
           "captures"
@@ -2056,22 +2560,6 @@
               ],
               "title": "X-Odyssey-Device-Id"
             }
-          },
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
           }
         ],
         "responses": {
@@ -2096,6 +2584,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Changes",
         "tags": [
           "sync"
@@ -2126,22 +2619,6 @@
               "title": "Limit",
               "type": "integer"
             }
-          },
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
           }
         ],
         "responses": {
@@ -2166,6 +2643,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Conflicts",
         "tags": [
           "sync"
@@ -2184,22 +2666,6 @@
               "format": "uuid",
               "title": "Conflict Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
             }
           }
         ],
@@ -2235,6 +2701,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Resolve Conflict",
         "tags": [
           "sync"
@@ -2253,22 +2724,6 @@
               "format": "uuid",
               "title": "Device Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
             }
           }
         ],
@@ -2304,6 +2759,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Report Device Diagnostics",
         "tags": [
           "sync"
@@ -2313,24 +2773,6 @@
     "/v1/sync/diagnostics": {
       "get": {
         "operationId": "diagnostics_v1_sync_diagnostics_get",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
         "responses": {
           "200": {
             "content": {
@@ -2341,18 +2783,13 @@
               }
             },
             "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Diagnostics",
         "tags": [
           "sync"
@@ -2372,22 +2809,6 @@
               "minLength": 1,
               "title": "Idempotency-Key",
               "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
             }
           }
         ],
@@ -2423,6 +2844,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Push",
         "tags": [
           "sync"

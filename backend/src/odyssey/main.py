@@ -26,6 +26,8 @@ from odyssey.api.errors import (
 from odyssey.api.router import router
 from odyssey.attachments.service import UploadTokenSigner
 from odyssey.attachments.storage import LocalAttachmentStore
+from odyssey.auth.apple import AppleIdentityVerifier
+from odyssey.auth.service import AuthService
 from odyssey.config import Environment, Settings, get_settings
 from odyssey.db.session import Database
 from odyssey.logging import configure_logging, correlation_id_context
@@ -40,6 +42,7 @@ def create_app(
     attachment_store: LocalAttachmentStore | None = None,
     upload_token_signer: UploadTokenSigner | None = None,
     telemetry: TelemetryRuntime | None = None,
+    apple_identity_verifier: AppleIdentityVerifier | None = None,
 ) -> FastAPI:
     active_settings = settings or get_settings()
     active_database = database or Database(
@@ -52,6 +55,11 @@ def create_app(
     )
     signing_secret = active_settings.attachment_upload_signing_key.get_secret_value().encode()
     active_upload_token_signer = upload_token_signer or UploadTokenSigner(signing_secret or None)
+    active_auth_service = AuthService(
+        settings=active_settings,
+        database=active_database,
+        apple_verifier=apple_identity_verifier,
+    )
     active_telemetry = telemetry or create_telemetry_runtime(
         active_settings,
         service_name="odyssey-api",
@@ -93,6 +101,7 @@ def create_app(
     application.state.attachment_store = active_attachment_store
     application.state.upload_token_signer = active_upload_token_signer
     application.state.telemetry = active_telemetry
+    application.state.auth_service = active_auth_service
 
     @application.middleware("http")
     async def correlation_middleware(

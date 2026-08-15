@@ -22,7 +22,7 @@ def test_initial_migration_creates_immutable_ledger(
 
     connection = sqlite3.connect(database_path)
     revision = connection.execute("SELECT version_num FROM alembic_version").fetchone()
-    assert revision == ("20260815_0007",)
+    assert revision == ("20260815_0008",)
 
     provenance_id = str(uuid4())
     connection.execute(
@@ -117,5 +117,53 @@ def test_kill_switch_audit_migration_preserves_existing_operational_state(
     connection.commit()
     with pytest.raises(sqlite3.IntegrityError, match="append-only"):
         connection.execute("DELETE FROM kill_switch_audit")
+    connection.close()
+    get_settings.cache_clear()
+
+
+def test_auth_device_audit_migration_is_append_only(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    database_path = tmp_path / "auth-audit-migration.sqlite"
+    monkeypatch.setenv("ODYSSEY_DATABASE_URL", f"sqlite+aiosqlite:///{database_path}")
+    get_settings.cache_clear()
+    command.upgrade(Config("alembic.ini"), "head")
+    connection = sqlite3.connect(database_path)
+    device_id = str(uuid4())
+    connection.execute(
+        """
+        INSERT INTO owner_identities (
+          owner_id, apple_subject, created_at, last_authenticated_at
+        ) VALUES ('owner', 'synthetic-owner', ?, ?)
+        """,
+        ("2026-08-15T00:00:00Z", "2026-08-15T00:00:00Z"),
+    )
+    connection.execute(
+        """
+        INSERT INTO auth_devices (
+          id, owner_id, display_name, platform, app_version, status,
+          enrolled_at, last_authenticated_at, last_seen_at
+        ) VALUES (?, 'owner', 'Synthetic device', 'ios', 'test', 'active', ?, ?, ?)
+        """,
+        (
+            device_id,
+            "2026-08-15T00:00:00Z",
+            "2026-08-15T00:00:00Z",
+            "2026-08-15T00:00:00Z",
+        ),
+    )
+    connection.execute(
+        """
+        INSERT INTO auth_device_audit (
+          id, device_id, event_type, occurred_at, details
+        ) VALUES (?, ?, 'enrolled', ?, '{}')
+        """,
+        (str(uuid4()), device_id, "2026-08-15T00:00:00Z"),
+    )
+    connection.commit()
+
+    with pytest.raises(sqlite3.IntegrityError, match="append-only"):
+        connection.execute("UPDATE auth_device_audit SET event_type = 'changed'")
+
     connection.close()
     get_settings.cache_clear()

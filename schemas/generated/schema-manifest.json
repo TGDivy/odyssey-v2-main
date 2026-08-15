@@ -262,7 +262,7 @@
     },
     {
       "path": "schemas/openapi/odyssey-v1.openapi.json",
-      "sha256": "8cdf5147831c21971e326647b669df11859b1135d5ac388e46ca9a383601d977"
+      "sha256": "e2cf5e4a9a60e8e1c45b9e7529e3f81b03fda1c2a4901ca62e4d4aab91eb15cf"
     }
   ],
   "schema_version": 1

@@ -6,7 +6,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, Query
 
-from odyssey.api.auth import OwnerDependency
+from odyssey.api.auth import OwnerDependency, require_matching_device
 from odyssey.api.dependencies import SessionDependency
 from odyssey.api.errors import OdysseyError
 from odyssey.config import Settings, get_settings
@@ -118,10 +118,11 @@ def sync_error(error: SyncError, settings: Settings) -> OdysseyError:
 async def push(
     body: SyncPushRequest,
     session: SessionDependency,
-    _owner: OwnerDependency,
+    owner: OwnerDependency,
     settings: SettingsDependency,
     idempotency_key: Annotated[str, Header(alias="Idempotency-Key", min_length=1, max_length=500)],
 ) -> SyncPushResponse:
+    require_matching_device(owner, body.device_id)
     try:
         async with session.begin():
             receipt = await session.get(
@@ -148,7 +149,7 @@ async def push(
 @router.get("/changes", response_model=SyncPullResponse)
 async def changes(
     session: SessionDependency,
-    _owner: OwnerDependency,
+    owner: OwnerDependency,
     settings: SettingsDependency,
     cursor: Annotated[str, Query(min_length=3)] = "c_0",
     limit: Annotated[int, Query(ge=1, le=500)] = 500,
@@ -160,6 +161,9 @@ async def changes(
             message="The sync device identifier must be UUIDv7.",
             status_code=422,
         )
+    if device_id is not None:
+        require_matching_device(owner, device_id)
+    effective_device_id = owner.device_id or device_id
     try:
         async with session.begin():
             if await kill_switches.is_enabled(session, KillSwitchKey.SYNC_PULL):
@@ -173,7 +177,7 @@ async def changes(
                 session,
                 cursor=cursor,
                 limit=limit,
-                device_id=device_id,
+                device_id=effective_device_id,
                 server_time=datetime.now(UTC),
             )
     except SyncError as error:
@@ -188,9 +192,10 @@ async def report_device_diagnostics(
     device_id: UUID7,
     body: SyncDeviceDiagnosticsInput,
     session: SessionDependency,
-    _owner: OwnerDependency,
+    owner: OwnerDependency,
     settings: SettingsDependency,
 ) -> SyncDeviceDiagnostics:
+    require_matching_device(owner, device_id)
     try:
         async with session.begin():
             return await diagnostics_service(settings).report_device(
@@ -242,9 +247,10 @@ async def resolve_conflict(
     conflict_id: UUID7,
     body: SyncConflictResolutionRequest,
     session: SessionDependency,
-    _owner: OwnerDependency,
+    owner: OwnerDependency,
     settings: SettingsDependency,
 ) -> SyncConflictResolutionResponse:
+    require_matching_device(owner, body.device_id)
     try:
         async with session.begin():
             return await conflict_service(settings).resolve(
