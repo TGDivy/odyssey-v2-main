@@ -48,6 +48,18 @@ class Settings(BaseSettings):
     storage_secret_key: str = ""
     model_provider: str = "deterministic"
     auth_mode: AuthMode = AuthMode.DEVELOPMENT
+    apple_client_id: str = ""
+    apple_issuer: str = "https://appleid.apple.com"
+    apple_jwks_url: str = "https://appleid.apple.com/auth/keys"
+    apple_jwks_cache_seconds: int = Field(default=3600, ge=60, le=86400)
+    apple_http_timeout_seconds: int = Field(default=5, ge=1, le=30)
+    apple_identity_token_max_age_seconds: int = Field(default=600, ge=60, le=3600)
+    apple_bootstrap_subject: SecretStr = SecretStr("")
+    auth_access_token_signing_key: SecretStr = SecretStr("")
+    auth_access_token_ttl_seconds: int = Field(default=900, ge=60, le=3600)
+    auth_clock_skew_seconds: int = Field(default=30, ge=0, le=300)
+    auth_refresh_credential_ttl_days: int = Field(default=90, ge=1, le=365)
+    auth_challenge_ttl_seconds: int = Field(default=300, ge=60, le=900)
     proactive_enabled: bool = False
     telemetry_exporter: TelemetryExporter = TelemetryExporter.NONE
     telemetry_otlp_endpoint: str = ""
@@ -80,9 +92,21 @@ class Settings(BaseSettings):
             self.attachment_upload_signing_key.get_secret_value()
         ):
             raise ValueError("staging and production require an attachment upload signing key")
+        if (
+            self.env in {Environment.STAGING, Environment.PRODUCTION}
+            and self.auth_mode is AuthMode.SIGN_IN_WITH_APPLE
+        ):
+            if not self.apple_client_id:
+                raise ValueError("Sign in with Apple requires an Apple client ID")
+            if len(self.auth_access_token_signing_key.get_secret_value().encode()) < 32:
+                raise ValueError("Sign in with Apple requires a strong access-token signing key")
+            for endpoint in (self.apple_issuer, self.apple_jwks_url):
+                parsed_endpoint = urlsplit(endpoint)
+                if parsed_endpoint.scheme != "https" or not parsed_endpoint.netloc:
+                    raise ValueError("production Apple identity endpoints must use HTTPS")
         if self.telemetry_exporter is TelemetryExporter.OTLP_HTTP:
-            endpoint = urlsplit(self.telemetry_otlp_endpoint)
-            if endpoint.scheme not in {"http", "https"} or not endpoint.netloc:
+            telemetry_endpoint = urlsplit(self.telemetry_otlp_endpoint)
+            if telemetry_endpoint.scheme not in {"http", "https"} or not telemetry_endpoint.netloc:
                 raise ValueError("OTLP HTTP telemetry requires an HTTP(S) endpoint")
             self.telemetry_headers()
         return self
@@ -110,6 +134,14 @@ class Settings(BaseSettings):
         return {
             "environment": self.env.value,
             "auth_mode": self.auth_mode.value,
+            "apple_client_configured": bool(self.apple_client_id),
+            "apple_bootstrap_subject_configured": bool(
+                self.apple_bootstrap_subject.get_secret_value()
+            ),
+            "auth_access_token_signing_key_configured": bool(
+                self.auth_access_token_signing_key.get_secret_value()
+            ),
+            "auth_access_token_ttl_seconds": self.auth_access_token_ttl_seconds,
             "model_provider": self.model_provider,
             "proactive_enabled": self.proactive_enabled,
             "telemetry_exporter": self.telemetry_exporter.value,
