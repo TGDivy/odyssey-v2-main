@@ -175,6 +175,16 @@
         "title": "AppleExchangeRequest",
         "type": "object"
       },
+      "Applicability": {
+        "enum": [
+          "direct",
+          "partial",
+          "indirect",
+          "unknown"
+        ],
+        "title": "Applicability",
+        "type": "string"
+      },
       "AssembledContextSnapshot": {
         "additionalProperties": false,
         "properties": {
@@ -677,6 +687,27 @@
         "title": "CapturePayloadKind",
         "type": "string"
       },
+      "CausalStatus": {
+        "enum": [
+          "causal",
+          "associational",
+          "hypothesized",
+          "unknown"
+        ],
+        "title": "CausalStatus",
+        "type": "string"
+      },
+      "ConfidenceBand": {
+        "enum": [
+          "very_low",
+          "low",
+          "moderate",
+          "high",
+          "very_high"
+        ],
+        "title": "ConfidenceBand",
+        "type": "string"
+      },
       "ConflictResolutionStrategy": {
         "enum": [
           "keep_current",
@@ -684,6 +715,49 @@
           "merge"
         ],
         "title": "ConflictResolutionStrategy",
+        "type": "string"
+      },
+      "ConsequenceDerivation": {
+        "additionalProperties": false,
+        "properties": {
+          "consequences": {
+            "items": {
+              "$ref": "#/components/schemas/DerivedConsequence"
+            },
+            "title": "Consequences",
+            "type": "array"
+          },
+          "paths_examined": {
+            "minimum": 0.0,
+            "title": "Paths Examined",
+            "type": "integer"
+          },
+          "policy_version": {
+            "title": "Policy Version",
+            "type": "string"
+          },
+          "truncated": {
+            "title": "Truncated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "consequences",
+          "paths_examined",
+          "truncated",
+          "policy_version"
+        ],
+        "title": "ConsequenceDerivation",
+        "type": "object"
+      },
+      "ConsequenceDirection": {
+        "enum": [
+          "beneficial",
+          "harmful",
+          "mixed",
+          "neutral"
+        ],
+        "title": "ConsequenceDirection",
         "type": "string"
       },
       "ContextAssemblyRequest": {
@@ -912,6 +986,160 @@
         "title": "DataClass",
         "type": "string"
       },
+      "DecisionPreparationRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "context_snapshot_id": {
+            "format": "uuid",
+            "title": "Context Snapshot Id",
+            "type": "string"
+          },
+          "desired_depth": {
+            "$ref": "#/components/schemas/DesiredDecisionDepth"
+          },
+          "known_options": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/KnownDecisionOption"
+            },
+            "maxItems": 20,
+            "title": "Known Options",
+            "type": "array"
+          },
+          "max_latency_ms": {
+            "maximum": 30000.0,
+            "minimum": 100.0,
+            "title": "Max Latency Ms",
+            "type": "integer"
+          },
+          "question": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Question",
+            "type": "string"
+          },
+          "stakes": {
+            "$ref": "#/components/schemas/Stakes",
+            "default": "medium"
+          }
+        },
+        "required": [
+          "question",
+          "context_snapshot_id",
+          "desired_depth",
+          "max_latency_ms"
+        ],
+        "title": "DecisionPreparationRequest",
+        "type": "object"
+      },
+      "DecisionPreparationResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "context_content_hash": {
+            "maxLength": 64,
+            "minLength": 64,
+            "title": "Context Content Hash",
+            "type": "string"
+          },
+          "context_snapshot_id": {
+            "format": "uuid",
+            "title": "Context Snapshot Id",
+            "type": "string"
+          },
+          "decision_id": {
+            "format": "uuid",
+            "title": "Decision Id",
+            "type": "string"
+          },
+          "information_request": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Information Request"
+          },
+          "missing_information": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing Information",
+            "type": "array"
+          },
+          "model_used": {
+            "default": false,
+            "title": "Model Used",
+            "type": "boolean"
+          },
+          "options": {
+            "items": {
+              "$ref": "#/components/schemas/PreparedDecisionOption"
+            },
+            "title": "Options",
+            "type": "array"
+          },
+          "policy_versions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Policy Versions",
+            "type": "array"
+          },
+          "preparation_id": {
+            "format": "uuid",
+            "title": "Preparation Id",
+            "type": "string"
+          },
+          "prepared_at": {
+            "format": "date-time",
+            "title": "Prepared At",
+            "type": "string"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          },
+          "recommendation_status": {
+            "title": "Recommendation Status",
+            "type": "string"
+          },
+          "route_policy": {
+            "default": "deterministic_only",
+            "title": "Route Policy",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/DecisionPreparationStatus"
+          }
+        },
+        "required": [
+          "preparation_id",
+          "decision_id",
+          "question",
+          "context_snapshot_id",
+          "context_content_hash",
+          "status",
+          "recommendation_status",
+          "options",
+          "missing_information",
+          "prepared_at",
+          "policy_versions"
+        ],
+        "title": "DecisionPreparationResponse",
+        "type": "object"
+      },
+      "DecisionPreparationStatus": {
+        "enum": [
+          "structured_options",
+          "insufficient_evidence",
+          "information_required"
+        ],
+        "title": "DecisionPreparationStatus",
+        "type": "string"
+      },
       "DeliveryCapabilities": {
         "additionalProperties": false,
         "properties": {
@@ -943,6 +1171,156 @@
         },
         "title": "DeliveryCapabilities",
         "type": "object"
+      },
+      "DerivedConsequence": {
+        "additionalProperties": false,
+        "properties": {
+          "affected_state": {
+            "title": "Affected State",
+            "type": "string"
+          },
+          "assumptions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Assumptions",
+            "type": "array"
+          },
+          "causal_status": {
+            "$ref": "#/components/schemas/CausalStatus"
+          },
+          "charter_relevance": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Charter Relevance",
+            "type": "number"
+          },
+          "correlation_group": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Correlation Group"
+          },
+          "direction": {
+            "$ref": "#/components/schemas/ConsequenceDirection"
+          },
+          "edge_causal_statuses": {
+            "items": {
+              "$ref": "#/components/schemas/CausalStatus"
+            },
+            "title": "Edge Causal Statuses",
+            "type": "array"
+          },
+          "effect_at": {
+            "format": "date-time",
+            "title": "Effect At",
+            "type": "string"
+          },
+          "evidence_refs": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Evidence Refs",
+            "type": "array"
+          },
+          "horizon": {
+            "$ref": "#/components/schemas/HorizonBucket"
+          },
+          "irreversibility": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Irreversibility",
+            "type": "number"
+          },
+          "magnitude": {
+            "$ref": "#/components/schemas/MagnitudeBand"
+          },
+          "method_versions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Method Versions",
+            "type": "array"
+          },
+          "policy_version": {
+            "title": "Policy Version",
+            "type": "string"
+          },
+          "probability": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Probability",
+            "type": "number"
+          },
+          "rank_score": {
+            "minimum": 0.0,
+            "title": "Rank Score",
+            "type": "number"
+          },
+          "rule_path": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Rule Path",
+            "type": "array"
+          },
+          "state_path": {
+            "items": {
+              "type": "string"
+            },
+            "title": "State Path",
+            "type": "array"
+          },
+          "supporting_path_count": {
+            "default": 1,
+            "minimum": 1.0,
+            "title": "Supporting Path Count",
+            "type": "integer"
+          },
+          "uncertainty": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Uncertainty",
+            "type": "number"
+          }
+        },
+        "required": [
+          "affected_state",
+          "direction",
+          "magnitude",
+          "probability",
+          "uncertainty",
+          "effect_at",
+          "horizon",
+          "charter_relevance",
+          "irreversibility",
+          "causal_status",
+          "state_path",
+          "rule_path",
+          "edge_causal_statuses",
+          "evidence_refs",
+          "assumptions",
+          "method_versions",
+          "rank_score",
+          "policy_version"
+        ],
+        "title": "DerivedConsequence",
+        "type": "object"
+      },
+      "DesiredDecisionDepth": {
+        "enum": [
+          "glanceable",
+          "interactive",
+          "deep"
+        ],
+        "title": "DesiredDecisionDepth",
+        "type": "string"
       },
       "DeviceEnrollmentResponse": {
         "additionalProperties": false,
@@ -1180,6 +1558,126 @@
         "title": "DiagnosticsResponse",
         "type": "object"
       },
+      "DirectEffect": {
+        "additionalProperties": false,
+        "properties": {
+          "accumulation_modifier": {
+            "default": 1,
+            "maximum": 2.0,
+            "minimum": 0.0,
+            "title": "Accumulation Modifier",
+            "type": "number"
+          },
+          "affected_state": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Affected State",
+            "type": "string"
+          },
+          "assumptions": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Assumptions",
+            "type": "array"
+          },
+          "causal_status": {
+            "$ref": "#/components/schemas/CausalStatus"
+          },
+          "charter_relevance": {
+            "default": 0.5,
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Charter Relevance",
+            "type": "number"
+          },
+          "correlation_group": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Correlation Group"
+          },
+          "direction": {
+            "$ref": "#/components/schemas/ConsequenceDirection"
+          },
+          "effect_at": {
+            "format": "date-time",
+            "title": "Effect At",
+            "type": "string"
+          },
+          "evidence_refs": {
+            "default": [],
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Evidence Refs",
+            "type": "array"
+          },
+          "input_keys": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Input Keys",
+            "type": "array"
+          },
+          "irreversibility": {
+            "default": 0.5,
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Irreversibility",
+            "type": "number"
+          },
+          "magnitude": {
+            "$ref": "#/components/schemas/MagnitudeBand"
+          },
+          "method_version": {
+            "title": "Method Version",
+            "type": "string"
+          },
+          "probability": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Probability",
+            "type": "number"
+          },
+          "uncertainty": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Uncertainty",
+            "type": "number"
+          }
+        },
+        "required": [
+          "affected_state",
+          "direction",
+          "magnitude",
+          "probability",
+          "uncertainty",
+          "effect_at",
+          "causal_status",
+          "method_version"
+        ],
+        "title": "DirectEffect",
+        "type": "object"
+      },
+      "EvidenceFreshness": {
+        "enum": [
+          "unknown",
+          "stale",
+          "acceptable",
+          "fresh"
+        ],
+        "title": "EvidenceFreshness",
+        "type": "string"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -1192,6 +1690,18 @@
         },
         "title": "HTTPValidationError",
         "type": "object"
+      },
+      "HorizonBucket": {
+        "enum": [
+          "immediate",
+          "tomorrow",
+          "near",
+          "block",
+          "season",
+          "long_term"
+        ],
+        "title": "HorizonBucket",
+        "type": "string"
       },
       "InterventionClientState": {
         "additionalProperties": false,
@@ -1336,6 +1846,52 @@
         "type": "object"
       },
       "JsonValue": {},
+      "KnownDecisionOption": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "maxLength": 8000,
+            "minLength": 1,
+            "title": "Description",
+            "type": "string"
+          },
+          "direct_effects": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/DirectEffect"
+            },
+            "title": "Direct Effects",
+            "type": "array"
+          },
+          "evidence": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OptionEvidenceInput"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "label": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Label",
+            "type": "string"
+          },
+          "option_id": {
+            "format": "uuid",
+            "title": "Option Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "description"
+        ],
+        "title": "KnownDecisionOption",
+        "type": "object"
+      },
       "LiveResponse": {
         "properties": {
           "status": {
@@ -1346,6 +1902,112 @@
           }
         },
         "title": "LiveResponse",
+        "type": "object"
+      },
+      "MagnitudeBand": {
+        "enum": [
+          "negligible",
+          "low",
+          "medium",
+          "high",
+          "very_high"
+        ],
+        "title": "MagnitudeBand",
+        "type": "string"
+      },
+      "OptionEvidenceInput": {
+        "additionalProperties": false,
+        "properties": {
+          "applicability": {
+            "$ref": "#/components/schemas/Applicability"
+          },
+          "evidence_freshness": {
+            "$ref": "#/components/schemas/EvidenceFreshness"
+          },
+          "has_material_conflict": {
+            "default": false,
+            "title": "Has Material Conflict",
+            "type": "boolean"
+          },
+          "personal_causal_evidence": {
+            "$ref": "#/components/schemas/PersonalCausalEvidence"
+          },
+          "personal_data_freshness": {
+            "$ref": "#/components/schemas/EvidenceFreshness"
+          },
+          "personal_data_is_observational_only": {
+            "default": false,
+            "title": "Personal Data Is Observational Only",
+            "type": "boolean"
+          },
+          "population_confidence": {
+            "$ref": "#/components/schemas/ConfidenceBand"
+          }
+        },
+        "required": [
+          "population_confidence",
+          "applicability",
+          "personal_causal_evidence",
+          "evidence_freshness",
+          "personal_data_freshness"
+        ],
+        "title": "OptionEvidenceInput",
+        "type": "object"
+      },
+      "PersonalCausalEvidence": {
+        "enum": [
+          "none",
+          "observational",
+          "quasi_experimental",
+          "experimental",
+          "replicated_experiment"
+        ],
+        "title": "PersonalCausalEvidence",
+        "type": "string"
+      },
+      "PreparedDecisionOption": {
+        "additionalProperties": false,
+        "properties": {
+          "consequences": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConsequenceDerivation"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "option_id": {
+            "format": "uuid",
+            "title": "Option Id",
+            "type": "string"
+          },
+          "recommendation_strength": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RecommendationStrengthResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "option_id",
+          "label",
+          "description"
+        ],
+        "title": "PreparedDecisionOption",
         "type": "object"
       },
       "ReadyResponse": {
@@ -1372,6 +2034,64 @@
           "checked_at"
         ],
         "title": "ReadyResponse",
+        "type": "object"
+      },
+      "RecommendationPresentation": {
+        "enum": [
+          "insufficient_evidence",
+          "present_options_or_seek_information",
+          "tentative_recommendation",
+          "direct_recommendation"
+        ],
+        "title": "RecommendationPresentation",
+        "type": "string"
+      },
+      "RecommendationStrength": {
+        "enum": [
+          "insufficient",
+          "weak",
+          "moderate",
+          "strong"
+        ],
+        "title": "RecommendationStrength",
+        "type": "string"
+      },
+      "RecommendationStrengthResult": {
+        "additionalProperties": false,
+        "properties": {
+          "maximum_strength": {
+            "$ref": "#/components/schemas/RecommendationStrength"
+          },
+          "policy_version": {
+            "default": "recommendation-strength-policy-1.0",
+            "title": "Policy Version",
+            "type": "string"
+          },
+          "presentation": {
+            "$ref": "#/components/schemas/RecommendationPresentation"
+          },
+          "prohibited_phrases": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Prohibited Phrases",
+            "type": "array"
+          },
+          "reason_codes": {
+            "items": {
+              "$ref": "#/components/schemas/StrengthReason"
+            },
+            "title": "Reason Codes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "maximum_strength",
+          "presentation",
+          "reason_codes"
+        ],
+        "title": "RecommendationStrengthResult",
         "type": "object"
       },
       "RecoveryExchangeRequest": {
@@ -1451,6 +2171,30 @@
           "server_upgrade_required"
         ],
         "title": "SchemaCompatibility",
+        "type": "string"
+      },
+      "Stakes": {
+        "enum": [
+          "low",
+          "medium",
+          "high",
+          "critical"
+        ],
+        "title": "Stakes",
+        "type": "string"
+      },
+      "StrengthReason": {
+        "enum": [
+          "POPULATION_SUPPORT",
+          "DIRECT_APPLICABILITY",
+          "PERSONAL_CAUSAL_SUPPORT",
+          "FRESH_SUPPORT",
+          "MATERIAL_EVIDENCE_CONFLICT",
+          "HIGH_STAKES_CAP",
+          "OBSERVATIONAL_LANGUAGE_RESTRICTED",
+          "SUPPORT_INSUFFICIENT"
+        ],
+        "title": "StrengthReason",
         "type": "string"
       },
       "SyncChange": {
@@ -3095,6 +3839,52 @@
         "summary": "Assemble Context",
         "tags": [
           "context"
+        ]
+      }
+    },
+    "/v1/decisions/prepare": {
+      "post": {
+        "operationId": "prepare_decision_v1_decisions_prepare_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecisionPreparationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionPreparationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Prepare Decision",
+        "tags": [
+          "decisions"
         ]
       }
     },

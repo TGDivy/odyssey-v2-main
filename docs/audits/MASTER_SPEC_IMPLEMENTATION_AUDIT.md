@@ -32,7 +32,7 @@ deployment, external account configuration, or physical-device behavior.
 | §6 good-life model | `contract-only` | `domain/life.py` Charter and direction contracts; generated schemas | Versioned owner acceptance, resolution-by-time, and recommendation linkage. |
 | §7 life-stage and season model | `contract-only` | `domain/life.py`; event schemas | Immutable revision service, transition state machine, Workshop UI, replay tests. |
 | §8 ontology and knowledge model | `partial` | provenance, temporal, assertion, event, person, relationship contracts; durable ledger | Admission, supersession, graph derivation, contradiction, redaction, and retrieval services. |
-| §9 decision architecture | `partial` | decision contracts/events plus deterministic evidence-strength cap and observational-language guard | Lifecycle service, preparation API, replay, UI and durable recommendation audit. |
+| §9 decision architecture | `partial` | decision contracts/events plus B.5 immutable context-bound deterministic preparation, bounded option consequences, evidence-strength/copy caps and explicit information/insufficiency outputs | Full lifecycle/choice/outcome service, preference trade-off resolution, replay and product UI. |
 | §10 temporal consequence engine | `partial` | versioned bounded graph traversal with time/depth/path limits, cycle/accumulation controls, uncertainty propagation, causal-status preservation, correlated-path collapse and deterministic ranking | Domain rule registry, direct-effect services, calibration reports, persistence, APIs, narrative/UI and historical replay suite. |
 | §11 intent/intervention engine | `partial` | deterministic versioned silence/delivery policy plus B.6 owner-only evaluation of synced opportunities/intents, global pause, delivery-time client state, durable budgets and immutable audit | Opportunity generation, scheduling, response/outcome learning and platform delivery surfaces. |
 | §12 memory architecture | `partial` | immutable ledger/projections, capture/archive contracts, rebuild/export tools and immutable source-linked context snapshots | Admission, retrieval plans, contradiction, condensation, forgetting/redaction and broader source annotation services. |
@@ -72,7 +72,7 @@ deployment, external account configuration, or physical-device behavior.
 | §47 implementation-agent handoff | `partial` | README, assumptions, architecture docs, runbooks, detailed owner handoff | Maintain final requirement ledger and unresolved credential/manual-step register. |
 | §48 scenario stress tests | `missing` | isolated sync/recovery tests only | Encode every scenario as deterministic fixtures/replays plus owner-only Apple scenarios. |
 | Appendix A domain contracts | `verified` | Pydantic contracts and generated JSON Schemas | Behavioral validation still belongs to each owning section above. |
-| Appendix B API/events | `partial` | error envelope, auth/capture/sync/attachment/system routes, B.4 immutable context assembly, B.6 durable intervention evaluation and immutable event registry | Decision preparation, feedback, evidence and encrypted asynchronous export APIs. |
+| Appendix B API/events | `partial` | error envelope, auth/capture/sync/attachment/system routes, B.4 context assembly, B.5 durable deterministic decision preparation, B.6 intervention evaluation and immutable event registry | Feedback, evidence and encrypted asynchronous export APIs. |
 | Appendix C policies | `verified` | C.1–C.7 are versioned deterministic pure policies with focused boundary/replay-style automated tests; C.5 is disabled by default | Cross-policy golden scenarios remain tracked under §29 rather than policy implementation. |
 | Appendix D sources | `documented` | cited research and official-source register | Record source-version/update policy in evidence implementation. |
 | Appendix E traceability/definition of done | `partial` | this audit plus master traceability table | Close every unchecked E.2 row with automated or owner evidence. |
@@ -90,7 +90,7 @@ deployment, external account configuration, or physical-device behavior.
 | 1.3 Apple context adapters | `missing` | Targets/seams exist without real incremental HealthKit/calendar/location adapters. |
 | 1.4 Now/Tomorrow Map v1 | `partial` | Quiet Now, C.7 re-entry policy and immutable deterministic model-free server context assembly exist; Tomorrow Map and rendered re-entry do not. |
 | 1.5 telemetry/review | `contract-only` | Schemas exist; declared questions and product review loop do not. |
-| 2.1 decision journal | `contract-only` | Decision schemas/events exist without a usable loop. |
+| 2.1 decision journal | `partial` | B.5 persistently prepares context-bound structured options/consequences and asks for missing information; choice/outcome/replay/UI loops remain. |
 | 2.2 consequence engine v1 | `partial` | C.2 bounded propagation core is tested; domain rules, durable inputs/outputs, calibration, replay API and product surface remain. |
 | 2.3 intent engine v1 | `partial` | C.1 silence gate, budgets, cooldown and channel policy are tested; opportunity generation/durability/delivery are absent. |
 | 2.4 AI synthesis/evaluations | `deferred` | Correctly gated until deterministic context, evidence and evaluations exist. |
@@ -131,7 +131,7 @@ personal state or complete the longitudinal protocol.
 | Deterministic model-free context | `repo` | `verified` | B.4 assembles and immutably stores source-linked domain snapshots with explicit fresh/stale/missing/denied declarations and no provider dependency. |
 | Consequential model output structured/versioned | `repo` | `contract-only` | ModelRun and output contracts exist; no enabled model route. |
 | Recommendation citations | `repo` | `missing` | No recommendation service. |
-| Uncertainty/insufficiency outputs | `repo` | `contract-only` | Types exist; route behavior absent. |
+| Uncertainty/insufficiency outputs | `repo` | `verified` | B.5 returns explicit information requests or `insufficient_evidence` without invoking a model or fabricating paths. |
 | Provider fallback | `repo` | `missing` | Providers remain disabled. |
 | Prompt-injection/sensitive-route tests | `repo` | `missing` | No model pipeline/eval suite. |
 | Model rollback | `repo` | `missing` | No model release system. |
@@ -164,7 +164,7 @@ At this snapshot:
 
 - The last full `make verify` baseline reported 106 backend tests, 85.65% backend
   coverage, 67 deterministic generated schema artifacts, OpenTofu validation,
-  and five mocked OpenTofu plans; focused work since then adds policy/context/intervention tests and twelve migrations.
+  and five mocked OpenTofu plans; focused work since then adds policy/context/intervention/decision tests and thirteen migrations.
 - The portable Swift 6.1 release suite reported 45 tests passing.
 - iOS sources passed parser-only validation and `apple/project.yml` passed YAML
   structure checks.
