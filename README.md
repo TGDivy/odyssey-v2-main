@@ -78,10 +78,11 @@ Operational recovery procedures are indexed in `docs/runbooks/README.md`.
 
 ## Deployment
 
-Local development is credential-free. Cloud and Apple account setup is kept
-outside source control and will be documented step by step in
-`docs/deployment/OWNER_HANDOFF.md`, including expected outputs, secrets,
-entitlements, deployment, rollback, export, and restoration.
+Local development is credential-free. Cloud and Apple account setup stays
+outside source control and is documented step by step in
+[`docs/deployment/OWNER_HANDOFF.md`](docs/deployment/OWNER_HANDOFF.md), including
+owner-only gates, expected outputs, troubleshooting, evidence, entitlements,
+deployment, rollback, export, and restoration.
 
 ## Data policy
 

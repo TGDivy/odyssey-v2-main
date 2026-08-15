@@ -80,6 +80,10 @@ unset APPLE_BOOTSTRAP_SUBJECT
 The other placeholders are reserved for integrations and telemetry. Add a
 version only when the corresponding capability is enabled. Never put a secret
 value in `.tfvars`, a plan, GitHub Actions variables, or command arguments.
+After the first verified owner enrollment and recovery setup, set
+`apple_bootstrap_enabled = false`, deploy and retain a post-bootstrap rollback
+revision, then disable the one-time subject version as described in the owner
+handoff.
 
 ## 4. Establish database ownership and grants
 
@@ -133,4 +137,6 @@ Credential-free checks prove structure and provider-schema validity only. They
 do not prove project quotas, billing permissions, notification delivery, Apple
 configuration, IAM database grants, a successful Cloud Run revision, or a real
 restore. Those checks are explicit owner-handoff gates and must retain their
-provider evidence.
+provider evidence. Follow
+[`docs/deployment/OWNER_HANDOFF.md`](../../docs/deployment/OWNER_HANDOFF.md) in
+order; do not skip its blocked or owner-required gates.

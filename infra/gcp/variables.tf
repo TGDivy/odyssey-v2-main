@@ -98,6 +98,12 @@ variable "apple_client_id" {
   default     = ""
 }
 
+variable "apple_bootstrap_enabled" {
+  description = "Inject the one-time owner bootstrap subject until initial enrollment and recovery setup complete."
+  type        = bool
+  default     = true
+}
+
 variable "api_docs_enabled" {
   description = "Expose interactive API documentation. Keep false in production."
   type        = bool

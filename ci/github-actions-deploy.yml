@@ -171,6 +171,7 @@ jobs:
     environment: ${{ inputs.target_environment }}
     env:
       ENVIRONMENT: ${{ inputs.target_environment }}
+      APPLE_BOOTSTRAP_ENABLED: ${{ vars.APPLE_BOOTSTRAP_ENABLED }}
       PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
       REGION: ${{ vars.GCP_REGION }}
       STATE_BUCKET: ${{ vars.GCP_STATE_BUCKET }}
@@ -190,6 +191,7 @@ jobs:
       TF_VAR_public_api_enabled: "true"
       TF_VAR_auth_mode: sign_in_with_apple
       TF_VAR_apple_client_id: ${{ vars.APPLE_CLIENT_ID }}
+      TF_VAR_apple_bootstrap_enabled: ${{ vars.APPLE_BOOTSTRAP_ENABLED }}
       TF_VAR_api_docs_enabled: "false"
       TF_VAR_cloud_sql_availability_type: ${{ inputs.target_environment == 'production' && 'REGIONAL' || 'ZONAL' }}
       TF_VAR_cloud_sql_deletion_protection: "true"
@@ -216,7 +218,14 @@ jobs:
       - name: Verify required secret versions exist
         run: |
           set -euo pipefail
-          for suffix in apple-bootstrap-subject attachment-upload-signing-key auth-access-token-signing-key; do
+          required=(attachment-upload-signing-key auth-access-token-signing-key)
+          if [[ "${APPLE_BOOTSTRAP_ENABLED}" == "true" ]]; then
+            required+=(apple-bootstrap-subject)
+          elif [[ "${APPLE_BOOTSTRAP_ENABLED}" != "false" ]]; then
+            echo "APPLE_BOOTSTRAP_ENABLED must be true or false" >&2
+            exit 1
+          fi
+          for suffix in "${required[@]}"; do
             secret="odyssey-${ENVIRONMENT}-${suffix}"
             version="$(gcloud secrets versions list "${secret}" --project "${PROJECT_ID}" --filter='state=ENABLED' --limit=1 --format='value(name)')"
             [[ -n "${version}" ]] || { echo "Missing enabled version for ${secret}" >&2; exit 1; }

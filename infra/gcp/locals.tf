@@ -76,11 +76,15 @@ locals {
     ODYSSEY_PROACTIVE_ENABLED                   = tostring(var.proactive_enabled)
   })
 
-  api_secret_environment = {
-    ODYSSEY_APPLE_BOOTSTRAP_SUBJECT       = "apple-bootstrap-subject"
-    ODYSSEY_ATTACHMENT_UPLOAD_SIGNING_KEY = "attachment-upload-signing-key"
-    ODYSSEY_AUTH_ACCESS_TOKEN_SIGNING_KEY = "auth-access-token-signing-key"
-  }
+  api_secret_environment = merge(
+    {
+      ODYSSEY_ATTACHMENT_UPLOAD_SIGNING_KEY = "attachment-upload-signing-key"
+      ODYSSEY_AUTH_ACCESS_TOKEN_SIGNING_KEY = "auth-access-token-signing-key"
+    },
+    var.apple_bootstrap_enabled ? {
+      ODYSSEY_APPLE_BOOTSTRAP_SUBJECT = "apple-bootstrap-subject"
+    } : {},
+  )
 
   worker_environment = merge(local.common_runtime_environment, {
     ODYSSEY_PROCESS_ROLE      = "worker"

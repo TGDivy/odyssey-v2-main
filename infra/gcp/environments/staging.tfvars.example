@@ -4,6 +4,7 @@ region                        = "europe-west2"
 archive_location              = "EU"
 auth_mode                     = "sign_in_with_apple"
 apple_client_id               = "replace-with-staging-apple-client-id"
+apple_bootstrap_enabled       = true
 public_api_enabled            = false
 schedules_paused              = true
 api_docs_enabled              = false

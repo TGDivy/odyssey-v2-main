@@ -28,6 +28,25 @@ run "foundation_without_workloads" {
   }
 }
 
+run "post_bootstrap_removes_one_time_subject" {
+  command = plan
+
+  variables {
+    project_id              = "odyssey-development-000001"
+    environment             = "development"
+    apple_bootstrap_enabled = false
+  }
+
+  assert {
+    condition = (
+      !contains(keys(local.api_secret_environment), "ODYSSEY_APPLE_BOOTSTRAP_SUBJECT") &&
+      contains(keys(local.api_secret_environment), "ODYSSEY_ATTACHMENT_UPLOAD_SIGNING_KEY") &&
+      contains(keys(local.api_secret_environment), "ODYSSEY_AUTH_ACCESS_TOKEN_SIGNING_KEY")
+    )
+    error_message = "post-bootstrap revisions must remove only the one-time Apple subject"
+  }
+}
+
 run "development_workloads" {
   command = plan
 

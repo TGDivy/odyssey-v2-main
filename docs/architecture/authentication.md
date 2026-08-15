@@ -62,8 +62,11 @@ only whether required values are configured.
 
 After confirming the first owner identity and at least two recovery credentials,
 remove `ODYSSEY_APPLE_BOOTSTRAP_SUBJECT` from the runtime secret configuration.
-The durable allowlist remains authoritative. Changing an email address or
-Apple relay address has no effect on identity.
+The GCP deployment does this by setting `apple_bootstrap_enabled = false`,
+deploying a revision with no subject reference, retiring pre-bootstrap rollback
+revisions, and only then disabling the secret version. The durable allowlist
+remains authoritative. Changing an email address or Apple relay address has no
+effect on identity.
 
 ## Device credentials
 

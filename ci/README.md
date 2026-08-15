@@ -30,6 +30,7 @@ configure these environment variables:
 | `GCP_BILLING_CURRENCY_CODE` | Three-letter billing currency |
 | `GCP_MONTHLY_BUDGET_AMOUNT` | Whole-number monthly budget |
 | `APPLE_CLIENT_ID` | Environment-specific Apple client identifier |
+| `APPLE_BOOTSTRAP_ENABLED` | `true` only through first owner enrollment and recovery setup; then permanently `false` |
 | `REPOSITORY_NUMERIC_ID` | Immutable numeric GitHub repository ID |
 | `REPOSITORY_OWNER_NUMERIC_ID` | Immutable numeric GitHub owner ID |
 | `PYTHON_BASE_IMAGE` | Python base image pinned by digest |
