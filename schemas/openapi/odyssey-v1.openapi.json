@@ -974,6 +974,14 @@
         "title": "ContextReason",
         "type": "string"
       },
+      "CorrectionApplyScope": {
+        "enum": [
+          "this_event_only",
+          "future_recommendations"
+        ],
+        "title": "CorrectionApplyScope",
+        "type": "string"
+      },
       "DataClass": {
         "enum": [
           "public",
@@ -1668,6 +1676,31 @@
         "title": "DirectEffect",
         "type": "object"
       },
+      "DurableRecordChange": {
+        "additionalProperties": false,
+        "properties": {
+          "operation": {
+            "title": "Operation",
+            "type": "string"
+          },
+          "record_id": {
+            "format": "uuid",
+            "title": "Record Id",
+            "type": "string"
+          },
+          "record_type": {
+            "title": "Record Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "record_type",
+          "record_id",
+          "operation"
+        ],
+        "title": "DurableRecordChange",
+        "type": "object"
+      },
       "EvidenceFreshness": {
         "enum": [
           "unknown",
@@ -2035,6 +2068,111 @@
         ],
         "title": "ReadyResponse",
         "type": "object"
+      },
+      "RecommendationCorrection": {
+        "additionalProperties": false,
+        "properties": {
+          "assertion_id": {
+            "format": "uuid",
+            "title": "Assertion Id",
+            "type": "string"
+          },
+          "replacement": {
+            "maxLength": 8000,
+            "minLength": 1,
+            "title": "Replacement",
+            "type": "string"
+          }
+        },
+        "required": [
+          "assertion_id",
+          "replacement"
+        ],
+        "title": "RecommendationCorrection",
+        "type": "object"
+      },
+      "RecommendationFeedbackRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "apply_scope": {
+            "$ref": "#/components/schemas/CorrectionApplyScope",
+            "default": "this_event_only"
+          },
+          "correction": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RecommendationCorrection"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "feedback_type": {
+            "$ref": "#/components/schemas/RecommendationFeedbackType"
+          }
+        },
+        "required": [
+          "feedback_type"
+        ],
+        "title": "RecommendationFeedbackRequest",
+        "type": "object"
+      },
+      "RecommendationFeedbackResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "apply_scope": {
+            "$ref": "#/components/schemas/CorrectionApplyScope"
+          },
+          "feedback_id": {
+            "format": "uuid",
+            "title": "Feedback Id",
+            "type": "string"
+          },
+          "future_recommendations_affected": {
+            "title": "Future Recommendations Affected",
+            "type": "boolean"
+          },
+          "policy_version": {
+            "title": "Policy Version",
+            "type": "string"
+          },
+          "recommendation_id": {
+            "format": "uuid",
+            "title": "Recommendation Id",
+            "type": "string"
+          },
+          "records_changed": {
+            "items": {
+              "$ref": "#/components/schemas/DurableRecordChange"
+            },
+            "title": "Records Changed",
+            "type": "array"
+          }
+        },
+        "required": [
+          "feedback_id",
+          "recommendation_id",
+          "records_changed",
+          "future_recommendations_affected",
+          "apply_scope",
+          "policy_version"
+        ],
+        "title": "RecommendationFeedbackResponse",
+        "type": "object"
+      },
+      "RecommendationFeedbackType": {
+        "enum": [
+          "wrong_context",
+          "wrong_evidence",
+          "not_helpful",
+          "helpful",
+          "unsafe",
+          "stale",
+          "other"
+        ],
+        "title": "RecommendationFeedbackType",
+        "type": "string"
       },
       "RecommendationPresentation": {
         "enum": [
@@ -3931,6 +4069,75 @@
         "summary": "Evaluate Opportunity",
         "tags": [
           "intents"
+        ]
+      }
+    },
+    "/v1/recommendations/{recommendation_id}/feedback": {
+      "post": {
+        "operationId": "record_recommendation_feedback_v1_recommendations__recommendation_id__feedback_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "recommendation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Recommendation Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 500,
+              "minLength": 1,
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecommendationFeedbackRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecommendationFeedbackResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Record Recommendation Feedback",
+        "tags": [
+          "recommendations"
         ]
       }
     },
