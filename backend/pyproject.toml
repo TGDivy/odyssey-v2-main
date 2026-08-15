@@ -25,6 +25,7 @@ dependencies = [
 
 [project.scripts]
 odyssey-api = "odyssey.main:run"
+odyssey-cloud-backup = "odyssey.backups.cloud:main"
 odyssey-worker = "odyssey.worker:main"
 odyssey-worker-once = "odyssey.worker:main_once"
 
@@ -63,6 +64,7 @@ ignore = ["S101"]
 "tests/integration/test_import_export.py" = ["S603"]
 "src/odyssey/domain/common.py" = ["S105"]
 "src/odyssey/db/backups.py" = ["S603", "S608"]
+"src/odyssey/backups/cloud.py" = ["S603"]
 "src/odyssey/jobs/sidecar.py" = ["S310", "S603"]
 "../tools/fixtures/*.py" = ["S311"]
 

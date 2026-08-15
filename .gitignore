@@ -42,10 +42,10 @@ secrets/
 *.sqlite
 *.sqlite3
 *.db
-local-data/
-exports/
-backups/
-objects/
+/local-data/
+/exports/
+/backups/
+/objects/
 
 # Infrastructure
 .terraform/

@@ -95,21 +95,31 @@ resource "google_storage_bucket" "database_backups" {
     default_kms_key_name = google_kms_crypto_key.archives.id
   }
 
-  lifecycle_rule {
-    condition {
-      age        = 35
-      with_state = "LIVE"
+  dynamic "lifecycle_rule" {
+    for_each = {
+      daily   = 35
+      monthly = 400
+      annual  = 3650
     }
-    action {
-      type          = "SetStorageClass"
-      storage_class = "NEARLINE"
+    content {
+      condition {
+        age        = lifecycle_rule.value
+        with_state = "LIVE"
+        matches_prefix = [
+          "database/${lifecycle_rule.key}/",
+          "manifests/${lifecycle_rule.key}/",
+        ]
+      }
+      action {
+        type = "Delete"
+      }
     }
   }
 
   lifecycle_rule {
     condition {
-      age        = 400
-      with_state = "ARCHIVED"
+      days_since_noncurrent_time = 30
+      with_state                 = "ARCHIVED"
     }
     action {
       type = "Delete"

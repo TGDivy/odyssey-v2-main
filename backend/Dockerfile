@@ -1,4 +1,4 @@
-FROM python:3.13.7-slim AS runtime
+FROM python:3.13.7-slim AS application
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -18,5 +18,17 @@ RUN uv sync --frozen --no-dev
 
 USER 65532:65532
 EXPOSE 8080
+
+FROM application AS backup
+
+USER root
+RUN apt-get update \
+    && apt-get install --yes --no-install-recommends postgresql-client \
+    && rm -rf /var/lib/apt/lists/*
+USER 65532:65532
+
+CMD ["uv", "run", "--no-sync", "odyssey-cloud-backup"]
+
+FROM application AS runtime
 
 CMD ["uv", "run", "--no-sync", "uvicorn", "odyssey.main:app", "--host", "0.0.0.0", "--port", "8080", "--no-access-log"]
