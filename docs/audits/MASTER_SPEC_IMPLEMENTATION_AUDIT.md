@@ -36,7 +36,7 @@ deployment, external account configuration, or physical-device behavior.
 | §10 temporal consequence engine | `partial` | versioned bounded graph traversal with time/depth/path limits, cycle/accumulation controls, uncertainty propagation, causal-status preservation, correlated-path collapse and deterministic ranking | Domain rule registry, direct-effect services, calibration reports, persistence, APIs, narrative/UI and historical replay suite. |
 | §11 intent/intervention engine | `partial` | `intent/models.py`; deterministic versioned silence/delivery policy with expiry, pause, cooldown, budget, context-recheck and channel tests | Durable opportunity service, synced pause state, scheduling, outcome loop and platform surfaces. |
 | §12 memory architecture | `partial` | immutable ledger, projections, capture/archive contracts, rebuild and export tools | Admission, retrieval plans, contradiction, condensation, forgetting/redaction, source annotations. |
-| §13 personal learning | `contract-only` | `evidence/experiments.py` | Pattern-assessment policy, preregistration workflow, analysis, replication, and owner review. |
+| §13 personal learning | `partial` | experiment contracts plus C.6 sample/multiplicity/missingness/temporal/confounder/robustness/context/safety promotion policy | Durable hypothesis/preregistration workflow, analysis runner, replication, preference drift and owner review. |
 | §14 scientific evidence | `contract-only` | `evidence/models.py`; source/claim/appraisal schemas | Evidence ingestion/query, appraisal policy, counterevidence, applicability, citations, updates. |
 | §15 score philosophy | `documented` | Constitution prohibits universal Life Score; no ranking implementation | Optional removable day-alignment experiment with data-quality and comparison guards. |
 | §16 AI philosophy | `contract-only` | `ai/models.py` | Capability router, structured fallbacks, refusal/uncertainty, provenance, evaluations, rollback. |
@@ -73,7 +73,7 @@ deployment, external account configuration, or physical-device behavior.
 | §48 scenario stress tests | `missing` | isolated sync/recovery tests only | Encode every scenario as deterministic fixtures/replays plus owner-only Apple scenarios. |
 | Appendix A domain contracts | `verified` | Pydantic contracts and generated JSON Schemas | Behavioral validation still belongs to each owning section above. |
 | Appendix B API/events | `partial` | error envelope, auth/capture/sync/attachment/system routes; immutable event registry | Context, decision, intervention, feedback, evidence and encrypted asynchronous export APIs. |
-| Appendix C policies | `partial` | C.1–C.4 deterministic engines exist with focused boundary/replay-style tests | Implement C.5–C.7 plus the cross-policy golden replay suite. |
+| Appendix C policies | `partial` | C.1–C.4 and C.6 deterministic engines exist with focused boundary/replay-style tests | Implement C.5 and C.7 plus the cross-policy golden replay suite. |
 | Appendix D sources | `documented` | cited research and official-source register | Record source-version/update policy in evidence implementation. |
 | Appendix E traceability/definition of done | `partial` | this audit plus master traceability table | Close every unchecked E.2 row with automated or owner evidence. |
 
@@ -96,7 +96,7 @@ deployment, external account configuration, or physical-device behavior.
 | 2.4 AI synthesis/evaluations | `deferred` | Correctly gated until deterministic context, evidence and evaluations exist. |
 | 2.5 one-month dogfood | `missing` | Requires owner use and prior Edition 2 gates. |
 | 3.1 evidence library | `contract-only` | Contracts only. |
-| 3.2 N-of-1 laboratory | `contract-only` | Contracts only. |
+| 3.2 N-of-1 laboratory | `partial` | Contracts and conservative C.6 pattern-promotion gate exist; experiment execution, analysis, replication and review loops remain. |
 | 3.3 training/nutrition depth | `deferred` | No unsafe or unsupported guidance is enabled. |
 | 3.4 archive v1 | `contract-only` | Episode/chapter contracts and raw capture list only. |
 | 3.5 relationship memory | `contract-only` | Conservative person/relationship contracts only. |
