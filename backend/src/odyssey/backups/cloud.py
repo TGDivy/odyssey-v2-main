@@ -3,15 +3,16 @@
 import asyncio
 import json
 import os
+import shutil
 import stat
 import subprocess
+import tempfile
 from collections.abc import Mapping, Sequence
 from contextlib import suppress
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from hashlib import sha256
 from pathlib import Path
-from tempfile import TemporaryDirectory
 from typing import Any, Protocol
 
 import structlog
@@ -23,14 +24,19 @@ from sqlalchemy import text
 from sqlalchemy.engine import make_url
 
 from odyssey.attachments.backups import (
+    ObjectArchiveEnvelope,
+    ObjectArchiveError,
     create_object_archive,
+    load_archived_object_manifest,
     object_archive_manifest_bytes,
     verify_object_archive,
+    write_object_archive_manifest,
 )
 from odyssey.attachments.storage import AttachmentStore
 from odyssey.attachments.storage_factory import create_attachment_store
 from odyssey.attachments.storage_gcs import GCSAttachmentStore
 from odyssey.config import Settings, get_settings
+from odyssey.db.backups import BACKUP_FORMAT_VERSION, BackupArtifact, write_private
 from odyssey.db.session import Database
 from odyssey.domain.common import StrictModel
 from odyssey.logging import configure_logging
@@ -275,6 +281,136 @@ def _canonical_bytes(value: StrictModel) -> bytes:
     ).encode()
 
 
+def validate_cloud_backup_envelope(envelope: CloudBackupEnvelope) -> None:
+    if envelope.manifest.format != CLOUD_BACKUP_FORMAT:
+        raise CloudBackupError("cloud backup format is unsupported")
+    if sha256(_canonical_bytes(envelope.manifest)).hexdigest() != envelope.manifest_sha256:
+        raise CloudBackupError("cloud backup manifest hash does not match")
+    if not envelope.manifest.database_objects:
+        raise CloudBackupError("cloud backup manifest has no database artifact")
+    for reference in envelope.manifest.database_objects:
+        if (
+            reference.content_sha256 != envelope.manifest.database_dump_sha256
+            or reference.byte_size != envelope.manifest.database_dump_bytes
+        ):
+            raise CloudBackupError("cloud backup database references disagree")
+
+
+def load_cloud_backup_envelope(content: bytes) -> CloudBackupEnvelope:
+    try:
+        envelope = CloudBackupEnvelope.model_validate_json(content)
+    except ValueError as error:
+        raise CloudBackupError("cloud backup manifest is invalid") from error
+    validate_cloud_backup_envelope(envelope)
+    return envelope
+
+
+def materialize_native_backup_bundle(
+    envelope: CloudBackupEnvelope,
+    *,
+    database_dump: Path,
+    destination: Path,
+) -> str:
+    validate_cloud_backup_envelope(envelope)
+    if destination.exists():
+        raise CloudBackupError("native restore bundle destination already exists")
+    if (
+        not database_dump.is_file()
+        or database_dump.stat().st_size != envelope.manifest.database_dump_bytes
+        or _sha256_file(database_dump) != envelope.manifest.database_dump_sha256
+    ):
+        raise CloudBackupError("downloaded database dump failed manifest verification")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    staging = Path(
+        tempfile.mkdtemp(
+            prefix=f".{destination.name}-",
+            dir=destination.parent,
+        )
+    )
+    staging.chmod(0o700)
+    try:
+        artifact_path = staging / "database.pgdump"
+        shutil.copyfile(database_dump, artifact_path)
+        artifact_path.chmod(0o600)
+        artifact = BackupArtifact(
+            path=artifact_path.name,
+            media_type="application/vnd.postgresql.custom-dump",
+            size_bytes=envelope.manifest.database_dump_bytes,
+            sha256=envelope.manifest.database_dump_sha256,
+        )
+        native_manifest = {
+            "artifact": {
+                "path": artifact.path,
+                "media_type": artifact.media_type,
+                "size_bytes": artifact.size_bytes,
+                "sha256": artifact.sha256,
+            },
+            "backup_format_version": BACKUP_FORMAT_VERSION,
+            "created_at": envelope.manifest.created_at.astimezone(UTC)
+            .isoformat()
+            .replace("+00:00", "Z"),
+            "database_engine": "postgresql",
+            "encryption": "gcs_cmek_source_plaintext_isolated_restore",
+            "recovery_validation": "pending_clean_room_restore",
+            "schema_revision": envelope.manifest.database_schema_revision,
+            "source_backup_id": envelope.manifest.backup_id,
+            "source_cloud_manifest_sha256": envelope.manifest_sha256,
+            "source_commit_sha": envelope.manifest.commit_sha,
+            "source_database_catalog_sha256": envelope.manifest.database_catalog_sha256,
+            "table_counts": None,
+        }
+        manifest_content = (json.dumps(native_manifest, indent=2, sort_keys=True) + "\n").encode()
+        manifest_sha256 = sha256(manifest_content).hexdigest()
+        write_private(staging / "manifest.json", manifest_content)
+        write_private(
+            staging / "manifest.sha256",
+            f"{manifest_sha256}  manifest.json\n".encode(),
+        )
+        staging.replace(destination)
+    except BaseException:
+        shutil.rmtree(staging, ignore_errors=True)
+        raise
+    return manifest_sha256
+
+
+def materialize_object_archive_manifest(
+    cloud_envelope: CloudBackupEnvelope,
+    *,
+    archived_manifest: Path,
+    destination: Path,
+) -> str:
+    if destination.exists():
+        raise CloudBackupError("object restore manifest destination already exists")
+    if not archived_manifest.is_file():
+        raise CloudBackupError("archived object manifest does not exist")
+    object_envelope = load_cloud_object_archive_envelope(
+        cloud_envelope,
+        archived_manifest.read_bytes(),
+    )
+    write_object_archive_manifest(destination, object_envelope)
+    return object_envelope.manifest_sha256
+
+
+def load_cloud_object_archive_envelope(
+    cloud_envelope: CloudBackupEnvelope,
+    archived_manifest_content: bytes,
+) -> ObjectArchiveEnvelope:
+    validate_cloud_backup_envelope(cloud_envelope)
+    try:
+        object_envelope = load_archived_object_manifest(
+            archived_manifest_content,
+            expected_manifest_sha256=cloud_envelope.manifest.object_manifest_sha256,
+        )
+    except ObjectArchiveError as error:
+        raise CloudBackupError("archived object manifest failed cloud verification") from error
+    if (
+        object_envelope.manifest.object_count != cloud_envelope.manifest.object_count
+        or object_envelope.manifest.total_bytes != cloud_envelope.manifest.object_bytes
+    ):
+        raise CloudBackupError("cloud and object archive manifests disagree")
+    return object_envelope
+
+
 def postgres_environment(database_url: str) -> dict[str, str]:
     url = make_url(database_url)
     if url.get_backend_name() != "postgresql":
@@ -454,6 +590,7 @@ async def complete_cloud_backup(
     )
     manifest_sha256 = sha256(_canonical_bytes(manifest)).hexdigest()
     envelope = CloudBackupEnvelope(manifest_sha256=manifest_sha256, manifest=manifest)
+    validate_cloud_backup_envelope(envelope)
     envelope_content = _canonical_bytes(envelope)
     envelope_sha256 = sha256(envelope_content).hexdigest()
     manifest_objects = []
@@ -504,7 +641,7 @@ async def run_cloud_backup(
     )
     database = Database(settings.database_url)
     try:
-        with TemporaryDirectory(prefix="odyssey-cloud-backup-") as temporary_directory:
+        with tempfile.TemporaryDirectory(prefix="odyssey-cloud-backup-") as temporary_directory:
             logical_dump = await asyncio.to_thread(
                 create_logical_dump,
                 settings.database_url,

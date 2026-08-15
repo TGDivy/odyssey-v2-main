@@ -1,4 +1,5 @@
 import asyncio
+import json
 import stat
 import subprocess
 from datetime import UTC, datetime
@@ -9,14 +10,289 @@ from typing import Any
 import pytest
 from google.api_core.exceptions import PreconditionFailed
 
+from odyssey.attachments.backups import (
+    ObjectArchiveManifest,
+    load_object_archive_manifest,
+    object_archive_manifest_bytes,
+)
 from odyssey.backups.cloud import (
     CLOUD_BACKUP_FORMAT,
+    BackupObjectReference,
+    CloudBackupEnvelope,
     CloudBackupError,
+    CloudBackupManifest,
     GCSBackupObjectStore,
     create_logical_dump,
+    load_cloud_backup_envelope,
+    materialize_native_backup_bundle,
+    materialize_object_archive_manifest,
     postgres_environment,
     retention_tiers,
+    validate_cloud_backup_envelope,
 )
+from odyssey.db import backups as database_backups
+from odyssey.db.backups import BackupError
+
+
+def cloud_backup_envelope(content: bytes) -> CloudBackupEnvelope:
+    content_sha256 = sha256(content).hexdigest()
+    object_manifest = ObjectArchiveManifest(
+        created_at=datetime(2026, 8, 15, tzinfo=UTC),
+        object_count=0,
+        total_bytes=0,
+        entries=(),
+    )
+    manifest = CloudBackupManifest(
+        backup_id="20260815T000000Z-synthetic",
+        created_at=datetime(2026, 8, 15, tzinfo=UTC),
+        commit_sha="a" * 40,
+        database_schema_revision="20260815_0010",
+        database_dump_sha256=content_sha256,
+        database_dump_bytes=len(content),
+        database_catalog_sha256=sha256(b"synthetic pg_restore catalog").hexdigest(),
+        database_objects=(
+            BackupObjectReference(
+                retention_tier="daily",
+                bucket_name="synthetic-database-backups",
+                storage_key="database/daily/2026/08/15/synthetic.dump",
+                generation="1",
+                content_sha256=content_sha256,
+                byte_size=len(content),
+            ),
+        ),
+        object_manifest_sha256=sha256(object_archive_manifest_bytes(object_manifest)).hexdigest(),
+        object_manifest_archive_key="objects/cc/manifest",
+        object_manifest_archive_version="1",
+        object_count=0,
+        object_bytes=0,
+    )
+    manifest_content = json.dumps(
+        manifest.model_dump(mode="json"),
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode()
+    return CloudBackupEnvelope(
+        manifest_sha256=sha256(manifest_content).hexdigest(),
+        manifest=manifest,
+    )
+
+
+def envelope_with_manifest(manifest: CloudBackupManifest) -> CloudBackupEnvelope:
+    content = json.dumps(
+        manifest.model_dump(mode="json"),
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode()
+    return CloudBackupEnvelope(
+        manifest_sha256=sha256(content).hexdigest(),
+        manifest=manifest,
+    )
+
+
+def test_cloud_backup_envelope_loads_only_with_valid_hash() -> None:
+    envelope = cloud_backup_envelope(b"synthetic PostgreSQL dump")
+
+    loaded = load_cloud_backup_envelope(envelope.model_dump_json().encode())
+
+    assert loaded == envelope
+    with pytest.raises(CloudBackupError, match="manifest hash does not match"):
+        validate_cloud_backup_envelope(envelope.model_copy(update={"manifest_sha256": "0" * 64}))
+    with pytest.raises(CloudBackupError, match="manifest is invalid"):
+        load_cloud_backup_envelope(b"not-json")
+
+
+def test_cloud_backup_envelope_rejects_mismatched_database_reference() -> None:
+    envelope = cloud_backup_envelope(b"synthetic PostgreSQL dump")
+    reference = envelope.manifest.database_objects[0].model_copy(
+        update={"content_sha256": "d" * 64}
+    )
+    mismatched = envelope_with_manifest(
+        envelope.manifest.model_copy(update={"database_objects": (reference,)})
+    )
+
+    with pytest.raises(CloudBackupError, match="database references disagree"):
+        validate_cloud_backup_envelope(mismatched)
+
+
+@pytest.mark.parametrize(
+    "downloaded_content",
+    [b"short", b"x" * len(b"synthetic PostgreSQL dump")],
+)
+def test_materialize_native_backup_rejects_invalid_dump(
+    tmp_path: Path, downloaded_content: bytes
+) -> None:
+    expected_content = b"synthetic PostgreSQL dump"
+    envelope = cloud_backup_envelope(expected_content)
+    database_dump = tmp_path / "database.dump"
+    database_dump.write_bytes(downloaded_content)
+
+    with pytest.raises(CloudBackupError, match="dump failed manifest verification"):
+        materialize_native_backup_bundle(
+            envelope,
+            database_dump=database_dump,
+            destination=tmp_path / "native-backup",
+        )
+
+
+def test_materialize_native_backup_creates_private_verified_bundle(tmp_path: Path) -> None:
+    content = b"synthetic PostgreSQL dump"
+    envelope = cloud_backup_envelope(content)
+    database_dump = tmp_path / "database.dump"
+    database_dump.write_bytes(content)
+    destination = tmp_path / "native-backup"
+
+    manifest_sha256 = materialize_native_backup_bundle(
+        envelope,
+        database_dump=database_dump,
+        destination=destination,
+    )
+
+    artifact_path = destination / "database.pgdump"
+    manifest_path = destination / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    assert artifact_path.read_bytes() == content
+    assert artifact_path.stat().st_mode & 0o777 == stat.S_IRUSR | stat.S_IWUSR
+    assert manifest_path.stat().st_mode & 0o777 == stat.S_IRUSR | stat.S_IWUSR
+    assert manifest["artifact"]["sha256"] == envelope.manifest.database_dump_sha256
+    assert manifest["source_cloud_manifest_sha256"] == envelope.manifest_sha256
+    assert manifest["source_database_catalog_sha256"] == envelope.manifest.database_catalog_sha256
+    assert (destination / "manifest.sha256").read_text() == (f"{manifest_sha256}  manifest.json\n")
+    assert manifest_sha256 == sha256(manifest_path.read_bytes()).hexdigest()
+    assert not list(tmp_path.glob(".native-backup-*"))
+
+
+def test_materialized_native_backup_verifies_postgres_catalog(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    content = b"synthetic PostgreSQL dump"
+    envelope = cloud_backup_envelope(content)
+    database_dump = tmp_path / "database.dump"
+    database_dump.write_bytes(content)
+    destination = tmp_path / "native-backup"
+    materialize_native_backup_bundle(
+        envelope,
+        database_dump=database_dump,
+        destination=destination,
+    )
+
+    def require_executable(name: str) -> str:
+        assert name == "pg_restore"
+        return name
+
+    def matching_catalog(*_args: Any, **_kwargs: Any) -> subprocess.CompletedProcess[str]:
+        return subprocess.CompletedProcess(
+            ("pg_restore",),
+            0,
+            stdout="synthetic pg_restore catalog",
+            stderr="",
+        )
+
+    monkeypatch.setattr(database_backups, "require_executable", require_executable)
+    monkeypatch.setattr(database_backups, "run_postgres_command", matching_catalog)
+    assert database_backups.verify_database_backup(destination).artifact_verified is True
+
+    def mismatched_catalog(*_args: Any, **_kwargs: Any) -> subprocess.CompletedProcess[str]:
+        return subprocess.CompletedProcess(
+            ("pg_restore",),
+            0,
+            stdout="different catalog",
+            stderr="",
+        )
+
+    monkeypatch.setattr(database_backups, "run_postgres_command", mismatched_catalog)
+    with pytest.raises(BackupError, match="catalog hash does not match"):
+        database_backups.verify_database_backup(destination)
+
+
+def test_materialize_native_backup_never_replaces_destination(tmp_path: Path) -> None:
+    content = b"synthetic PostgreSQL dump"
+    envelope = cloud_backup_envelope(content)
+    database_dump = tmp_path / "database.dump"
+    database_dump.write_bytes(content)
+    destination = tmp_path / "native-backup"
+    destination.mkdir()
+
+    with pytest.raises(CloudBackupError, match="destination already exists"):
+        materialize_native_backup_bundle(
+            envelope,
+            database_dump=database_dump,
+            destination=destination,
+        )
+
+
+def test_materialize_object_manifest_creates_verified_restore_envelope(
+    tmp_path: Path,
+) -> None:
+    envelope = cloud_backup_envelope(b"synthetic PostgreSQL dump")
+    archived_manifest = tmp_path / "archived-object-manifest.json"
+    archived_manifest.write_bytes(
+        object_archive_manifest_bytes(
+            ObjectArchiveManifest(
+                created_at=datetime(2026, 8, 15, tzinfo=UTC),
+                object_count=0,
+                total_bytes=0,
+                entries=(),
+            )
+        )
+    )
+    destination = tmp_path / "object-manifest.json"
+
+    manifest_sha256 = materialize_object_archive_manifest(
+        envelope,
+        archived_manifest=archived_manifest,
+        destination=destination,
+    )
+
+    restored_envelope = load_object_archive_manifest(destination)
+    assert restored_envelope.manifest_sha256 == manifest_sha256
+    assert restored_envelope.manifest_sha256 == envelope.manifest.object_manifest_sha256
+    assert destination.stat().st_mode & 0o777 == stat.S_IRUSR | stat.S_IWUSR
+
+
+def test_materialize_object_manifest_rejects_cloud_count_mismatch(tmp_path: Path) -> None:
+    envelope = cloud_backup_envelope(b"synthetic PostgreSQL dump")
+    mismatched = envelope_with_manifest(envelope.manifest.model_copy(update={"object_count": 1}))
+    archived_manifest = tmp_path / "archived-object-manifest.json"
+    archived_manifest.write_bytes(
+        object_archive_manifest_bytes(
+            ObjectArchiveManifest(
+                created_at=datetime(2026, 8, 15, tzinfo=UTC),
+                object_count=0,
+                total_bytes=0,
+                entries=(),
+            )
+        )
+    )
+
+    with pytest.raises(CloudBackupError, match="manifests disagree"):
+        materialize_object_archive_manifest(
+            mismatched,
+            archived_manifest=archived_manifest,
+            destination=tmp_path / "object-manifest.json",
+        )
+
+
+def test_materialize_object_manifest_rejects_archived_hash_mismatch(tmp_path: Path) -> None:
+    envelope = cloud_backup_envelope(b"synthetic PostgreSQL dump")
+    archived_manifest = tmp_path / "archived-object-manifest.json"
+    archived_manifest.write_bytes(
+        object_archive_manifest_bytes(
+            ObjectArchiveManifest(
+                created_at=datetime(2026, 8, 16, tzinfo=UTC),
+                object_count=0,
+                total_bytes=0,
+                entries=(),
+            )
+        )
+    )
+
+    with pytest.raises(CloudBackupError, match="failed cloud verification"):
+        materialize_object_archive_manifest(
+            envelope,
+            archived_manifest=archived_manifest,
+            destination=tmp_path / "object-manifest.json",
+        )
 
 
 def test_logical_dump_uses_isolated_proxy_environment(tmp_path: Path, monkeypatch: Any) -> None:

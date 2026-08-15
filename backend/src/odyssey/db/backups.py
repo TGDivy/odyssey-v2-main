@@ -211,10 +211,15 @@ def verify_database_backup(destination: Path) -> BackupReport:
         sqlite_integrity(artifact_path)
     elif database_engine == "postgresql":
         pg_restore = require_executable("pg_restore")
-        run_postgres_command(
+        catalog = run_postgres_command(
             [pg_restore, "--list", str(artifact_path)],
             environment=os.environ.copy(),
         )
+        expected_catalog_sha256 = manifest.get("source_database_catalog_sha256")
+        if expected_catalog_sha256 is not None and (
+            sha256(catalog.stdout.encode()).hexdigest() != expected_catalog_sha256
+        ):
+            raise BackupError("backup catalog hash does not match")
     else:
         raise BackupError(f"unsupported backup database engine: {database_engine}")
     return BackupReport(

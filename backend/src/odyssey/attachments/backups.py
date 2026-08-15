@@ -87,6 +87,28 @@ def load_object_archive_manifest(path: Path) -> ObjectArchiveEnvelope:
         envelope = ObjectArchiveEnvelope.model_validate_json(path.read_bytes())
     except ValueError as error:
         raise ObjectArchiveError("object archive manifest is invalid") from error
+    validate_object_archive_envelope(envelope)
+    return envelope
+
+
+def load_archived_object_manifest(
+    content: bytes,
+    *,
+    expected_manifest_sha256: str,
+) -> ObjectArchiveEnvelope:
+    try:
+        manifest = ObjectArchiveManifest.model_validate_json(content)
+    except ValueError as error:
+        raise ObjectArchiveError("archived object manifest is invalid") from error
+    envelope = ObjectArchiveEnvelope(
+        manifest_sha256=expected_manifest_sha256,
+        manifest=manifest,
+    )
+    validate_object_archive_envelope(envelope)
+    return envelope
+
+
+def validate_object_archive_envelope(envelope: ObjectArchiveEnvelope) -> None:
     if envelope.manifest.format != OBJECT_ARCHIVE_FORMAT:
         raise ObjectArchiveError("object archive format is unsupported")
     if _manifest_hash(envelope.manifest) != envelope.manifest_sha256:
@@ -98,7 +120,6 @@ def load_object_archive_manifest(path: Path) -> ObjectArchiveEnvelope:
     hashes = [entry.content_sha256 for entry in envelope.manifest.entries]
     if hashes != sorted(set(hashes)):
         raise ObjectArchiveError("object archive entries are not unique and sorted")
-    return envelope
 
 
 async def create_object_archive(
@@ -163,7 +184,7 @@ async def verify_object_archive(
     envelope: ObjectArchiveEnvelope,
     verified_at: datetime | None = None,
 ) -> ObjectArchiveCopyReport:
-    _validate_envelope(envelope)
+    validate_object_archive_envelope(envelope)
     await archive.validate_configuration()
     for entry in envelope.manifest.entries:
         if entry.archive_storage_backend != archive.storage_backend:
@@ -198,7 +219,7 @@ async def restore_object_archive(
     envelope: ObjectArchiveEnvelope,
     restored_at: datetime | None = None,
 ) -> ObjectArchiveCopyReport:
-    _validate_envelope(envelope)
+    validate_object_archive_envelope(envelope)
     await archive.validate_configuration()
     await destination.validate_configuration()
     records = {
@@ -237,13 +258,6 @@ async def restore_object_archive(
         destination_bucket_name=destination.bucket_name,
         verified=True,
     )
-
-
-def _validate_envelope(envelope: ObjectArchiveEnvelope) -> None:
-    if envelope.manifest.format != OBJECT_ARCHIVE_FORMAT:
-        raise ObjectArchiveError("object archive format is unsupported")
-    if _manifest_hash(envelope.manifest) != envelope.manifest_sha256:
-        raise ObjectArchiveError("object archive manifest hash does not match")
 
 
 def _verify_content(content_sha256: str, byte_size: int, content: bytes) -> None:
