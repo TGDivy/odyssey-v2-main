@@ -23,8 +23,8 @@ reproducible.
 HTTP and redirects by default, bounds request/response bodies, sends stable
 idempotency/device/correlation headers, and decodes only the redacted API error
 envelope. `OdysseyApplication` composes this boundary with durable persistence,
-but the production app has not yet instantiated it with an enrolled token
-session.
+and the iPhone shell instantiates it only after local storage is available and
+a non-placeholder remote configuration passes validation.
 
 `OdysseyAuth` defines the closed challenge, exchange, refresh, recovery, and
 device lifecycle values. Its actor-isolated access-token session keeps access
@@ -37,8 +37,9 @@ without redirects, cookies, caches, or body-bearing errors. On iOS, macOS, and
 visionOS, `SystemAppleAuthorizationPerformer` binds the backend challenge ID to
 Apple `state`, sends only SHA-256 of the raw nonce to Apple, requests no profile
 scopes, validates the returned state/token, and leaves the raw nonce only in
-memory for backend exchange. These platform branches still require Xcode and
-physical-device validation and are not yet composed into the app shell.
+memory for backend exchange. The iPhone Workshop now exposes this enrollment
+boundary and the local credential state, but these platform branches still
+require Xcode and physical-device validation.
 
 `OdysseyApplication` begins the portable composition layer. Its manual-capture
 pipeline validates bounded capture context, preserves the original payload and
@@ -60,6 +61,17 @@ optional layer that accepts HTTPS endpoints (or development loopback HTTP only)
 and composes auth, the memory-only token session, transport, and coordinator.
 Placeholder or unsafe endpoints therefore disable remote work without disabling
 offline capture.
+
+The iPhone shell now uses the tested application reducer for bootstrap,
+capture, enrollment, sync, diagnostics, and repair state. Its global text
+capture returns only after the ledger/projection/outbox transaction, triggers
+sync afterward without awaiting it, and schedules an opportunistic app-refresh
+request. Workshop shows exact local queue/cursor/conflict state, offers Apple
+device enrollment and local credential removal without claiming server
+revocation, and exposes integrity verification and projection rebuild. These
+SwiftUI, BackgroundTasks, Security, AuthenticationServices, and UIKit paths have
+only received parse-level checks in this Linux environment; they have not been
+Xcode-built or run on Apple hardware.
 
 On a Mac with Swift 6.1 or newer and Xcode installed:
 

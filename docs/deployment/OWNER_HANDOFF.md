@@ -20,9 +20,9 @@ it does not prove an owner deployment:
 - A Docker build was attempted, but Docker Hub timed out before any Dockerfile
   build step ran. No Odyssey image has been built or pushed from this
   environment.
-- No Apple package build, Xcode archive, signing operation, TestFlight upload,
-  or physical-device test has been performed. The portable Swift package has
-  been compiled and its 40 deterministic tests have run under a temporary
+- No Apple-platform package build, Xcode archive, signing operation, TestFlight
+  upload, or physical-device test has been performed. The portable Swift
+  package has been compiled and its 45 deterministic tests have run under a temporary
   Linux Swift 6.1 toolchain; that is not Apple-platform validation.
 - The cloud model remains `deterministic`. Adding a model-provider key alone
   enables nothing; no evaluated cloud-model adapter is implemented.
@@ -31,19 +31,23 @@ it does not prove an owner deployment:
 - The backend Sign in with Apple verifier and native nonce-bound challenge,
   AuthenticationServices, exchange, refresh, and Keychain components now
   exist. Their Security/AuthenticationServices branches have not been compiled
-  with Xcode, composed into the app shell, or exercised with a real Apple
-  credential. The Apple data package now has a
+  with Xcode or exercised with a real Apple credential. The Apple data package
+  now has a
   GRDB ledger, migration-v2 preflight backup, immutable remote receipts,
   atomic push/pull persistence, projection rebuild, verified backup, and owner
   export. An authenticated HTTPS-only `URLSession` sync transport is also
   implemented and contract-tested. A portable application coordinator now
   connects that transport to durable push-result and resumable pull-page
-  persistence, including exact local diagnostics and bounded retries, but the
-  app shell has not instantiated it with an enrolled token provider.
+  persistence, including exact local diagnostics and bounded retries. The
+  iPhone shell now instantiates local services before optional remote services,
+  exposes nonce-bound Apple enrollment, durable text capture, manual sync,
+  integrity verification, projection rebuild, and an opportunistic app-refresh
+  entry. None of those Apple-platform paths has been Xcode-built or
+  device-tested.
   The device/refresh Keychain vault, in-memory access-token refresh session,
   native Apple ceremony, and auth HTTP exchange are implemented as package
-  boundaries. App composition, background execution, and recovery UI are still
-  not implemented.
+  boundaries. Recovery UI, server-side device-revocation UI, and physical
+  background-execution evidence are still not implemented.
 - Edition 0 remains incomplete until a real cloud restore and physical-device
   evidence exist. Steps marked **BLOCKED** are release blockers, not optional
   paperwork.
@@ -1056,11 +1060,12 @@ xcodebuild -workspace apple/Odyssey.xcworkspace \
 
 ## 14. Install the staging app and enroll a device
 
-**Gate: OWNER REQUIRED AND CURRENTLY BLOCKED.** A signed shell may install and
-the GRDB-backed durable ledger package is implemented and Linux-tested, but it
-has not been built with Xcode or wired to the app container. Native owner
-enrollment and Keychain components exist as package code, but app composition,
-real sync, and physical-device reinstall recovery remain unvalidated.
+**Gate: OWNER REQUIRED AND EXTERNAL VALIDATION BLOCKED.** The iPhone source now
+composes the GRDB ledger, Keychain identity, Apple enrollment, memory-only access
+token, authenticated transport, durable capture, sync coordinator, local
+diagnostics, and app-refresh entry. It is portable-package-tested and parse
+checked only; no Xcode build, Apple credential, or physical-device behavior has
+been validated.
 
 **Action**
 
@@ -1074,25 +1079,55 @@ xcrun devicectl device install app \
   "REPLACE_PATH_TO_STAGING_ODYSSEY_APP"
 ```
 
-Launch the app, confirm the environment/API URL from the signed build settings,
-and verify the current intentionally quiet `Now` shell. Do not enter real owner
-data. Once the package components are wired into that shell, enrollment must follow
-`docs/architecture/authentication.md`: UUIDv7 device ID, backend challenge,
-hashed nonce in `ASAuthorizationAppleIDRequest`, token exchange, Keychain refresh
-credential, then token refresh.
+Before launch, confirm the environment/API URL from the signed build settings.
+Do not enter real owner data. Then execute this staged flow:
+
+1. Launch and verify the intentionally quiet `Now` state appears without a
+   network requirement.
+2. Open **Workshop**. Confirm the device shows no local sync credential and that
+   the staging remote configuration is available.
+3. Choose **Enroll this device with Apple**. Complete the owner Apple ceremony.
+   The implemented flow obtains a backend challenge, sends SHA-256 of its raw
+   nonce to Apple, validates challenge ID in Apple `state`, exchanges the raw
+   nonce plus identity token, stores only the refresh credential in Keychain,
+   and keeps the access token in memory.
+4. Enable airplane mode. Capture a synthetic marker such as
+   `STAGING OFFLINE CAPTURE <timestamp>`. Confirm the success haptic appears only
+   after the local transaction and Workshop reports one queued operation.
+5. Force-quit and relaunch while offline. Confirm the local ledger opens, the
+   queue remains, and the Keychain credential is reported as stored.
+6. Restore networking and choose **Sync Now**. Confirm the queue reaches zero,
+   push/pull timestamps appear, and device/server cursors advance.
+7. Run **Verify local integrity**, then **Rebuild projections from ledger** and
+   verify both complete without changing the immutable ledger or losing the
+   synthetic capture.
+8. Background the app and retain the app-refresh scheduling/debug evidence. Do
+   not claim timing guarantees; the OS may defer or cancel the task.
+
+Follow `docs/architecture/authentication.md` for the matching backend and token
+invariants. Local credential removal in Workshop is not server revocation; use
+the backend owner runbook until a device-registry UI is implemented.
 
 **Expected output**
 
-- Current achievable evidence: signed app installs and launches without
-  entitlement crash on an owner device.
-- Required but unavailable evidence: one active server enrollment, Keychain
-  credential survival, authenticated refresh, offline local capture, and sync.
+- Required evidence: signed app installs without entitlement crash; one active
+  server enrollment exists; the local credential survives force-quit/relaunch;
+  offline capture commits and remains queued; authenticated push/pull clears the
+  queue; cursors advance; integrity/rebuild succeed; app refresh is observed as
+  opportunistic rather than exact.
+- Still-unavailable evidence: uninstall/reinstall recovery, second-device
+  convergence, server revocation from native UI, attachment transfer, and all
+  HealthKit/Watch/widget/background production behaviors.
 
 **Troubleshooting**
 
 - Installation errors require checking device trust, profile inclusion, bundle
   IDs, and embedded profiles.
-- A launch-only shell is not enrollment evidence.
+- A launch-only result is not enrollment, capture, sync, or background evidence.
+- If local capture fails when the staging API is unreachable, stop: the
+  local-first contract has regressed.
+- If Workshop reports a placeholder host, fix the ignored staging xcconfig;
+  never weaken HTTPS validation outside development loopback.
 - Do not substitute a simulator for HealthKit, background, APNs, Watch, or
   physical-device behavior.
 
@@ -1127,11 +1162,14 @@ gcloud run jobs execute "odyssey-staging-worker" \
   --project "$STAGING_PROJECT_ID" --region "$REGION" --wait
 ```
 
-When client enrollment exists, run the complete staging matrix: Apple challenge
-and exchange, refresh, local offline capture, idempotent push replay, pull on a
-second device, conflict case, attachment upload/hash, revocation, permission
-denial, Watch offline quick action, widget freshness, background reconciliation,
-and payload-safe log inspection.
+When client enrollment exists, first run the implemented staging slice: Apple
+challenge/exchange, refresh after relaunch, local offline capture, idempotent
+push replay, resumable pull, local integrity/rebuild, app-refresh cancellation,
+and payload-safe log inspection. The later complete matrix must additionally
+cover pull on a second device, conflict resolution UX, attachment upload/hash,
+server revocation UI, permission denial, Watch offline quick action, widget
+freshness, and measured background reconciliation; those later surfaces remain
+blocked until their implementations land.
 
 **Expected output**
 
