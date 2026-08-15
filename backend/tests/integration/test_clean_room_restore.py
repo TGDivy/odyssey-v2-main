@@ -48,7 +48,7 @@ def test_clean_room_restore_applies_migrations_and_validates_integrity(
     assert report.integrity.healthy is True
     assert report.backup_count_validation == "passed"
     assert report.backup_count_mismatches == {}
-    assert report.restored_schema_revision == "20260815_0003"
+    assert report.restored_schema_revision == "20260815_0004"
     assert report.integrity.table_counts["kill_switches"] == 1
     assert report_path.stat().st_mode & 0o777 == 0o600
     assert json.loads(report_path.read_text())["generated_at"] == "2026-08-15T00:00:00Z"

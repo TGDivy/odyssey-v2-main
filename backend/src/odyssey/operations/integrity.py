@@ -108,6 +108,12 @@ async def database_checks(connection: AsyncConnection) -> list[IntegrityCheckRes
             "provenance_records_reject_update",
             "source_records_reject_delete",
             "source_records_reject_update",
+            "server_changes_reject_delete",
+            "server_changes_reject_update",
+            "sync_batch_receipts_reject_delete",
+            "sync_batch_receipts_reject_update",
+            "sync_operations_reject_delete",
+            "sync_operations_reject_update",
         }
         missing_triggers = required_triggers - triggers
         return [
@@ -151,6 +157,9 @@ async def database_checks(connection: AsyncConnection) -> list[IntegrityCheckRes
         "ledger_events_immutable",
         "provenance_records_immutable",
         "source_records_immutable",
+        "server_changes_immutable",
+        "sync_batch_receipts_immutable",
+        "sync_operations_immutable",
     }
     missing_triggers = required_triggers - triggers
     unvalidated_foreign_keys = int(

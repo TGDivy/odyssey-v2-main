@@ -43,7 +43,13 @@ def test_integrity_failure_is_persisted_and_freezes_compaction(tmp_path: Path) -
                     END
                     """
                 )
-            for table in ("kill_switch_audit", "integrity_runs"):
+            for table in (
+                "kill_switch_audit",
+                "integrity_runs",
+                "server_changes",
+                "sync_batch_receipts",
+                "sync_operations",
+            ):
                 await connection.exec_driver_sql(
                     f"""
                     CREATE TRIGGER {table}_reject_update

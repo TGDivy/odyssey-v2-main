@@ -92,7 +92,7 @@ class LedgerEventRecord(Base):
     causation_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True))
     payload: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
     provenance_id: Mapped[UUID] = mapped_column(
-        ForeignKey("provenance_records.id", ondelete="RESTRICT"), nullable=False
+        ForeignKey("provenance_records.id", name="fk_ledger_provenance"), nullable=False
     )
 
 
@@ -130,7 +130,8 @@ class SourceRecord(Base):
     sensitivity: Mapped[str] = mapped_column(String(50), nullable=False)
     payload: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
     provenance_id: Mapped[UUID] = mapped_column(
-        ForeignKey("provenance_records.id", ondelete="RESTRICT"), nullable=False
+        ForeignKey("provenance_records.id", name="fk_source_record_provenance"),
+        nullable=False,
     )
 
 
@@ -168,11 +169,11 @@ class AssertionRecord(Base):
     epistemic_status: Mapped[str] = mapped_column(String(50), nullable=False)
     confidence: Mapped[float | None] = mapped_column(Float)
     supersedes_id: Mapped[UUID | None] = mapped_column(
-        ForeignKey("assertions.id", ondelete="RESTRICT")
+        ForeignKey("assertions.id", name="fk_assertion_supersedes")
     )
     retracted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     provenance_id: Mapped[UUID] = mapped_column(
-        ForeignKey("provenance_records.id", ondelete="RESTRICT"), nullable=False
+        ForeignKey("provenance_records.id", name="fk_assertion_provenance"), nullable=False
     )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
@@ -243,7 +244,8 @@ class KillSwitchAuditRecord(Base):
     )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
     key: Mapped[str] = mapped_column(
-        ForeignKey("kill_switches.key", ondelete="RESTRICT"), nullable=False
+        ForeignKey("kill_switches.key", name="fk_kill_switch_audit_key_kill_switches"),
+        nullable=False,
     )
     enabled: Mapped[bool] = mapped_column(Boolean, nullable=False)
     reason: Mapped[str] = mapped_column(Text, nullable=False)
