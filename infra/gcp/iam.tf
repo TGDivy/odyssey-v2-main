@@ -33,6 +33,7 @@ resource "google_project_iam_member" "api_roles" {
     "roles/cloudsql.client",
     "roles/cloudsql.instanceUser",
     "roles/cloudtrace.agent",
+    "roles/cloudtasks.enqueuer",
     "roles/logging.logWriter",
     "roles/monitoring.metricWriter",
   ])
@@ -40,6 +41,20 @@ resource "google_project_iam_member" "api_roles" {
   project = var.project_id
   role    = each.value
   member  = "serviceAccount:${google_service_account.api.email}"
+}
+
+resource "google_project_service_identity" "cloud_scheduler" {
+  provider = google-beta
+  project  = var.project_id
+  service  = "cloudscheduler.googleapis.com"
+
+  depends_on = [google_project_service.required]
+}
+
+resource "google_project_iam_member" "cloud_scheduler_service_agent" {
+  project = var.project_id
+  role    = "roles/cloudscheduler.serviceAgent"
+  member  = "serviceAccount:${google_project_service_identity.cloud_scheduler.email}"
 }
 
 resource "google_project_iam_member" "worker_roles" {

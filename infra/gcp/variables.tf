@@ -47,6 +47,28 @@ variable "backup_image" {
   }
 }
 
+variable "cloud_sql_proxy_image" {
+  description = "Digest-pinned official Cloud SQL Auth Proxy v2 image."
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = var.cloud_sql_proxy_image == "" || can(regex("@sha256:[0-9a-f]{64}$", var.cloud_sql_proxy_image))
+    error_message = "cloud_sql_proxy_image must be empty or pinned by sha256 digest"
+  }
+}
+
+variable "commit_sha" {
+  description = "Source commit represented by the deployed image."
+  type        = string
+  default     = "development"
+
+  validation {
+    condition     = var.commit_sha == "development" || can(regex("^[0-9a-f]{40}$", var.commit_sha))
+    error_message = "commit_sha must be development or a full 40-character Git SHA"
+  }
+}
+
 variable "deploy_workloads" {
   description = "Create Run workloads only after placeholder secrets have versions."
   type        = bool
@@ -55,6 +77,41 @@ variable "deploy_workloads" {
 
 variable "public_api_enabled" {
   description = "Grant public Run invocation; Odyssey owner authentication still applies."
+  type        = bool
+  default     = false
+}
+
+variable "auth_mode" {
+  description = "Backend authentication mode for this environment."
+  type        = string
+  default     = "sign_in_with_apple"
+
+  validation {
+    condition     = contains(["development", "sign_in_with_apple"], var.auth_mode)
+    error_message = "auth_mode must be development or sign_in_with_apple"
+  }
+}
+
+variable "apple_client_id" {
+  description = "Public Sign in with Apple service or bundle identifier."
+  type        = string
+  default     = ""
+}
+
+variable "api_docs_enabled" {
+  description = "Expose interactive API documentation. Keep false in production."
+  type        = bool
+  default     = false
+}
+
+variable "model_provider" {
+  description = "Configured model provider capability name."
+  type        = string
+  default     = "deterministic"
+}
+
+variable "proactive_enabled" {
+  description = "Enable proactive delivery only after policy and owner approval."
   type        = bool
   default     = false
 }
@@ -128,6 +185,17 @@ variable "api_max_instances" {
   description = "Maximum API instances."
   type        = number
   default     = 3
+}
+
+variable "worker_batch_size" {
+  description = "Maximum transactional outbox records processed per bounded worker run."
+  type        = number
+  default     = 50
+
+  validation {
+    condition     = var.worker_batch_size >= 1 && var.worker_batch_size <= 500
+    error_message = "worker_batch_size must be between 1 and 500"
+  }
 }
 
 variable "backup_schedule" {

@@ -155,15 +155,33 @@ resource "google_storage_bucket_iam_member" "api_attachments" {
   member = "serviceAccount:${google_service_account.api.email}"
 }
 
+resource "google_storage_bucket_iam_member" "api_attachment_bucket_metadata" {
+  bucket = google_storage_bucket.attachments.name
+  role   = "roles/storage.legacyBucketReader"
+  member = "serviceAccount:${google_service_account.api.email}"
+}
+
 resource "google_storage_bucket_iam_member" "backup_attachments_reader" {
   bucket = google_storage_bucket.attachments.name
   role   = "roles/storage.objectViewer"
   member = "serviceAccount:${google_service_account.backup.email}"
 }
 
+resource "google_storage_bucket_iam_member" "backup_attachment_bucket_metadata" {
+  bucket = google_storage_bucket.attachments.name
+  role   = "roles/storage.legacyBucketReader"
+  member = "serviceAccount:${google_service_account.backup.email}"
+}
+
 resource "google_storage_bucket_iam_member" "backup_archive_writer" {
   bucket = google_storage_bucket.object_archive.name
   role   = "roles/storage.objectAdmin"
+  member = "serviceAccount:${google_service_account.backup.email}"
+}
+
+resource "google_storage_bucket_iam_member" "backup_archive_bucket_metadata" {
+  bucket = google_storage_bucket.object_archive.name
+  role   = "roles/storage.legacyBucketReader"
   member = "serviceAccount:${google_service_account.backup.email}"
 }
 
