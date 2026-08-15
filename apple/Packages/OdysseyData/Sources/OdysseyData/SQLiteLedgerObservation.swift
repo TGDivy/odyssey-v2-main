@@ -32,6 +32,53 @@ extension SQLiteLedgerStore {
         }
     }
 
+    public func projectionHistory(
+        entityType: String,
+        entityID: UUIDv7,
+        limit: Int = 200
+    ) throws -> [ProjectedEntity] {
+        guard Self.isValidTypeName(entityType), (1 ... 1_000).contains(limit) else {
+            throw SQLiteLedgerError.invalidConfiguration(
+                "Projection history requires a valid entity type and 1 through 1,000 rows."
+            )
+        }
+        return try withRead {
+            let statement = try connection.statement(
+                """
+                SELECT event.entity_type, event.entity_id, event.revision,
+                       event.document, event.mutation_type,
+                       ledger.event_id, event.recorded_at
+                FROM projection_events AS event
+                JOIN ledger_entries AS ledger
+                  ON ledger.local_sequence = event.ledger_local_sequence
+                WHERE event.entity_type = ? AND event.entity_id = ?
+                ORDER BY event.revision DESC
+                LIMIT ?
+                """
+            )
+            try statement.bind([
+                .text(entityType),
+                .text(entityID.description),
+                .integer(Int64(limit)),
+            ])
+            var revisions: [ProjectedEntity] = []
+            while try statement.step() {
+                revisions.append(
+                    ProjectedEntity(
+                        entityType: try statement.text(at: 0),
+                        entityID: try SQLiteValueCodec.uuidV7(statement.text(at: 1)),
+                        revision: Int(statement.int64(at: 2)),
+                        document: try statement.data(at: 3),
+                        tombstone: try statement.text(at: 4) == LedgerMutationType.delete.rawValue,
+                        sourceEventID: try SQLiteValueCodec.uuidV7(statement.text(at: 5)),
+                        updatedAt: try SQLiteValueCodec.date(statement.text(at: 6))
+                    )
+                )
+            }
+            return revisions
+        }
+    }
+
     public func searchProjections(
         matching query: String,
         entityType: String? = nil,

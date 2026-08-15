@@ -24,9 +24,18 @@ public struct SQLiteLedgerConfiguration: Sendable {
     }
 }
 
-public final class SQLiteLedgerStore: @unchecked Sendable, LedgerStore, SyncOutboxStore, SyncPersistenceStore, ProjectionRebuilder, OwnerExporter, LocalBackupProvider {
+public final class SQLiteLedgerStore:
+    @unchecked Sendable,
+    LedgerStore,
+    SyncOutboxStore,
+    SyncPersistenceStore,
+    ProjectionRebuilder,
+    OwnerExporter,
+    LocalBackupProvider
+{
     public static let currentSchemaVersion = 3
     public static let maximumSyncPayloadBytes = 256 * 1_024
+    public static let maximumProjectionPayloadBytes = 1_024 * 1_024
 
     let databasePool: DatabasePool
     let configuration: SQLiteLedgerConfiguration
@@ -752,7 +761,7 @@ extension SQLiteLedgerStore {
             }
             try validateJSONObject(
                 projection.document,
-                maximumBytes: maximumSyncPayloadBytes,
+                maximumBytes: maximumProjectionPayloadBytes,
                 context: "Projection document"
             )
             guard projection.entityType == entry.aggregateType,

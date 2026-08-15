@@ -38,6 +38,14 @@ conflicts. It refreshes current orientation after conflicts and bounded history
 after each run without persisting server message text. This path is deliberately
 separate from generic sync.
 
+The portable Workshop service stores each normative draft creation, edit,
+review, queue transition, and abandonment as a local-only immutable ledger event
+plus a sequential projection. It validates typed domain content and immutable
+identity on every edit, generates a plain-language semantic diff against cached
+accepted history, and requires the exact reviewed digest before creating an
+acceptance command. Draft edits remain owner-exported and replayable but never
+become canonical through generic synchronization.
+
 `OdysseyAuth` defines the closed challenge, exchange, refresh, recovery, and
 device lifecycle values. Its actor-isolated access-token session keeps access
 tokens in memory, refreshes through a device-bound credential, and persists

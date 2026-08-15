@@ -38,8 +38,11 @@ func localServicesUseStableCredentialIdentityAndApplicationSupportLayout() async
     #expect(FileManager.default.fileExists(atPath: configuration.databaseURL.path))
     #expect(receipt.deviceSequence == 1)
     let diagnostics = try await services.localDiagnostics()
+    let workshop = try await services.lifeModelWorkshopService.snapshot()
     #expect(diagnostics.operationsQueued == 1)
     #expect(diagnostics.deviceCursor.value == 0)
+    #expect(workshop.drafts.isEmpty)
+    #expect(workshop.acceptanceCommands.isEmpty)
     let captures = try services.recentCaptures()
     #expect(captures.count == 1)
     #expect(

@@ -86,6 +86,18 @@ use fixed local copy and never retain the server message. Each run also refreshe
 bounded history for all three kinds; history failures do not reverse an already
 durable acceptance outcome.
 
+Workshop drafts reuse the existing local fact-and-event ledger instead of a
+mutable side database. Creation, every content edit, semantic review, queueing,
+and abandonment append local-only `life_model.draft.*` events and sequential
+`life_model_draft` projection revisions; no draft enters generic sync. The
+portable Workshop service validates the typed Charter/life-stage/season domain
+contract, owner authorship, immutable identities and canonical JSON on every
+edit. Review compares the draft with its immutable cached predecessor while
+hiding storage metadata and IDs. Queueing requires the exact persisted review
+digest, then emits the dedicated acceptance command. Draft history is therefore
+recoverable by ledger replay and included in owner export without making a
+model-generated suggestion canonical.
+
 ## Charter rules
 
 - The logical `charter_id` never changes after initial acceptance.
