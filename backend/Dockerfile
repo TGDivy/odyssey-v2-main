@@ -11,6 +11,8 @@ COPY --from=ghcr.io/astral-sh/uv:0.12.0 /uv /uvx /bin/
 COPY pyproject.toml uv.lock README.md ./
 RUN uv sync --frozen --no-dev --no-install-project
 
+COPY alembic.ini ./
+COPY migrations ./migrations
 COPY src ./src
 RUN uv sync --frozen --no-dev
 

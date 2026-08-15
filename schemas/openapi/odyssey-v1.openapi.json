@@ -1,6 +1,134 @@
 {
   "components": {
     "schemas": {
+      "CaptureCreateRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "broad_location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Broad Location"
+          },
+          "capture_id": {
+            "format": "uuid",
+            "title": "Capture Id",
+            "type": "string"
+          },
+          "captured_at": {
+            "format": "date-time",
+            "title": "Captured At",
+            "type": "string"
+          },
+          "content_or_object_ref": {
+            "maxLength": 100000,
+            "minLength": 1,
+            "title": "Content Or Object Ref",
+            "type": "string"
+          },
+          "device_id": {
+            "format": "uuid",
+            "title": "Device Id",
+            "type": "string"
+          },
+          "event_id": {
+            "format": "uuid",
+            "title": "Event Id",
+            "type": "string"
+          },
+          "invoking_surface": {
+            "title": "Invoking Surface",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/CapturePayloadKind"
+          },
+          "sensitivity": {
+            "$ref": "#/components/schemas/DataClass",
+            "default": "private"
+          },
+          "timezone": {
+            "title": "Timezone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "capture_id",
+          "event_id",
+          "captured_at",
+          "kind",
+          "content_or_object_ref",
+          "device_id",
+          "timezone",
+          "invoking_surface"
+        ],
+        "title": "CaptureCreateRequest",
+        "type": "object"
+      },
+      "CaptureCreateResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "capture_id": {
+            "format": "uuid",
+            "title": "Capture Id",
+            "type": "string"
+          },
+          "created": {
+            "title": "Created",
+            "type": "boolean"
+          },
+          "event_id": {
+            "format": "uuid",
+            "title": "Event Id",
+            "type": "string"
+          },
+          "interpretation_status": {
+            "default": "pending",
+            "title": "Interpretation Status",
+            "type": "string"
+          },
+          "ledger_sequence": {
+            "title": "Ledger Sequence",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "capture_id",
+          "event_id",
+          "ledger_sequence",
+          "created"
+        ],
+        "title": "CaptureCreateResponse",
+        "type": "object"
+      },
+      "CapturePayloadKind": {
+        "enum": [
+          "text",
+          "audio",
+          "image_ref",
+          "file_ref",
+          "structured_quick_action"
+        ],
+        "title": "CapturePayloadKind",
+        "type": "string"
+      },
+      "DataClass": {
+        "enum": [
+          "public",
+          "private",
+          "sensitive",
+          "highly_sensitive",
+          "operational_secret",
+          "derived_sensitive"
+        ],
+        "title": "DataClass",
+        "type": "string"
+      },
       "DiagnosticsResponse": {
         "properties": {
           "capabilities": {
@@ -45,6 +173,19 @@
         "title": "DiagnosticsResponse",
         "type": "object"
       },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
       "LiveResponse": {
         "properties": {
           "status": {
@@ -64,6 +205,12 @@
             "title": "Checked At",
             "type": "string"
           },
+          "database": {
+            "const": "reachable",
+            "default": "reachable",
+            "title": "Database",
+            "type": "string"
+          },
           "status": {
             "const": "ready",
             "default": "ready",
@@ -75,6 +222,46 @@
           "checked_at"
         ],
         "title": "ReadyResponse",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
         "type": "object"
       }
     }
@@ -146,6 +333,59 @@
         "summary": "Diagnostics",
         "tags": [
           "system"
+        ]
+      }
+    },
+    "/v1/captures": {
+      "post": {
+        "operationId": "create_capture_v1_captures_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CaptureCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaptureCreateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Capture",
+        "tags": [
+          "captures"
         ]
       }
     }

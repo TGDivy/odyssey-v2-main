@@ -30,9 +30,10 @@ services:
     volumes:
       - object-data:/data
 
-  api:
+  migrate:
     build:
       context: ../backend
+    command: ["uv", "run", "--no-sync", "alembic", "upgrade", "head"]
     environment: &backend-environment
       ODYSSEY_ENV: local
       ODYSSEY_DATABASE_URL: postgresql+asyncpg://odyssey:odyssey-local-only@postgres:5432/odyssey
@@ -49,6 +50,14 @@ services:
         condition: service_healthy
       storage:
         condition: service_started
+
+  api:
+    build:
+      context: ../backend
+    environment: *backend-environment
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
     healthcheck:
       test:
         [
@@ -69,12 +78,9 @@ services:
     command: ["uv", "run", "--no-sync", "odyssey-worker"]
     environment: *backend-environment
     depends_on:
-      postgres:
-        condition: service_healthy
-      storage:
-        condition: service_started
+      migrate:
+        condition: service_completed_successfully
 
 volumes:
   postgres-data:
   object-data:
-

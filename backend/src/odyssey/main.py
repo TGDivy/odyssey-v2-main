@@ -21,12 +21,18 @@ from odyssey.api.errors import (
     validation_error_handler,
 )
 from odyssey.api.router import router
-from odyssey.config import Settings, get_settings
+from odyssey.config import Environment, Settings, get_settings
+from odyssey.db.session import Database
 from odyssey.logging import configure_logging, correlation_id_context
 
 
-def create_app(settings: Settings | None = None) -> FastAPI:
+def create_app(settings: Settings | None = None, database: Database | None = None) -> FastAPI:
     active_settings = settings or get_settings()
+    active_database = database or Database(
+        "sqlite+aiosqlite:///:memory:"
+        if active_settings.env is Environment.TEST
+        else active_settings.database_url
+    )
     configure_logging(active_settings.log_level)
     logger = structlog.get_logger(__name__)
 
@@ -39,6 +45,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             version=__version__,
         )
         yield
+        await active_database.dispose()
         logger.info("service_stopped", service="odyssey-api")
 
     application = FastAPI(
@@ -55,6 +62,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return active_settings
 
     application.dependency_overrides[get_settings] = settings_dependency
+    application.state.database = active_database
 
     @application.middleware("http")
     async def correlation_middleware(

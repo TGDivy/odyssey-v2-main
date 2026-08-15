@@ -5,8 +5,11 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
+from sqlalchemy.exc import SQLAlchemyError
 
 from odyssey import __version__
+from odyssey.api.dependencies import DatabaseDependency
+from odyssey.api.errors import OdysseyError
 from odyssey.config import Settings, get_settings
 
 router = APIRouter(tags=["system"])
@@ -20,6 +23,7 @@ class LiveResponse(BaseModel):
 class ReadyResponse(BaseModel):
     status: Literal["ready"] = "ready"
     checked_at: datetime
+    database: Literal["reachable"] = "reachable"
 
 
 class DiagnosticsResponse(BaseModel):
@@ -35,7 +39,16 @@ async def live() -> LiveResponse:
 
 
 @router.get("/health/ready", response_model=ReadyResponse)
-async def ready() -> ReadyResponse:
+async def ready(database: DatabaseDependency) -> ReadyResponse:
+    try:
+        await database.ping()
+    except SQLAlchemyError as error:
+        raise OdysseyError(
+            code="DATABASE_UNAVAILABLE",
+            message="The durable database is not reachable.",
+            status_code=503,
+            retryable=True,
+        ) from error
     return ReadyResponse(checked_at=datetime.now(UTC))
 
 
@@ -46,7 +59,7 @@ async def diagnostics(settings: SettingsDependency) -> DiagnosticsResponse:
         version=__version__,
         configuration=settings.safe_diagnostics(),
         capabilities={
-            "database": False,
+            "database": True,
             "object_storage": False,
             "queue": False,
             "cloud_model": settings.model_provider != "deterministic",

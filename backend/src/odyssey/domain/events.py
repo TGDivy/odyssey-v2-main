@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Any
 from uuid import UUID
 
-from pydantic import AwareDatetime, Field, model_validator
+from pydantic import AwareDatetime, Field
 
 from odyssey.domain.common import UUID7, ActorRef, Provenance, StrictModel
 
@@ -22,12 +22,6 @@ class DomainEvent(StrictModel):
     causation_id: UUID7 | None = None
     payload: dict[str, Any]
     provenance: Provenance
-
-    @model_validator(mode="after")
-    def validate_timeline(self) -> "DomainEvent":
-        if self.recorded_at < self.occurred_at:
-            raise ValueError("recorded_at cannot precede occurred_at")
-        return self
 
 
 @dataclass(frozen=True, slots=True)
