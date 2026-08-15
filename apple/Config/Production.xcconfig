@@ -1,0 +1,7 @@
+#include "Base.xcconfig"
+
+ODYSSEY_ENVIRONMENT = production
+ODYSSEY_BUNDLE_PREFIX = com.example.odyssey
+ODYSSEY_API_BASE_URL = https:/$()/api.example.invalid
+ODYSSEY_APS_ENVIRONMENT = production
+

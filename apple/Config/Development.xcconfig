@@ -1,0 +1,7 @@
+#include "Base.xcconfig"
+
+ODYSSEY_ENVIRONMENT = development
+ODYSSEY_BUNDLE_PREFIX = com.example.odyssey.dev
+ODYSSEY_API_BASE_URL = http:/$()/127.0.0.1:8080
+ODYSSEY_APS_ENVIRONMENT = development
+

@@ -7,7 +7,7 @@ export UV_LINK_MODE
 
 .DEFAULT_GOAL := help
 
-.PHONY: help diagnostics bootstrap dev stop verify format lint test schemas clean
+.PHONY: help diagnostics bootstrap dev stop verify format lint test schemas apple-project clean
 
 help: ## Show repository commands
 	@awk 'BEGIN {FS = ":.*## "; printf "Odyssey commands:\n"} /^[a-zA-Z_-]+:.*## / {printf "  %-14s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -38,6 +38,9 @@ test: ## Run automated tests
 
 schemas: ## Regenerate schema artifacts
 	@if [[ -f tools/codegen/generate.py ]]; then cd backend && uv run python ../tools/codegen/generate.py; else echo "Schema generator not added yet."; fi
+
+apple-project: ## Generate the Xcode project on macOS
+	@bash tools/apple/generate-project.sh
 
 clean: ## Remove local build and test caches
 	rm -rf backend/.venv backend/.pytest_cache backend/.mypy_cache backend/.ruff_cache backend/.coverage

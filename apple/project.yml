@@ -1,0 +1,250 @@
+name: Odyssey
+
+options:
+  createIntermediateGroups: true
+  deploymentTarget:
+    iOS: "18.0"
+    macOS: "15.0"
+    watchOS: "11.0"
+
+configs:
+  Development: debug
+  Staging: release
+  Production: release
+
+configFiles:
+  Development: Config/Development.xcconfig
+  Staging: Config/Staging.xcconfig
+  Production: Config/Production.xcconfig
+
+packages:
+  OdysseyPackages:
+    path: .
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    ENABLE_USER_SCRIPT_SANDBOXING: true
+    CLANG_ENABLE_MODULE_VERIFIER: true
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: $(ODYSSEY_DEVELOPMENT_TEAM)
+
+targets:
+  Odyssey-iOS:
+    type: application
+    platform: iOS
+    sources:
+      - Apps/iOS
+      - Resources/Shared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(ODYSSEY_BUNDLE_PREFIX).app
+        PRODUCT_NAME: Odyssey
+        CODE_SIGN_ENTITLEMENTS: Config/Entitlements/Odyssey-iOS.entitlements
+    info:
+      path: Apps/iOS/Info.plist
+      properties:
+        CFBundleDisplayName: Odyssey
+        UILaunchScreen: {}
+        UIApplicationSupportsIndirectInputEvents: true
+        BGTaskSchedulerPermittedIdentifiers:
+          - $(ODYSSEY_BUNDLE_PREFIX).refresh
+          - $(ODYSSEY_BUNDLE_PREFIX).maintenance
+        UIBackgroundModes:
+          - fetch
+          - processing
+          - remote-notification
+          - location
+        NSHealthShareUsageDescription: Odyssey uses selected health data to provide context you request.
+        NSHealthUpdateUsageDescription: Odyssey writes only explicitly confirmed health entries.
+        NSCalendarsFullAccessUsageDescription: Odyssey mirrors selected calendar context for planning and preparation.
+        NSCalendarsWriteOnlyAccessUsageDescription: Odyssey creates calendar items only after the required confirmation.
+        NSLocationWhenInUseUsageDescription: Odyssey uses broad location context while you use the app and avoids continuous precise history.
+        NSPhotoLibraryUsageDescription: Odyssey links only the photos you choose to source-linked archive episodes.
+        NSMicrophoneUsageDescription: Odyssey records audio only when you start a voice capture.
+        NSSpeechRecognitionUsageDescription: Odyssey transcribes voice captures when you request transcription.
+        ODYSSEY_API_BASE_URL: $(ODYSSEY_API_BASE_URL)
+        ODYSSEY_ENVIRONMENT: $(ODYSSEY_ENVIRONMENT)
+    dependencies:
+      - package: OdysseyPackages
+        product: OdysseyDomain
+      - package: OdysseyPackages
+        product: OdysseyData
+      - package: OdysseyPackages
+        product: OdysseySync
+      - package: OdysseyPackages
+        product: OdysseyIntelligence
+      - package: OdysseyPackages
+        product: OdysseyDesignSystem
+      - package: OdysseyPackages
+        product: OdysseyTelemetry
+      - target: OdysseyWidgets
+        embed: true
+      - target: OdysseyIntents
+        embed: true
+      - target: OdysseyShare
+        embed: true
+      - target: Odyssey-watchOS
+        embed: true
+
+  Odyssey-watchOS:
+    type: application
+    platform: watchOS
+    sources:
+      - Apps/Watch
+      - Resources/Shared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(ODYSSEY_BUNDLE_PREFIX).watch
+        PRODUCT_NAME: Odyssey
+        CODE_SIGN_ENTITLEMENTS: Config/Entitlements/Odyssey-watchOS.entitlements
+    info:
+      path: Apps/Watch/Info.plist
+      properties:
+        CFBundleDisplayName: Odyssey
+        WKCompanionAppBundleIdentifier: $(ODYSSEY_BUNDLE_PREFIX).app
+        WKApplication: true
+        NSHealthShareUsageDescription: Odyssey uses selected health context for glances and explicitly started actions.
+        NSHealthUpdateUsageDescription: Odyssey writes only explicitly confirmed health entries.
+    dependencies:
+      - package: OdysseyPackages
+        product: OdysseyDomain
+      - package: OdysseyPackages
+        product: OdysseyDesignSystem
+      - package: OdysseyPackages
+        product: OdysseyTelemetry
+
+  Odyssey-macOS:
+    type: application
+    platform: macOS
+    sources:
+      - Apps/macOS
+      - Resources/Shared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(ODYSSEY_BUNDLE_PREFIX).mac
+        PRODUCT_NAME: Odyssey
+        CODE_SIGN_ENTITLEMENTS: Config/Entitlements/Odyssey-macOS.entitlements
+    info:
+      path: Apps/macOS/Info.plist
+      properties:
+        CFBundleDisplayName: Odyssey
+        ODYSSEY_API_BASE_URL: $(ODYSSEY_API_BASE_URL)
+        ODYSSEY_ENVIRONMENT: $(ODYSSEY_ENVIRONMENT)
+    dependencies:
+      - package: OdysseyPackages
+        product: OdysseyDomain
+      - package: OdysseyPackages
+        product: OdysseyData
+      - package: OdysseyPackages
+        product: OdysseySync
+      - package: OdysseyPackages
+        product: OdysseyIntelligence
+      - package: OdysseyPackages
+        product: OdysseyDesignSystem
+      - package: OdysseyPackages
+        product: OdysseyTelemetry
+
+  OdysseyWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - Extensions/Widgets
+      - Resources/Shared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(ODYSSEY_BUNDLE_PREFIX).widgets
+        PRODUCT_NAME: OdysseyWidgets
+        CODE_SIGN_ENTITLEMENTS: Config/Entitlements/OdysseyWidgets.entitlements
+        APPLICATION_EXTENSION_API_ONLY: true
+    info:
+      path: Extensions/Widgets/Info.plist
+      properties:
+        CFBundleDisplayName: Odyssey Widgets
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    dependencies:
+      - package: OdysseyPackages
+        product: OdysseyDomain
+      - package: OdysseyPackages
+        product: OdysseyIntelligence
+      - package: OdysseyPackages
+        product: OdysseyDesignSystem
+
+  OdysseyIntents:
+    type: app-extension
+    platform: iOS
+    sources:
+      - Extensions/Intents
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(ODYSSEY_BUNDLE_PREFIX).intents
+        PRODUCT_NAME: OdysseyIntents
+        CODE_SIGN_ENTITLEMENTS: Config/Entitlements/OdysseyIntents.entitlements
+        APPLICATION_EXTENSION_API_ONLY: true
+    info:
+      path: Extensions/Intents/Info.plist
+      properties:
+        CFBundleDisplayName: Odyssey Intents
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.intents-service
+    dependencies:
+      - package: OdysseyPackages
+        product: OdysseyDomain
+
+  OdysseyShare:
+    type: app-extension
+    platform: iOS
+    sources:
+      - Extensions/Share
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(ODYSSEY_BUNDLE_PREFIX).share
+        PRODUCT_NAME: OdysseyShare
+        CODE_SIGN_ENTITLEMENTS: Config/Entitlements/OdysseyShare.entitlements
+        APPLICATION_EXTENSION_API_ONLY: true
+    info:
+      path: Extensions/Share/Info.plist
+      properties:
+        CFBundleDisplayName: Capture to Odyssey
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.share-services
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ShareViewController
+          NSExtensionAttributes:
+            NSExtensionActivationRule:
+              NSExtensionActivationSupportsText: true
+              NSExtensionActivationSupportsWebURLWithMaxCount: 1
+              NSExtensionActivationSupportsImageWithMaxCount: 8
+    dependencies:
+      - package: OdysseyPackages
+        product: OdysseyDomain
+
+schemes:
+  Odyssey-iOS:
+    build:
+      targets:
+        Odyssey-iOS: all
+    run:
+      config: Development
+    test:
+      config: Development
+    archive:
+      config: Production
+  Odyssey-watchOS:
+    build:
+      targets:
+        Odyssey-watchOS: all
+    run:
+      config: Development
+    archive:
+      config: Production
+  Odyssey-macOS:
+    build:
+      targets:
+        Odyssey-macOS: all
+    run:
+      config: Development
+    archive:
+      config: Production
+

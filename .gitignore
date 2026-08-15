@@ -26,6 +26,8 @@ xcuserdata/
 *.dSYM.zip
 apple/.swiftpm/
 apple/Package.resolved
+apple/Odyssey.xcodeproj/
+apple/Config/Secrets.xcconfig
 
 # Local configuration and credentials
 .env

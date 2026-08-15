@@ -40,5 +40,11 @@ else
   printf '\n[apple] skipped: Swift/Xcode is unavailable or package scaffold is pending\n'
 fi
 
-printf '\nOdyssey verification completed successfully.\n'
+if command -v xcodegen >/dev/null 2>&1 && command -v xcodebuild >/dev/null 2>&1; then
+  printf '\n[apple] Xcode project generation\n'
+  bash "${repository_root}/tools/apple/generate-project.sh"
+else
+  printf '\n[apple] skipped: XcodeGen/Xcode project validation is unavailable\n'
+fi
 
+printf '\nOdyssey verification completed successfully.\n'

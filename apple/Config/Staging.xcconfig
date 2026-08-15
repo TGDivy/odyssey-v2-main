@@ -1,0 +1,7 @@
+#include "Base.xcconfig"
+
+ODYSSEY_ENVIRONMENT = staging
+ODYSSEY_BUNDLE_PREFIX = com.example.odyssey.staging
+ODYSSEY_API_BASE_URL = https:/$()/staging-api.example.invalid
+ODYSSEY_APS_ENVIRONMENT = development
+
