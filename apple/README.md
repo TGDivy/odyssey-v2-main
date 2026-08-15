@@ -30,9 +30,14 @@ device lifecycle values. Its actor-isolated access-token session keeps access
 tokens in memory, refreshes through a device-bound credential, and persists
 only the stable UUIDv7 device identity and refresh credential in a
 non-synchronizing, this-device-only Keychain item. The Security-backed vault
-fails closed on platforms without Keychain support. The system Apple
-authorization UI and auth HTTP client are the next wiring layer and are not in
-this slice.
+fails closed on platforms without Keychain support. Its ephemeral HTTPS auth
+client implements challenge, Apple exchange, refresh, and recovery exchange
+without redirects, cookies, caches, or body-bearing errors. On iOS, macOS, and
+visionOS, `SystemAppleAuthorizationPerformer` binds the backend challenge ID to
+Apple `state`, sends only SHA-256 of the raw nonce to Apple, requests no profile
+scopes, validates the returned state/token, and leaves the raw nonce only in
+memory for backend exchange. These platform branches still require Xcode and
+physical-device validation and are not yet composed into the app shell.
 
 On a Mac with Swift 6.1 or newer and Xcode installed:
 

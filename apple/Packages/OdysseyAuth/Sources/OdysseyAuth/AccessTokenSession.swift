@@ -40,6 +40,7 @@ public actor AccessTokenSession: BearerTokenProvider {
     public func install(_ enrollment: DeviceEnrollmentResponse) async throws {
         guard enrollment.tokenType == "Bearer",
               !enrollment.accessToken.isEmpty,
+              enrollment.accessToken.utf8.count <= 8_192,
               (32 ... 512).contains(enrollment.refreshCredential.count),
               enrollment.accessTokenExpiresAt > clock(),
               enrollment.refreshCredentialExpiresAt > clock()
@@ -72,6 +73,10 @@ public actor AccessTokenSession: BearerTokenProvider {
         guard let credential = try await vault.refreshCredential() else {
             throw AuthSessionError.notEnrolled
         }
+        let deviceID = try await vault.loadOrCreateDeviceID()
+        guard credential.deviceID == deviceID else {
+            throw AuthSessionError.deviceMismatch
+        }
         guard credential.expiresAt > now else {
             cachedToken = nil
             try await vault.clearRefreshCredential()
@@ -85,6 +90,7 @@ public actor AccessTokenSession: BearerTokenProvider {
         )
         guard response.tokenType == "Bearer",
               !response.accessToken.isEmpty,
+              response.accessToken.utf8.count <= 8_192,
               response.accessTokenExpiresAt > now
         else {
             throw AuthSessionError.invalidServerResponse

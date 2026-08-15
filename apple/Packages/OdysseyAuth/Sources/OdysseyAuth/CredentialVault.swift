@@ -91,7 +91,19 @@ public actor KeychainCredentialVault: CredentialVault {
             return nil
         }
         do {
-            return try decoder().decode(StoredRefreshCredential.self, from: data)
+            let decoded = try decoder().decode(StoredRefreshCredential.self, from: data)
+            let credential = try StoredRefreshCredential(
+                deviceID: decoded.deviceID,
+                value: decoded.value,
+                expiresAt: decoded.expiresAt
+            )
+            let deviceID = try await loadOrCreateDeviceID()
+            guard credential.deviceID == deviceID else {
+                throw CredentialVaultError.deviceMismatch
+            }
+            return credential
+        } catch let error as CredentialVaultError {
+            throw error
         } catch {
             throw CredentialVaultError.invalidCredential
         }

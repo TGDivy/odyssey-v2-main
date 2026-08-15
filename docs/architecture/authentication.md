@@ -41,6 +41,16 @@ only whether required values are configured.
 
 ## Apple enrollment flow
 
+The native implementation lives in `OdysseyAuth`: `KeychainCredentialVault`
+holds the this-device-only UUIDv7/refresh material,
+`URLSessionAuthClient` performs the bounded no-redirect HTTPS exchanges,
+`SystemAppleAuthorizationPerformer` binds the challenge to Apple `state` and
+hashed `nonce`, and `AppleEnrollmentCoordinator` installs the resulting
+credential into `AccessTokenSession`. Portable fixtures validate contracts,
+nonce hashing, expiry failure, refresh serialization, and secret-free errors.
+The Security and AuthenticationServices branches still need Xcode, signing,
+and physical-device evidence before release.
+
 1. The app generates and durably stores a UUIDv7 device ID.
 2. It requests `POST /v1/auth/apple/challenges` for that device.
 3. It passes the returned raw nonce into `ASAuthorizationAppleIDRequest.nonce`

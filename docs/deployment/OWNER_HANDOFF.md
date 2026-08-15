@@ -22,22 +22,25 @@ it does not prove an owner deployment:
   environment.
 - No Apple package build, Xcode archive, signing operation, TestFlight upload,
   or physical-device test has been performed. The portable Swift package has
-  been compiled and its 27 deterministic tests have run under a temporary
+  been compiled and its 31 deterministic tests have run under a temporary
   Linux Swift 6.1 toolchain; that is not Apple-platform validation.
 - The cloud model remains `deterministic`. Adding a model-provider key alone
   enables nothing; no evaluated cloud-model adapter is implemented.
 - External OAuth connectors and webhook handlers are not implemented. Their
   applications, redirect URIs, and secret versions must remain unconfigured.
-- The backend Sign in with Apple verifier exists, but the native nonce-bound
-  client enrollment flow is not implemented. The Apple data package now has a
+- The backend Sign in with Apple verifier and native nonce-bound challenge,
+  AuthenticationServices, exchange, refresh, and Keychain components now
+  exist. Their Security/AuthenticationServices branches have not been compiled
+  with Xcode, composed into the app shell, or exercised with a real Apple
+  credential. The Apple data package now has a
   GRDB ledger, migration-v2 preflight backup, immutable remote receipts,
   atomic push/pull persistence, projection rebuild, verified backup, and owner
   export. An authenticated HTTPS-only `URLSession` sync transport is also
   implemented and contract-tested, but it has no enrolled token provider.
-  The device/refresh Keychain vault and in-memory access-token refresh session
-  are implemented, but the native Apple authorization ceremony and auth HTTP
-  exchange are not wired yet. App capture wiring, background execution, and
-  recovery UI are still not implemented.
+  The device/refresh Keychain vault, in-memory access-token refresh session,
+  native Apple ceremony, and auth HTTP exchange are implemented as package
+  boundaries. App composition, background execution, and recovery UI are still
+  not implemented.
 - Edition 0 remains incomplete until a real cloud restore and physical-device
   evidence exist. Steps marked **BLOCKED** are release blockers, not optional
   paperwork.
@@ -255,8 +258,9 @@ Odyssey yet. Keep proactive delivery disabled.
 
 ## 4. Create Sign in with Apple configuration
 
-**Gate: OWNER REQUIRED AND BLOCKED BY THE MISSING NATIVE CLIENT FLOW.** The
-backend verifier is implemented; the Apple client exchange is not.
+**Gate: OWNER REQUIRED; DEVICE VALIDATION IS BLOCKED.** Backend and native
+exchange code exist, but no owner-signed build or real Apple credential has
+validated the ceremony.
 
 **Action**
 
@@ -268,8 +272,8 @@ backend verifier is implemented; the Apple client exchange is not.
    client secret; no web callback consumes them.
 3. Record the audience privately and place it in the environment `.tfvars` as
    the nonsecret `apple_client_id` value.
-4. After the native nonce-bound flow is implemented, perform one staging Apple
-   authorization and obtain the signed identity token only in app memory. The
+4. After the checked-in native flow is composed into the staging app, perform
+   one Apple authorization and keep the signed identity token only in app memory. The
    verified durable authority is Apple `sub`, never email.
 5. Insert the expected first-owner `sub` through stdin only when the audited
    client ceremony can prove it:
@@ -1052,8 +1056,8 @@ xcodebuild -workspace apple/Odyssey.xcworkspace \
 **Gate: OWNER REQUIRED AND CURRENTLY BLOCKED.** A signed shell may install and
 the GRDB-backed durable ledger package is implemented and Linux-tested, but it
 has not been built with Xcode or wired to the app container. Native owner
-enrollment, Keychain credential storage, real sync, and physical-device
-reinstall recovery remain unimplemented.
+enrollment and Keychain components exist as package code, but app composition,
+real sync, and physical-device reinstall recovery remain unvalidated.
 
 **Action**
 
@@ -1069,7 +1073,7 @@ xcrun devicectl device install app \
 
 Launch the app, confirm the environment/API URL from the signed build settings,
 and verify the current intentionally quiet `Now` shell. Do not enter real owner
-data. Once implemented, enrollment must follow
+data. Once the package components are wired into that shell, enrollment must follow
 `docs/architecture/authentication.md`: UUIDv7 device ID, backend challenge,
 hashed nonce in `ASAuthorizationAppleIDRequest`, token exchange, Keychain refresh
 credential, then token refresh.
