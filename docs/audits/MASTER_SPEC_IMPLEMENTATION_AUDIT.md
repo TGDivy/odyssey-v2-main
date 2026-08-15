@@ -32,7 +32,7 @@ deployment, external account configuration, or physical-device behavior.
 | §6 good-life model | `contract-only` | `domain/life.py` Charter and direction contracts; generated schemas | Versioned owner acceptance, resolution-by-time, and recommendation linkage. |
 | §7 life-stage and season model | `contract-only` | `domain/life.py`; event schemas | Immutable revision service, transition state machine, Workshop UI, replay tests. |
 | §8 ontology and knowledge model | `partial` | provenance, temporal, assertion, event, person, relationship contracts; durable ledger | Admission, supersession, graph derivation, contradiction, redaction, and retrieval services. |
-| §9 decision architecture | `contract-only` | `decision/models.py`; decision event and JSON schemas | Lifecycle service, preparation API, replay, UI, and recommendation audit. |
+| §9 decision architecture | `partial` | decision contracts/events plus deterministic evidence-strength cap and observational-language guard | Lifecycle service, preparation API, replay, UI and durable recommendation audit. |
 | §10 temporal consequence engine | `contract-only` | `ConsequenceCandidate` schema | Bounded propagation, causal-status preservation, deduplication, calibration, replay suite. |
 | §11 intent/intervention engine | `partial` | `intent/models.py`; deterministic versioned silence/delivery policy with expiry, pause, cooldown, budget, context-recheck and channel tests | Durable opportunity service, synced pause state, scheduling, outcome loop and platform surfaces. |
 | §12 memory architecture | `partial` | immutable ledger, projections, capture/archive contracts, rebuild and export tools | Admission, retrieval plans, contradiction, condensation, forgetting/redaction, source annotations. |
@@ -73,7 +73,7 @@ deployment, external account configuration, or physical-device behavior.
 | §48 scenario stress tests | `missing` | isolated sync/recovery tests only | Encode every scenario as deterministic fixtures/replays plus owner-only Apple scenarios. |
 | Appendix A domain contracts | `verified` | Pydantic contracts and generated JSON Schemas | Behavioral validation still belongs to each owning section above. |
 | Appendix B API/events | `partial` | error envelope, auth/capture/sync/attachment/system routes; immutable event registry | Context, decision, intervention, feedback, evidence and encrypted asynchronous export APIs. |
-| Appendix C policies | `partial` | C.1 silence gate and C.4 standing-authority engine with focused replay-style unit cases | Implement C.2, C.3 and C.5–C.7 plus the cross-policy golden replay suite. |
+| Appendix C policies | `partial` | C.1 silence gate, C.3 recommendation-strength cap/copy guard and C.4 standing-authority engine with focused tests | Implement C.2 and C.5–C.7 plus the cross-policy golden replay suite. |
 | Appendix D sources | `documented` | cited research and official-source register | Record source-version/update policy in evidence implementation. |
 | Appendix E traceability/definition of done | `partial` | this audit plus master traceability table | Close every unchecked E.2 row with automated or owner evidence. |
 
