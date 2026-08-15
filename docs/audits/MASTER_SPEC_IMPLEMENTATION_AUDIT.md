@@ -6,7 +6,7 @@ than a feature list: a schema, route declaration, or UI placeholder is not
 treated as implemented behavior. Update this file in the same commit that
 changes a requirement's status.
 
-Snapshot reviewed: `bba17ba` on 2026-08-15.
+Snapshot reviewed: current `main` on 2026-08-15.
 
 ## Status vocabulary
 
@@ -34,7 +34,7 @@ deployment, external account configuration, or physical-device behavior.
 | §8 ontology and knowledge model | `partial` | provenance, temporal, assertion, event, person, relationship contracts; durable ledger | Admission, supersession, graph derivation, contradiction, redaction, and retrieval services. |
 | §9 decision architecture | `contract-only` | `decision/models.py`; decision event and JSON schemas | Lifecycle service, preparation API, replay, UI, and recommendation audit. |
 | §10 temporal consequence engine | `contract-only` | `ConsequenceCandidate` schema | Bounded propagation, causal-status preservation, deduplication, calibration, replay suite. |
-| §11 intent/intervention engine | `contract-only` | `intent/models.py`; intervention event schemas | Deterministic silence/delivery policy, budgets, expiry, recheck, standing pause, surfaces. |
+| §11 intent/intervention engine | `partial` | `intent/models.py`; deterministic versioned silence/delivery policy with expiry, pause, cooldown, budget, context-recheck and channel tests | Durable opportunity service, synced pause state, scheduling, outcome loop and platform surfaces. |
 | §12 memory architecture | `partial` | immutable ledger, projections, capture/archive contracts, rebuild and export tools | Admission, retrieval plans, contradiction, condensation, forgetting/redaction, source annotations. |
 | §13 personal learning | `contract-only` | `evidence/experiments.py` | Pattern-assessment policy, preregistration workflow, analysis, replication, and owner review. |
 | §14 scientific evidence | `contract-only` | `evidence/models.py`; source/claim/appraisal schemas | Evidence ingestion/query, appraisal policy, counterevidence, applicability, citations, updates. |
@@ -73,7 +73,7 @@ deployment, external account configuration, or physical-device behavior.
 | §48 scenario stress tests | `missing` | isolated sync/recovery tests only | Encode every scenario as deterministic fixtures/replays plus owner-only Apple scenarios. |
 | Appendix A domain contracts | `verified` | Pydantic contracts and generated JSON Schemas | Behavioral validation still belongs to each owning section above. |
 | Appendix B API/events | `partial` | error envelope, auth/capture/sync/attachment/system routes; immutable event registry | Context, decision, intervention, feedback, evidence and encrypted asynchronous export APIs. |
-| Appendix C policies | `missing` | pseudocode only at snapshot | Implement C.1–C.7 as deterministic, versioned, replay-tested policy modules. |
+| Appendix C policies | `partial` | C.1 deterministic silence gate and focused replay-style unit cases | Implement C.2–C.7 and the cross-policy golden replay suite. |
 | Appendix D sources | `documented` | cited research and official-source register | Record source-version/update policy in evidence implementation. |
 | Appendix E traceability/definition of done | `partial` | this audit plus master traceability table | Close every unchecked E.2 row with automated or owner evidence. |
 
@@ -92,7 +92,7 @@ deployment, external account configuration, or physical-device behavior.
 | 1.5 telemetry/review | `contract-only` | Schemas exist; declared questions and product review loop do not. |
 | 2.1 decision journal | `contract-only` | Decision schemas/events exist without a usable loop. |
 | 2.2 consequence engine v1 | `missing` | No propagation engine or replay calibration at snapshot. |
-| 2.3 intent engine v1 | `missing` | No silence gate, budget or delivery policy at snapshot. |
+| 2.3 intent engine v1 | `partial` | C.1 silence gate, budgets, cooldown and channel policy are tested; opportunity generation/durability/delivery are absent. |
 | 2.4 AI synthesis/evaluations | `deferred` | Correctly gated until deterministic context, evidence and evaluations exist. |
 | 2.5 one-month dogfood | `missing` | Requires owner use and prior Edition 2 gates. |
 | 3.1 evidence library | `contract-only` | Contracts only. |
@@ -135,7 +135,7 @@ personal state or complete the longitudinal protocol.
 | Provider fallback | `repo` | `missing` | Providers remain disabled. |
 | Prompt-injection/sensitive-route tests | `repo` | `missing` | No model pipeline/eval suite. |
 | Model rollback | `repo` | `missing` | No model release system. |
-| Notification budget/silence gate | `repo` | `missing` | Appendix C.1 not implemented at snapshot. |
+| Notification budget/silence gate | `repo` | `verified` | `intent/policy.py` enforces hard gates, daily/window budgets, exponential cooldown and least-intrusive delivery with focused tests. |
 | Opportunity expiry/delivery recheck | `repo` | `missing` | Contracts only. |
 | Standing permissions visible/revocable | `repo` | `missing` | Contracts only. |
 | External action confirmation | `repo` | `missing` | Authority policy absent; no external actions enabled. |
