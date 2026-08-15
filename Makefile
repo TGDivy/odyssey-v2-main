@@ -1,4 +1,9 @@
 SHELL := /usr/bin/env bash
+UV_SYSTEM_CERTS ?= true
+UV_LINK_MODE ?= copy
+
+export UV_SYSTEM_CERTS
+export UV_LINK_MODE
 
 .DEFAULT_GOAL := help
 
@@ -36,4 +41,3 @@ schemas: ## Regenerate schema artifacts
 
 clean: ## Remove local build and test caches
 	rm -rf backend/.venv backend/.pytest_cache backend/.mypy_cache backend/.ruff_cache backend/.coverage
-

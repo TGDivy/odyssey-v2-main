@@ -1,0 +1,65 @@
+{
+  "artifacts": [
+    {
+      "path": "schemas/jsonschema/v1/action.schema.json",
+      "sha256": "e1910699209060a1be74430c11f1b22b21c59b42f612aeeec94354b6c232ef4e"
+    },
+    {
+      "path": "schemas/jsonschema/v1/capture.schema.json",
+      "sha256": "4528f7c09151cdc1bb08b06fecfac15e7fa7f732a9ba5ea2de6af143045f63a9"
+    },
+    {
+      "path": "schemas/jsonschema/v1/charter-version.schema.json",
+      "sha256": "001180da28dd5221bc2d13e9b89aa6da2865b61d97e9f96321a10e17d5dff9b1"
+    },
+    {
+      "path": "schemas/jsonschema/v1/commitment.schema.json",
+      "sha256": "0be576518597b9d951599d8ee7008c93d781ac5b9184423a4da632beeab5d229"
+    },
+    {
+      "path": "schemas/jsonschema/v1/context-snapshot.schema.json",
+      "sha256": "628907b84185dd5ad7ed512e09c0695c98dcb3e077124d40126d32d10e16dbba"
+    },
+    {
+      "path": "schemas/jsonschema/v1/direction.schema.json",
+      "sha256": "68669df28e978c9a5bf999d67731bed4c7575ed704eb1dd49c444face45c40a8"
+    },
+    {
+      "path": "schemas/jsonschema/v1/entity-metadata.schema.json",
+      "sha256": "4f9f81c9cfd6546ccb57c1fb7d1a65acd96b0b40cde02c278add77dc436c882b"
+    },
+    {
+      "path": "schemas/jsonschema/v1/epistemic-state.schema.json",
+      "sha256": "966c7c76a56dc3158e9395f563b2b992f48d26d1096108d033c6b22d61c7ac4a"
+    },
+    {
+      "path": "schemas/jsonschema/v1/life-stage-version.schema.json",
+      "sha256": "e71d2faff1bfe40a44a3e12dbb74135282a4f768aa29a6384acae78b81c4c065"
+    },
+    {
+      "path": "schemas/jsonschema/v1/observation.schema.json",
+      "sha256": "4dd52d539337d5c1ce59d3da1e52e8ecea16d8fa776372a3ab1328eb621cfd7c"
+    },
+    {
+      "path": "schemas/jsonschema/v1/project.schema.json",
+      "sha256": "ec331622b6a1f8081d8a97f8474c1d0e6f2af74a0f268b810380c8963808daab"
+    },
+    {
+      "path": "schemas/jsonschema/v1/provenance.schema.json",
+      "sha256": "eeeed62d03b3555ee00814c68ad4aa8ab5c13e384fcc78847aa6e2dbffbd141a"
+    },
+    {
+      "path": "schemas/jsonschema/v1/season.schema.json",
+      "sha256": "35b8f06a85977142c6ff435fd3bf3a663258720476bbae8285a65d4059d87dcc"
+    },
+    {
+      "path": "schemas/jsonschema/v1/temporal-interval.schema.json",
+      "sha256": "faf6d7f8674b828089ae23e1e1f2a2433850266803e004e4a0e961c8679b63da"
+    },
+    {
+      "path": "schemas/openapi/odyssey-v1.openapi.json",
+      "sha256": "bf3c28a1fb4be9f29545260ebfda99541b167f6265457822c648ca29c9bcf2fa"
+    }
+  ],
+  "schema_version": 1
+}

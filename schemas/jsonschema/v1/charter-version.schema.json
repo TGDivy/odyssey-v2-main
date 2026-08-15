@@ -1,0 +1,334 @@
+{
+  "$defs": {
+    "ActorRef": {
+      "additionalProperties": false,
+      "properties": {
+        "actor_id": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Actor Id",
+          "type": "string"
+        },
+        "actor_type": {
+          "$ref": "#/$defs/ActorType"
+        }
+      },
+      "required": [
+        "actor_type",
+        "actor_id"
+      ],
+      "title": "ActorRef",
+      "type": "object"
+    },
+    "ActorType": {
+      "enum": [
+        "user",
+        "device",
+        "system",
+        "integration",
+        "model"
+      ],
+      "title": "ActorType",
+      "type": "string"
+    },
+    "CharterValue": {
+      "additionalProperties": false,
+      "properties": {
+        "anti_value_or_failure_mode": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Anti Value Or Failure Mode"
+        },
+        "description": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "positive_expression": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Positive Expression",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "description",
+        "positive_expression"
+      ],
+      "title": "CharterValue",
+      "type": "object"
+    },
+    "DataClass": {
+      "enum": [
+        "public",
+        "private",
+        "sensitive",
+        "highly_sensitive",
+        "operational_secret",
+        "derived_sensitive"
+      ],
+      "title": "DataClass",
+      "type": "string"
+    },
+    "EntityMetadata": {
+      "additionalProperties": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "created_by": {
+          "$ref": "#/$defs/ActorRef"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "last_revised_at": {
+          "format": "date-time",
+          "title": "Last Revised At",
+          "type": "string"
+        },
+        "provenance_id": {
+          "format": "uuid",
+          "title": "Provenance Id",
+          "type": "string"
+        },
+        "revision": {
+          "minimum": 1,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "schema_version": {
+          "minimum": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "sensitivity": {
+          "$ref": "#/$defs/DataClass"
+        },
+        "tombstoned_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tombstoned At"
+        }
+      },
+      "required": [
+        "id",
+        "schema_version",
+        "created_at",
+        "created_by",
+        "last_revised_at",
+        "revision",
+        "sensitivity",
+        "provenance_id"
+      ],
+      "title": "EntityMetadata",
+      "type": "object"
+    },
+    "TemporalInterval": {
+      "additionalProperties": false,
+      "properties": {
+        "all_day_semantics": {
+          "default": false,
+          "title": "All Day Semantics",
+          "type": "boolean"
+        },
+        "end": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "End"
+        },
+        "end_precision": {
+          "$ref": "#/$defs/TemporalPrecision",
+          "default": "unknown"
+        },
+        "start": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Start"
+        },
+        "start_precision": {
+          "$ref": "#/$defs/TemporalPrecision",
+          "default": "unknown"
+        },
+        "timezone_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Timezone Id"
+        }
+      },
+      "title": "TemporalInterval",
+      "type": "object"
+    },
+    "TemporalPrecision": {
+      "enum": [
+        "exact",
+        "minute",
+        "hour",
+        "day",
+        "month",
+        "approximate",
+        "unknown"
+      ],
+      "title": "TemporalPrecision",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.odyssey.local/v1/charter-version.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "accepted_at": {
+      "format": "date-time",
+      "title": "Accepted At",
+      "type": "string"
+    },
+    "anti_optimization_statements": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Anti Optimization Statements",
+      "type": "array"
+    },
+    "charter_id": {
+      "format": "uuid",
+      "title": "Charter Id",
+      "type": "string"
+    },
+    "desired_ways_of_being": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Desired Ways Of Being",
+      "type": "array"
+    },
+    "effective_interval": {
+      "$ref": "#/$defs/TemporalInterval"
+    },
+    "interpretation_notes": {
+      "default": "",
+      "title": "Interpretation Notes",
+      "type": "string"
+    },
+    "metadata": {
+      "$ref": "#/$defs/EntityMetadata"
+    },
+    "non_negotiable_boundaries": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Non Negotiable Boundaries",
+      "type": "array"
+    },
+    "responsibilities": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Responsibilities",
+      "type": "array"
+    },
+    "supersedes_version_id": {
+      "anyOf": [
+        {
+          "format": "uuid",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Supersedes Version Id"
+    },
+    "values": {
+      "items": {
+        "$ref": "#/$defs/CharterValue"
+      },
+      "title": "Values",
+      "type": "array"
+    },
+    "version_number": {
+      "minimum": 1,
+      "title": "Version Number",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "metadata",
+    "charter_id",
+    "version_number",
+    "effective_interval",
+    "values",
+    "responsibilities",
+    "desired_ways_of_being",
+    "non_negotiable_boundaries",
+    "anti_optimization_statements",
+    "accepted_at"
+  ],
+  "title": "CharterVersion",
+  "type": "object"
+}

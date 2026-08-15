@@ -1,0 +1,107 @@
+{
+  "$defs": {
+    "Applicability": {
+      "enum": [
+        "direct",
+        "partial",
+        "indirect",
+        "unknown"
+      ],
+      "title": "Applicability",
+      "type": "string"
+    },
+    "ConfidenceBand": {
+      "enum": [
+        "very_low",
+        "low",
+        "moderate",
+        "high",
+        "very_high"
+      ],
+      "title": "ConfidenceBand",
+      "type": "string"
+    },
+    "EpistemicKind": {
+      "enum": [
+        "observed",
+        "user_stated",
+        "externally_asserted",
+        "inferred",
+        "hypothesized",
+        "experimentally_supported",
+        "accepted_interpretation",
+        "retracted"
+      ],
+      "title": "EpistemicKind",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.odyssey.local/v1/epistemic-state.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "applicability": {
+      "$ref": "#/$defs/Applicability",
+      "default": "unknown"
+    },
+    "confidence_band": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ConfidenceBand"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "expires_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Expires At"
+    },
+    "kind": {
+      "$ref": "#/$defs/EpistemicKind"
+    },
+    "last_evaluated_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Last Evaluated At"
+    },
+    "numeric_confidence": {
+      "anyOf": [
+        {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Numeric Confidence"
+    }
+  },
+  "required": [
+    "kind"
+  ],
+  "title": "EpistemicState",
+  "type": "object"
+}

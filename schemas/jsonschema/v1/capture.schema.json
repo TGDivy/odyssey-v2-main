@@ -1,0 +1,276 @@
+{
+  "$defs": {
+    "ActorRef": {
+      "additionalProperties": false,
+      "properties": {
+        "actor_id": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Actor Id",
+          "type": "string"
+        },
+        "actor_type": {
+          "$ref": "#/$defs/ActorType"
+        }
+      },
+      "required": [
+        "actor_type",
+        "actor_id"
+      ],
+      "title": "ActorRef",
+      "type": "object"
+    },
+    "ActorType": {
+      "enum": [
+        "user",
+        "device",
+        "system",
+        "integration",
+        "model"
+      ],
+      "title": "ActorType",
+      "type": "string"
+    },
+    "CaptureContext": {
+      "additionalProperties": false,
+      "properties": {
+        "broad_location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Broad Location"
+        },
+        "device_id": {
+          "format": "uuid",
+          "title": "Device Id",
+          "type": "string"
+        },
+        "invoking_surface": {
+          "title": "Invoking Surface",
+          "type": "string"
+        },
+        "timezone": {
+          "title": "Timezone",
+          "type": "string"
+        }
+      },
+      "required": [
+        "device_id",
+        "timezone",
+        "invoking_surface"
+      ],
+      "title": "CaptureContext",
+      "type": "object"
+    },
+    "CapturePayload": {
+      "additionalProperties": false,
+      "properties": {
+        "content_hash": {
+          "maxLength": 128,
+          "minLength": 16,
+          "title": "Content Hash",
+          "type": "string"
+        },
+        "content_or_object_ref": {
+          "minLength": 1,
+          "title": "Content Or Object Ref",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/CapturePayloadKind"
+        }
+      },
+      "required": [
+        "kind",
+        "content_or_object_ref",
+        "content_hash"
+      ],
+      "title": "CapturePayload",
+      "type": "object"
+    },
+    "CapturePayloadKind": {
+      "enum": [
+        "text",
+        "audio",
+        "image_ref",
+        "file_ref",
+        "structured_quick_action"
+      ],
+      "title": "CapturePayloadKind",
+      "type": "string"
+    },
+    "DataClass": {
+      "enum": [
+        "public",
+        "private",
+        "sensitive",
+        "highly_sensitive",
+        "operational_secret",
+        "derived_sensitive"
+      ],
+      "title": "DataClass",
+      "type": "string"
+    },
+    "EntityMetadata": {
+      "additionalProperties": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "created_by": {
+          "$ref": "#/$defs/ActorRef"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "last_revised_at": {
+          "format": "date-time",
+          "title": "Last Revised At",
+          "type": "string"
+        },
+        "provenance_id": {
+          "format": "uuid",
+          "title": "Provenance Id",
+          "type": "string"
+        },
+        "revision": {
+          "minimum": 1,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "schema_version": {
+          "minimum": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "sensitivity": {
+          "$ref": "#/$defs/DataClass"
+        },
+        "tombstoned_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tombstoned At"
+        }
+      },
+      "required": [
+        "id",
+        "schema_version",
+        "created_at",
+        "created_by",
+        "last_revised_at",
+        "revision",
+        "sensitivity",
+        "provenance_id"
+      ],
+      "title": "EntityMetadata",
+      "type": "object"
+    },
+    "InterpretationVersion": {
+      "additionalProperties": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "interpreter": {
+          "title": "Interpreter",
+          "type": "string"
+        },
+        "interpreter_version": {
+          "title": "Interpreter Version",
+          "type": "string"
+        },
+        "proposed_fields": {
+          "additionalProperties": true,
+          "title": "Proposed Fields",
+          "type": "object"
+        },
+        "source_span_refs": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Source Span Refs",
+          "type": "array"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "interpreter",
+        "interpreter_version",
+        "created_at",
+        "status"
+      ],
+      "title": "InterpretationVersion",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.odyssey.local/v1/capture.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "captured_at": {
+      "format": "date-time",
+      "title": "Captured At",
+      "type": "string"
+    },
+    "initial_context": {
+      "$ref": "#/$defs/CaptureContext"
+    },
+    "interpretation_status": {
+      "title": "Interpretation Status",
+      "type": "string"
+    },
+    "interpretation_versions": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/InterpretationVersion"
+      },
+      "title": "Interpretation Versions",
+      "type": "array"
+    },
+    "metadata": {
+      "$ref": "#/$defs/EntityMetadata"
+    },
+    "original_payload": {
+      "$ref": "#/$defs/CapturePayload"
+    }
+  },
+  "required": [
+    "metadata",
+    "captured_at",
+    "original_payload",
+    "initial_context",
+    "interpretation_status"
+  ],
+  "title": "Capture",
+  "type": "object"
+}

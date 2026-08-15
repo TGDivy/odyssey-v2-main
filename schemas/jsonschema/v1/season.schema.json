@@ -1,0 +1,393 @@
+{
+  "$defs": {
+    "ActorRef": {
+      "additionalProperties": false,
+      "properties": {
+        "actor_id": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Actor Id",
+          "type": "string"
+        },
+        "actor_type": {
+          "$ref": "#/$defs/ActorType"
+        }
+      },
+      "required": [
+        "actor_type",
+        "actor_id"
+      ],
+      "title": "ActorRef",
+      "type": "object"
+    },
+    "ActorType": {
+      "enum": [
+        "user",
+        "device",
+        "system",
+        "integration",
+        "model"
+      ],
+      "title": "ActorType",
+      "type": "string"
+    },
+    "AllocationBand": {
+      "enum": [
+        "minimal",
+        "low",
+        "moderate",
+        "high",
+        "dominant"
+      ],
+      "title": "AllocationBand",
+      "type": "string"
+    },
+    "DataClass": {
+      "enum": [
+        "public",
+        "private",
+        "sensitive",
+        "highly_sensitive",
+        "operational_secret",
+        "derived_sensitive"
+      ],
+      "title": "DataClass",
+      "type": "string"
+    },
+    "DirectionRole": {
+      "enum": [
+        "primary",
+        "foundation",
+        "maintenance",
+        "exploration",
+        "dormant"
+      ],
+      "title": "DirectionRole",
+      "type": "string"
+    },
+    "EntityMetadata": {
+      "additionalProperties": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "created_by": {
+          "$ref": "#/$defs/ActorRef"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "last_revised_at": {
+          "format": "date-time",
+          "title": "Last Revised At",
+          "type": "string"
+        },
+        "provenance_id": {
+          "format": "uuid",
+          "title": "Provenance Id",
+          "type": "string"
+        },
+        "revision": {
+          "minimum": 1,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "schema_version": {
+          "minimum": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "sensitivity": {
+          "$ref": "#/$defs/DataClass"
+        },
+        "tombstoned_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tombstoned At"
+        }
+      },
+      "required": [
+        "id",
+        "schema_version",
+        "created_at",
+        "created_by",
+        "last_revised_at",
+        "revision",
+        "sensitivity",
+        "provenance_id"
+      ],
+      "title": "EntityMetadata",
+      "type": "object"
+    },
+    "SeasonPortfolioItem": {
+      "additionalProperties": false,
+      "properties": {
+        "allocation_band": {
+          "$ref": "#/$defs/AllocationBand"
+        },
+        "direction_id": {
+          "format": "uuid",
+          "title": "Direction Id",
+          "type": "string"
+        },
+        "minimum_viable_commitment": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Minimum Viable Commitment"
+        },
+        "review_date": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Review Date"
+        },
+        "role": {
+          "$ref": "#/$defs/DirectionRole"
+        },
+        "sacrifice_limit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sacrifice Limit"
+        },
+        "success_signals": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Success Signals",
+          "type": "array"
+        }
+      },
+      "required": [
+        "direction_id",
+        "role",
+        "allocation_band"
+      ],
+      "title": "SeasonPortfolioItem",
+      "type": "object"
+    },
+    "SeasonStatus": {
+      "enum": [
+        "draft",
+        "calibration",
+        "active",
+        "transitioning",
+        "complete",
+        "abandoned"
+      ],
+      "title": "SeasonStatus",
+      "type": "string"
+    },
+    "TemporalInterval": {
+      "additionalProperties": false,
+      "properties": {
+        "all_day_semantics": {
+          "default": false,
+          "title": "All Day Semantics",
+          "type": "boolean"
+        },
+        "end": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "End"
+        },
+        "end_precision": {
+          "$ref": "#/$defs/TemporalPrecision",
+          "default": "unknown"
+        },
+        "start": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Start"
+        },
+        "start_precision": {
+          "$ref": "#/$defs/TemporalPrecision",
+          "default": "unknown"
+        },
+        "timezone_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Timezone Id"
+        }
+      },
+      "title": "TemporalInterval",
+      "type": "object"
+    },
+    "TemporalPrecision": {
+      "enum": [
+        "exact",
+        "minute",
+        "hour",
+        "day",
+        "month",
+        "approximate",
+        "unknown"
+      ],
+      "title": "TemporalPrecision",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.odyssey.local/v1/season.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "constraints": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Constraints",
+      "type": "array"
+    },
+    "effective_interval": {
+      "$ref": "#/$defs/TemporalInterval"
+    },
+    "known_tradeoffs": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Known Tradeoffs",
+      "type": "array"
+    },
+    "metadata": {
+      "$ref": "#/$defs/EntityMetadata"
+    },
+    "portfolio_items": {
+      "items": {
+        "$ref": "#/$defs/SeasonPortfolioItem"
+      },
+      "title": "Portfolio Items",
+      "type": "array"
+    },
+    "primary_override_explanation": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Primary Override Explanation"
+    },
+    "protected_experiences": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Protected Experiences",
+      "type": "array"
+    },
+    "rationale": {
+      "maxLength": 8000,
+      "minLength": 1,
+      "title": "Rationale",
+      "type": "string"
+    },
+    "status": {
+      "$ref": "#/$defs/SeasonStatus"
+    },
+    "title": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    },
+    "transition_notes": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Transition Notes"
+    },
+    "triggering_context": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Triggering Context",
+      "type": "array"
+    }
+  },
+  "required": [
+    "metadata",
+    "title",
+    "effective_interval",
+    "status",
+    "rationale",
+    "portfolio_items"
+  ],
+  "title": "Season",
+  "type": "object"
+}

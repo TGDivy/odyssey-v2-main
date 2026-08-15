@@ -1,0 +1,83 @@
+{
+  "$defs": {
+    "TemporalPrecision": {
+      "enum": [
+        "exact",
+        "minute",
+        "hour",
+        "day",
+        "month",
+        "approximate",
+        "unknown"
+      ],
+      "title": "TemporalPrecision",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.odyssey.local/v1/temporal-interval.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "all_day_semantics": {
+      "default": false,
+      "title": "All Day Semantics",
+      "type": "boolean"
+    },
+    "end": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "format": "date",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "End"
+    },
+    "end_precision": {
+      "$ref": "#/$defs/TemporalPrecision",
+      "default": "unknown"
+    },
+    "start": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "format": "date",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Start"
+    },
+    "start_precision": {
+      "$ref": "#/$defs/TemporalPrecision",
+      "default": "unknown"
+    },
+    "timezone_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Timezone Id"
+    }
+  },
+  "title": "TemporalInterval",
+  "type": "object"
+}

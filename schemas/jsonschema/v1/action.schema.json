@@ -1,0 +1,326 @@
+{
+  "$defs": {
+    "ActionStatus": {
+      "enum": [
+        "proposed",
+        "prepared",
+        "scheduled",
+        "started",
+        "completed",
+        "skipped",
+        "cancelled",
+        "failed",
+        "superseded"
+      ],
+      "title": "ActionStatus",
+      "type": "string"
+    },
+    "ActorRef": {
+      "additionalProperties": false,
+      "properties": {
+        "actor_id": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Actor Id",
+          "type": "string"
+        },
+        "actor_type": {
+          "$ref": "#/$defs/ActorType"
+        }
+      },
+      "required": [
+        "actor_type",
+        "actor_id"
+      ],
+      "title": "ActorRef",
+      "type": "object"
+    },
+    "ActorType": {
+      "enum": [
+        "user",
+        "device",
+        "system",
+        "integration",
+        "model"
+      ],
+      "title": "ActorType",
+      "type": "string"
+    },
+    "DataClass": {
+      "enum": [
+        "public",
+        "private",
+        "sensitive",
+        "highly_sensitive",
+        "operational_secret",
+        "derived_sensitive"
+      ],
+      "title": "DataClass",
+      "type": "string"
+    },
+    "EntityMetadata": {
+      "additionalProperties": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "created_by": {
+          "$ref": "#/$defs/ActorRef"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "last_revised_at": {
+          "format": "date-time",
+          "title": "Last Revised At",
+          "type": "string"
+        },
+        "provenance_id": {
+          "format": "uuid",
+          "title": "Provenance Id",
+          "type": "string"
+        },
+        "revision": {
+          "minimum": 1,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "schema_version": {
+          "minimum": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "sensitivity": {
+          "$ref": "#/$defs/DataClass"
+        },
+        "tombstoned_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tombstoned At"
+        }
+      },
+      "required": [
+        "id",
+        "schema_version",
+        "created_at",
+        "created_by",
+        "last_revised_at",
+        "revision",
+        "sensitivity",
+        "provenance_id"
+      ],
+      "title": "EntityMetadata",
+      "type": "object"
+    },
+    "TemporalInterval": {
+      "additionalProperties": false,
+      "properties": {
+        "all_day_semantics": {
+          "default": false,
+          "title": "All Day Semantics",
+          "type": "boolean"
+        },
+        "end": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "End"
+        },
+        "end_precision": {
+          "$ref": "#/$defs/TemporalPrecision",
+          "default": "unknown"
+        },
+        "start": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Start"
+        },
+        "start_precision": {
+          "$ref": "#/$defs/TemporalPrecision",
+          "default": "unknown"
+        },
+        "timezone_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Timezone Id"
+        }
+      },
+      "title": "TemporalInterval",
+      "type": "object"
+    },
+    "TemporalPrecision": {
+      "enum": [
+        "exact",
+        "minute",
+        "hour",
+        "day",
+        "month",
+        "approximate",
+        "unknown"
+      ],
+      "title": "TemporalPrecision",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.odyssey.local/v1/action.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "action_type": {
+      "title": "Action Type",
+      "type": "string"
+    },
+    "actual_interval": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/TemporalInterval"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "completion_evidence": {
+      "default": [],
+      "items": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "title": "Completion Evidence",
+      "type": "array"
+    },
+    "description": {
+      "maxLength": 4000,
+      "minLength": 1,
+      "title": "Description",
+      "type": "string"
+    },
+    "effort_estimate": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Effort Estimate"
+    },
+    "external_system_ref": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "External System Ref"
+    },
+    "linked_decision_id": {
+      "anyOf": [
+        {
+          "format": "uuid",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Linked Decision Id"
+    },
+    "linked_intent_id": {
+      "anyOf": [
+        {
+          "format": "uuid",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Linked Intent Id"
+    },
+    "metadata": {
+      "$ref": "#/$defs/EntityMetadata"
+    },
+    "outcome_ids": {
+      "default": [],
+      "items": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "title": "Outcome Ids",
+      "type": "array"
+    },
+    "planned_interval": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/TemporalInterval"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "status": {
+      "$ref": "#/$defs/ActionStatus"
+    }
+  },
+  "required": [
+    "metadata",
+    "action_type",
+    "description",
+    "status"
+  ],
+  "title": "Action",
+  "type": "object"
+}

@@ -1,0 +1,262 @@
+{
+  "$defs": {
+    "DataQualityIndicator": {
+      "additionalProperties": false,
+      "properties": {
+        "domain": {
+          "title": "Domain",
+          "type": "string"
+        },
+        "latest_source_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Latest Source At"
+        },
+        "reason_codes": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "domain",
+        "status"
+      ],
+      "title": "DataQualityIndicator",
+      "type": "object"
+    },
+    "HealthContext": {
+      "additionalProperties": false,
+      "properties": {
+        "freshness": {
+          "title": "Freshness",
+          "type": "string"
+        },
+        "readiness_features": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Readiness Features"
+        },
+        "sleep_summary": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sleep Summary"
+        },
+        "symptoms_or_constraints": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Symptoms Or Constraints",
+          "type": "array"
+        }
+      },
+      "required": [
+        "freshness"
+      ],
+      "title": "HealthContext",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.odyssey.local/v1/context-snapshot.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "active_commitments": {
+      "default": [],
+      "items": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "title": "Active Commitments",
+      "type": "array"
+    },
+    "active_season_version_id": {
+      "format": "uuid",
+      "title": "Active Season Version Id",
+      "type": "string"
+    },
+    "as_of": {
+      "format": "date-time",
+      "title": "As Of",
+      "type": "string"
+    },
+    "builder_version": {
+      "title": "Builder Version",
+      "type": "string"
+    },
+    "built_at": {
+      "format": "date-time",
+      "title": "Built At",
+      "type": "string"
+    },
+    "calendar_window": {
+      "default": [],
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "title": "Calendar Window",
+      "type": "array"
+    },
+    "current_intents": {
+      "default": [],
+      "items": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "title": "Current Intents",
+      "type": "array"
+    },
+    "data_quality": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/DataQualityIndicator"
+      },
+      "title": "Data Quality",
+      "type": "array"
+    },
+    "health_state": {
+      "$ref": "#/$defs/HealthContext"
+    },
+    "id": {
+      "format": "uuid",
+      "title": "Id",
+      "type": "string"
+    },
+    "location_context": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Location Context"
+    },
+    "missing_material_context": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Missing Material Context",
+      "type": "array"
+    },
+    "planned_training": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Planned Training"
+    },
+    "recent_intervention_burden": {
+      "additionalProperties": true,
+      "title": "Recent Intervention Burden",
+      "type": "object"
+    },
+    "social_or_relationship_commitments": {
+      "default": [],
+      "items": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "title": "Social Or Relationship Commitments",
+      "type": "array"
+    },
+    "source_fact_ids": {
+      "items": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "title": "Source Fact Ids",
+      "type": "array"
+    },
+    "travel_state": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Travel State"
+    },
+    "unresolved_decisions": {
+      "default": [],
+      "items": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "title": "Unresolved Decisions",
+      "type": "array"
+    },
+    "weather_context": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Weather Context"
+    }
+  },
+  "required": [
+    "id",
+    "as_of",
+    "built_at",
+    "health_state",
+    "active_season_version_id",
+    "recent_intervention_burden",
+    "source_fact_ids",
+    "builder_version"
+  ],
+  "title": "ContextSnapshot",
+  "type": "object"
+}
