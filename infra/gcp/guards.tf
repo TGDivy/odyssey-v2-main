@@ -18,7 +18,7 @@ resource "terraform_data" "deployment_guard" {
       condition = var.environment != "production" || !var.deploy_workloads || (
         var.auth_mode == "sign_in_with_apple" &&
         var.apple_client_id != "" &&
-        var.public_api_enabled &&
+        (var.schedules_paused || var.public_api_enabled) &&
         !var.api_docs_enabled &&
         var.cloud_sql_availability_type == "REGIONAL" &&
         var.cloud_sql_deletion_protection &&

@@ -269,6 +269,12 @@ variable "worker_schedule" {
   default     = "* * * * *"
 }
 
+variable "schedules_paused" {
+  description = "Pause worker and backup schedules during the initial ownership/migration/grant sequence."
+  type        = bool
+  default     = true
+}
+
 variable "task_queue_max_dispatches_per_second" {
   description = "Cloud Tasks queue dispatch rate ceiling."
   type        = number

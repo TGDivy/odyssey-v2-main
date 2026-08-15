@@ -1,0 +1,6 @@
+project_id        = "replace-with-state-project-id"
+region            = "europe-west2"
+state_bucket_name = "replace-with-globally-unique-odyssey-state-bucket"
+state_admin_members = [
+  "user:replace-with-owner-google-account",
+]

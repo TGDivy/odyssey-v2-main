@@ -69,23 +69,23 @@ run "production_workloads" {
   command = plan
 
   variables {
-    project_id                         = "odyssey-production-000001"
-    environment                        = "production"
-    deploy_workloads                   = true
-    api_image                          = "europe-west2-docker.pkg.dev/example/odyssey/api@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-    backup_image                       = "europe-west2-docker.pkg.dev/example/odyssey/backup@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
-    cloud_sql_proxy_image              = "gcr.io/cloud-sql-connectors/cloud-sql-proxy@sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
-    commit_sha                         = "dddddddddddddddddddddddddddddddddddddddd"
-    apple_client_id                    = "com.example.odyssey"
-    public_api_enabled                 = true
+    project_id            = "odyssey-production-000001"
+    environment           = "production"
+    deploy_workloads      = true
+    api_image             = "europe-west2-docker.pkg.dev/example/odyssey/api@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    backup_image          = "europe-west2-docker.pkg.dev/example/odyssey/backup@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    cloud_sql_proxy_image = "gcr.io/cloud-sql-connectors/cloud-sql-proxy@sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    commit_sha            = "dddddddddddddddddddddddddddddddddddddddd"
+    apple_client_id       = "com.example.odyssey"
+    public_api_enabled    = true
     monitoring_notification_channel_ids = [
       "projects/odyssey-production-000001/notificationChannels/123456789",
     ]
-    billing_account_id                   = "ABCDEF-123456-ABCDEF"
-    enable_github_workload_identity      = true
-    github_repository                    = "example/odyssey"
-    github_repository_id                 = "123456789"
-    github_repository_owner_id           = "987654321"
+    billing_account_id              = "ABCDEF-123456-ABCDEF"
+    enable_github_workload_identity = true
+    github_repository               = "example/odyssey"
+    github_repository_id            = "123456789"
+    github_repository_owner_id      = "987654321"
   }
 
   assert {

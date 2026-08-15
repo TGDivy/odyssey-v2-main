@@ -39,6 +39,21 @@ printf '\n[fixtures] deterministic synthetic history\n'
 printf '\n[infrastructure] compose contract\n'
 docker compose -f "${repository_root}/infra/compose.yaml" config --quiet
 
+printf '\n[infrastructure] GCP deployment contract\n'
+python3 "${repository_root}/tools/infra/check_gcp_contract.py"
+
+if command -v tofu >/dev/null 2>&1; then
+  printf '\n[infrastructure] OpenTofu formatting, validation, and mocked plans\n'
+  tofu -chdir="${repository_root}/infra/gcp" fmt -check -recursive
+  tofu -chdir="${repository_root}/infra/gcp" init -backend=false -input=false >/dev/null
+  tofu -chdir="${repository_root}/infra/gcp" validate -no-color
+  tofu -chdir="${repository_root}/infra/gcp" test -no-color
+  tofu -chdir="${repository_root}/infra/gcp/bootstrap" init -backend=false -input=false >/dev/null
+  tofu -chdir="${repository_root}/infra/gcp/bootstrap" validate -no-color
+else
+  printf '\n[infrastructure] skipped: OpenTofu is unavailable; structural contract passed\n'
+fi
+
 if command -v swift >/dev/null 2>&1 && [[ -f "${repository_root}/apple/Package.swift" ]]; then
   printf '\n[apple] Swift package tests\n'
   swift test --package-path "${repository_root}/apple"

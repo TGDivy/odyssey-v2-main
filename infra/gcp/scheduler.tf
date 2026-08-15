@@ -27,6 +27,7 @@ resource "google_cloud_scheduler_job" "worker" {
   schedule         = var.worker_schedule
   time_zone        = "Etc/UTC"
   attempt_deadline = "60s"
+  paused           = var.schedules_paused
 
   http_target {
     uri         = "https://run.googleapis.com/v2/projects/${var.project_id}/locations/${var.region}/jobs/${google_cloud_run_v2_job.worker[0].name}:run"
@@ -64,6 +65,7 @@ resource "google_cloud_scheduler_job" "backup" {
   schedule         = var.backup_schedule
   time_zone        = "Etc/UTC"
   attempt_deadline = "60s"
+  paused           = var.schedules_paused
 
   http_target {
     uri         = "https://run.googleapis.com/v2/projects/${var.project_id}/locations/${var.region}/jobs/${google_cloud_run_v2_job.backup[0].name}:run"

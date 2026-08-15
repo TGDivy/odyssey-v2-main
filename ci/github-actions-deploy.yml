@@ -1,0 +1,283 @@
+name: Deploy GCP
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_environment:
+        description: Protected GitHub environment to deploy
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-${{ inputs.target_environment }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e
+        with:
+          version: "0.12.0"
+          enable-cache: true
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: "3.13"
+      - uses: opentofu/setup-opentofu@9d84900f3238fab8cd84ce47d658d25dd008be2f
+        with:
+          tofu_version: "1.10.6"
+      - name: Install locked dependencies
+        working-directory: backend
+        run: uv sync --frozen --all-groups
+      - name: Verify source and infrastructure
+        run: make verify
+
+  build:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: ${{ inputs.target_environment }}
+    outputs:
+      api_ref: ${{ steps.images.outputs.api_ref }}
+      backup_ref: ${{ steps.images.outputs.backup_ref }}
+    env:
+      PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      REGION: ${{ vars.GCP_REGION }}
+      REPOSITORY: odyssey-${{ inputs.target_environment }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOYER_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@e427ad8a34f8676edf47cf7d7925499adf3eb74f
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f
+      - name: Validate pinned base images
+        env:
+          PYTHON_BASE_IMAGE: ${{ vars.PYTHON_BASE_IMAGE }}
+          UV_BASE_IMAGE: ${{ vars.UV_BASE_IMAGE }}
+          CLOUD_SQL_PROXY_IMAGE: ${{ vars.CLOUD_SQL_PROXY_IMAGE }}
+          POSTGRESQL_CLIENT_PACKAGE: ${{ vars.POSTGRESQL_CLIENT_PACKAGE }}
+        run: |
+          set -euo pipefail
+          pattern='@sha256:[0-9a-f]{64}$'
+          [[ "${PYTHON_BASE_IMAGE}" =~ ${pattern} ]]
+          [[ "${UV_BASE_IMAGE}" =~ ${pattern} ]]
+          [[ "${CLOUD_SQL_PROXY_IMAGE}" =~ ${pattern} ]]
+          [[ "${POSTGRESQL_CLIENT_PACKAGE}" == *"="* ]]
+      - name: Derive reproducible source epoch
+        id: source
+        run: echo "epoch=$(git show -s --format=%ct HEAD)" >> "${GITHUB_OUTPUT}"
+      - name: Authenticate Docker to Artifact Registry
+        run: gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+      - name: Build and push API image
+        id: api
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8
+        with:
+          context: backend
+          file: backend/Dockerfile
+          target: runtime
+          push: true
+          tags: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/api:${{ github.sha }}
+          build-args: |
+            PYTHON_BASE_IMAGE=${{ vars.PYTHON_BASE_IMAGE }}
+            UV_BASE_IMAGE=${{ vars.UV_BASE_IMAGE }}
+            SOURCE_DATE_EPOCH=${{ steps.source.outputs.epoch }}
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          provenance: mode=max
+          sbom: true
+      - name: Build and push backup image
+        id: backup
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8
+        with:
+          context: backend
+          file: backend/Dockerfile
+          target: backup
+          push: true
+          tags: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/backup:${{ github.sha }}
+          build-args: |
+            PYTHON_BASE_IMAGE=${{ vars.PYTHON_BASE_IMAGE }}
+            UV_BASE_IMAGE=${{ vars.UV_BASE_IMAGE }}
+            SOURCE_DATE_EPOCH=${{ steps.source.outputs.epoch }}
+            POSTGRESQL_CLIENT_PACKAGE=${{ vars.POSTGRESQL_CLIENT_PACKAGE }}
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          provenance: mode=max
+          sbom: true
+      - name: Record immutable image references
+        id: images
+        run: |
+          set -euo pipefail
+          api_ref="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/api@${{ steps.api.outputs.digest }}"
+          backup_ref="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/backup@${{ steps.backup.outputs.digest }}"
+          printf 'api_ref=%s\nbackup_ref=%s\n' "${api_ref}" "${backup_ref}" >> "${GITHUB_OUTPUT}"
+          printf 'commit=%s\napi=%s\nbackup=%s\n' "${GITHUB_SHA}" "${api_ref}" "${backup_ref}" > release-images.txt
+      - name: Scan API image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          image-ref: ${{ steps.images.outputs.api_ref }}
+          format: table
+          exit-code: "1"
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+      - name: Scan backup image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          image-ref: ${{ steps.images.outputs.backup_ref }}
+          format: table
+          exit-code: "1"
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+      - name: Generate API SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610
+        with:
+          image: ${{ steps.images.outputs.api_ref }}
+          format: spdx-json
+          output-file: api.spdx.json
+      - name: Generate backup SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610
+        with:
+          image: ${{ steps.images.outputs.backup_ref }}
+          format: spdx-json
+          output-file: backup.spdx.json
+      - name: Upload release evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: release-${{ inputs.target_environment }}-${{ github.sha }}
+          if-no-files-found: error
+          retention-days: 90
+          path: |
+            release-images.txt
+            api.spdx.json
+            backup.spdx.json
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: ${{ inputs.target_environment }}
+    env:
+      ENVIRONMENT: ${{ inputs.target_environment }}
+      PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      REGION: ${{ vars.GCP_REGION }}
+      STATE_BUCKET: ${{ vars.GCP_STATE_BUCKET }}
+      API_IMAGE: ${{ needs.build.outputs.api_ref }}
+      BACKUP_IMAGE: ${{ needs.build.outputs.backup_ref }}
+      TF_IN_AUTOMATION: "true"
+      TF_INPUT: "false"
+      TF_VAR_project_id: ${{ vars.GCP_PROJECT_ID }}
+      TF_VAR_region: ${{ vars.GCP_REGION }}
+      TF_VAR_archive_location: ${{ vars.GCP_ARCHIVE_LOCATION }}
+      TF_VAR_environment: ${{ inputs.target_environment }}
+      TF_VAR_api_image: ${{ needs.build.outputs.api_ref }}
+      TF_VAR_backup_image: ${{ needs.build.outputs.backup_ref }}
+      TF_VAR_cloud_sql_proxy_image: ${{ vars.CLOUD_SQL_PROXY_IMAGE }}
+      TF_VAR_commit_sha: ${{ github.sha }}
+      TF_VAR_deploy_workloads: "true"
+      TF_VAR_public_api_enabled: "true"
+      TF_VAR_auth_mode: sign_in_with_apple
+      TF_VAR_apple_client_id: ${{ vars.APPLE_CLIENT_ID }}
+      TF_VAR_api_docs_enabled: "false"
+      TF_VAR_cloud_sql_availability_type: ${{ inputs.target_environment == 'production' && 'REGIONAL' || 'ZONAL' }}
+      TF_VAR_cloud_sql_deletion_protection: "true"
+      TF_VAR_schedules_paused: "false"
+      TF_VAR_monitoring_notification_channel_ids: ${{ vars.GCP_MONITORING_CHANNEL_IDS_JSON }}
+      TF_VAR_billing_account_id: ${{ vars.GCP_BILLING_ACCOUNT_ID }}
+      TF_VAR_billing_currency_code: ${{ vars.GCP_BILLING_CURRENCY_CODE }}
+      TF_VAR_monthly_budget_amount: ${{ vars.GCP_MONTHLY_BUDGET_AMOUNT }}
+      TF_VAR_enable_github_workload_identity: "true"
+      TF_VAR_github_repository: ${{ github.repository }}
+      TF_VAR_github_repository_id: ${{ vars.REPOSITORY_NUMERIC_ID }}
+      TF_VAR_github_repository_owner_id: ${{ vars.REPOSITORY_OWNER_NUMERIC_ID }}
+      TF_VAR_github_deploy_ref: ${{ github.ref }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOYER_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@e427ad8a34f8676edf47cf7d7925499adf3eb74f
+      - uses: opentofu/setup-opentofu@9d84900f3238fab8cd84ce47d658d25dd008be2f
+        with:
+          tofu_version: "1.10.6"
+      - name: Verify required secret versions exist
+        run: |
+          set -euo pipefail
+          for suffix in apple-bootstrap-subject attachment-upload-signing-key auth-access-token-signing-key; do
+            secret="odyssey-${ENVIRONMENT}-${suffix}"
+            version="$(gcloud secrets versions list "${secret}" --project "${PROJECT_ID}" --filter='state=ENABLED' --limit=1 --format='value(name)')"
+            [[ -n "${version}" ]] || { echo "Missing enabled version for ${secret}" >&2; exit 1; }
+          done
+      - name: Capture rollback revision
+        run: |
+          set -euo pipefail
+          service="odyssey-${ENVIRONMENT}-api"
+          previous="$(gcloud run services describe "${service}" --project "${PROJECT_ID}" --region "${REGION}" --format='value(status.traffic[percent=100].revisionName)' 2>/dev/null || true)"
+          printf 'PREVIOUS_REVISION=%s\n' "${previous}" >> "${GITHUB_ENV}"
+      - name: Plan and apply infrastructure
+        working-directory: infra/gcp
+        run: |
+          set -euo pipefail
+          tofu init -reconfigure -backend-config="bucket=${STATE_BUCKET}" -backend-config="prefix=environments/${ENVIRONMENT}"
+          tofu fmt -check -recursive
+          tofu validate
+          tofu plan -out=release.tfplan
+          tofu apply -auto-approve release.tfplan
+      - name: Create pre-migration backup
+        if: env.PREVIOUS_REVISION != ''
+        run: |
+          gcloud run jobs execute "odyssey-${ENVIRONMENT}-backup" \
+            --project "${PROJECT_ID}" --region "${REGION}" --wait
+      - name: Run explicit migration job
+        run: |
+          gcloud run jobs execute "odyssey-${ENVIRONMENT}-migration" \
+            --project "${PROJECT_ID}" --region "${REGION}" --wait
+      - name: Deploy and promote revision
+        run: |
+          set -euo pipefail
+          service="odyssey-${ENVIRONMENT}-api"
+          rollback() {
+            status=$?
+            if [[ -n "${PREVIOUS_REVISION}" ]]; then
+              gcloud run services update-traffic "${service}" --project "${PROJECT_ID}" \
+                --region "${REGION}" --to-revisions "${PREVIOUS_REVISION}=100" || true
+            fi
+            exit "${status}"
+          }
+          trap rollback ERR
+          suffix="${GITHUB_SHA:0:8}-${GITHUB_RUN_ATTEMPT}"
+          gcloud run services update "${service}" --project "${PROJECT_ID}" --region "${REGION}" \
+            --image "${API_IMAGE}" --revision-suffix "${suffix}" --no-traffic --tag canary
+          revision="$(gcloud run services describe "${service}" --project "${PROJECT_ID}" \
+            --region "${REGION}" --format='value(status.latestCreatedRevisionName)')"
+          canary_url="$(gcloud run services describe "${service}" --project "${PROJECT_ID}" \
+            --region "${REGION}" --format=json | jq -r '.status.traffic[] | select(.tag == "canary") | .url')"
+          curl --fail --silent --show-error --retry 12 --retry-all-errors \
+            --retry-delay 5 "${canary_url}/health/ready" >/dev/null
+          if [[ "${ENVIRONMENT}" == "production" && -n "${PREVIOUS_REVISION}" && "${PREVIOUS_REVISION}" != "${revision}" ]]; then
+            gcloud run services update-traffic "${service}" --project "${PROJECT_ID}" \
+              --region "${REGION}" --to-revisions "${revision}=5,${PREVIOUS_REVISION}=95"
+            sleep 300
+            errors="$(gcloud logging read \
+              "resource.type=cloud_run_revision AND resource.labels.revision_name=${revision} AND severity>=ERROR" \
+              --project "${PROJECT_ID}" --freshness=10m --limit=1 --format='value(insertId)')"
+            [[ -z "${errors}" ]] || { echo "Canary emitted errors" >&2; false; }
+          fi
+          gcloud run services update-traffic "${service}" --project "${PROJECT_ID}" \
+            --region "${REGION}" --to-revisions "${revision}=100"
+          trap - ERR
+          printf '### Deployment\n- Environment: `%s`\n- Revision: `%s`\n- API image: `%s`\n' \
+            "${ENVIRONMENT}" "${revision}" "${API_IMAGE}" >> "${GITHUB_STEP_SUMMARY}"
