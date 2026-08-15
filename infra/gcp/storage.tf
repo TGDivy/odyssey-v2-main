@@ -190,3 +190,9 @@ resource "google_storage_bucket_iam_member" "backup_database_writer" {
   role   = "roles/storage.objectAdmin"
   member = "serviceAccount:${google_service_account.backup.email}"
 }
+
+resource "google_storage_bucket_iam_member" "backup_database_bucket_metadata" {
+  bucket = google_storage_bucket.database_backups.name
+  role   = "roles/storage.legacyBucketReader"
+  member = "serviceAccount:${google_service_account.backup.email}"
+}

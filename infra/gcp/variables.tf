@@ -155,18 +155,77 @@ variable "billing_account_id" {
   description = "Billing account for budget alerts; empty skips budget creation."
   type        = string
   default     = ""
+
+  validation {
+    condition     = var.billing_account_id == "" || can(regex("^[0-9A-F]{6}-[0-9A-F]{6}-[0-9A-F]{6}$", var.billing_account_id))
+    error_message = "billing_account_id must be empty or a canonical billing account ID"
+  }
 }
 
 variable "monthly_budget_amount" {
   description = "Monthly project budget in billing-account currency."
   type        = number
   default     = 100
+
+  validation {
+    condition     = var.monthly_budget_amount > 0 && floor(var.monthly_budget_amount) == var.monthly_budget_amount
+    error_message = "monthly_budget_amount must be a positive whole number"
+  }
+}
+
+variable "billing_currency_code" {
+  description = "ISO 4217 billing-account currency code."
+  type        = string
+  default     = "USD"
+
+  validation {
+    condition     = can(regex("^[A-Z]{3}$", var.billing_currency_code))
+    error_message = "billing_currency_code must be a three-letter uppercase ISO currency code"
+  }
 }
 
 variable "github_repository" {
   description = "Exact OWNER/REPOSITORY allowed to use deployment workload identity."
   type        = string
   default     = ""
+
+  validation {
+    condition     = var.github_repository == "" || can(regex("^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$", var.github_repository))
+    error_message = "github_repository must be empty or an exact OWNER/REPOSITORY name"
+  }
+}
+
+variable "github_repository_id" {
+  description = "Immutable numeric GitHub repository ID allowed to deploy."
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = var.github_repository_id == "" || can(regex("^[0-9]+$", var.github_repository_id))
+    error_message = "github_repository_id must contain only digits"
+  }
+}
+
+variable "github_repository_owner_id" {
+  description = "Immutable numeric GitHub repository-owner ID allowed to deploy."
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = var.github_repository_owner_id == "" || can(regex("^[0-9]+$", var.github_repository_owner_id))
+    error_message = "github_repository_owner_id must contain only digits"
+  }
+}
+
+variable "github_deploy_ref" {
+  description = "Exact Git ref allowed to exchange a deployment token."
+  type        = string
+  default     = "refs/heads/main"
+
+  validation {
+    condition     = can(regex("^refs/(heads|tags)/[A-Za-z0-9._/-]+$", var.github_deploy_ref))
+    error_message = "github_deploy_ref must be an exact heads or tags ref"
+  }
 }
 
 variable "enable_github_workload_identity" {
@@ -208,4 +267,26 @@ variable "worker_schedule" {
   description = "UTC cron schedule for one bounded outbox worker pass."
   type        = string
   default     = "* * * * *"
+}
+
+variable "task_queue_max_dispatches_per_second" {
+  description = "Cloud Tasks queue dispatch rate ceiling."
+  type        = number
+  default     = 5
+
+  validation {
+    condition     = var.task_queue_max_dispatches_per_second > 0
+    error_message = "task_queue_max_dispatches_per_second must be positive"
+  }
+}
+
+variable "task_queue_max_concurrent_dispatches" {
+  description = "Cloud Tasks queue concurrency ceiling."
+  type        = number
+  default     = 10
+
+  validation {
+    condition     = var.task_queue_max_concurrent_dispatches > 0
+    error_message = "task_queue_max_concurrent_dispatches must be positive"
+  }
 }

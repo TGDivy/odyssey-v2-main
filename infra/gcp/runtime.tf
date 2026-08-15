@@ -146,6 +146,7 @@ resource "google_cloud_run_v2_service" "api" {
     google_sql_user.api,
     google_storage_bucket_iam_member.api_attachment_bucket_metadata,
     google_storage_bucket_iam_member.api_attachments,
+    terraform_data.deployment_guard,
   ]
 }
 
@@ -244,6 +245,7 @@ resource "google_cloud_run_v2_job" "migration" {
   depends_on = [
     google_project_iam_member.migration_roles,
     google_sql_user.migration,
+    terraform_data.deployment_guard,
   ]
 }
 
@@ -332,6 +334,7 @@ resource "google_cloud_run_v2_job" "worker" {
   depends_on = [
     google_project_iam_member.worker_roles,
     google_sql_user.worker,
+    terraform_data.deployment_guard,
   ]
 }
 
@@ -425,6 +428,8 @@ resource "google_cloud_run_v2_job" "backup" {
     google_storage_bucket_iam_member.backup_attachment_bucket_metadata,
     google_storage_bucket_iam_member.backup_attachments_reader,
     google_storage_bucket_iam_member.backup_database_writer,
+    google_storage_bucket_iam_member.backup_database_bucket_metadata,
+    terraform_data.deployment_guard,
   ]
 }
 
