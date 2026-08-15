@@ -266,6 +266,25 @@ public struct LocalSyncState: Codable, Hashable, Sendable {
     }
 }
 
+public struct LocalSyncDiagnostics: Codable, Hashable, Sendable {
+    public let syncState: LocalSyncState
+    public let operationsQueued: Int
+    public let oldestUnsyncedOperationAt: Date?
+    public let conflictCount: Int
+
+    public init(
+        syncState: LocalSyncState,
+        operationsQueued: Int,
+        oldestUnsyncedOperationAt: Date?,
+        conflictCount: Int
+    ) {
+        self.syncState = syncState
+        self.operationsQueued = operationsQueued
+        self.oldestUnsyncedOperationAt = oldestUnsyncedOperationAt
+        self.conflictCount = conflictCount
+    }
+}
+
 public struct LedgerIntegrityReport: Codable, Hashable, Sendable {
     public let schemaVersion: Int
     public let ledgerEntryCount: Int
@@ -303,6 +322,7 @@ public protocol LedgerStore: Sendable {
 public protocol SyncOutboxStore: Sendable {
     func pendingSyncOperations(limit: Int, readyAt: Date) async throws -> [PendingSyncOperation]
     func syncState() async throws -> LocalSyncState
+    func localSyncDiagnostics() async throws -> LocalSyncDiagnostics
 }
 
 public protocol ProjectionRebuilder: Sendable {

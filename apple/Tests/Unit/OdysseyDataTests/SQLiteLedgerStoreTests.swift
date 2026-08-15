@@ -207,6 +207,41 @@ func retryAndAcceptanceRetainDurableOperationHistory() async throws {
 }
 
 @Test
+func localSyncDiagnosticsCountsTheWholeQueueAndConflicts() async throws {
+    let fixture = try LedgerFixture()
+    let firstOperationID = try fixture.identifier(202)
+    _ = try await fixture.store.commit(
+        fixture.commit(
+            entityID: try fixture.identifier(200),
+            eventID: try fixture.identifier(201),
+            operationID: firstOperationID,
+            document: try fixture.json(["value": "first"])
+        )
+    )
+    _ = try await fixture.store.commit(
+        fixture.commit(
+            entityID: try fixture.identifier(203),
+            eventID: try fixture.identifier(204),
+            operationID: try fixture.identifier(205),
+            document: try fixture.json(["value": "second"])
+        )
+    )
+    try fixture.store.markOperationTerminal(
+        operationID: firstOperationID,
+        status: .conflict,
+        message: "A synthetic conflict requires review.",
+        completedAt: fixedDate.addingTimeInterval(1)
+    )
+
+    let diagnostics = try await fixture.store.localSyncDiagnostics()
+
+    #expect(diagnostics.syncState.deviceID == fixture.deviceID)
+    #expect(diagnostics.operationsQueued == 1)
+    #expect(diagnostics.oldestUnsyncedOperationAt == fixedDate)
+    #expect(diagnostics.conflictCount == 1)
+}
+
+@Test
 func projectionObservationEmitsInitialAndCommittedState() async throws {
     let fixture = try LedgerFixture()
     let entityID = try fixture.identifier(35)

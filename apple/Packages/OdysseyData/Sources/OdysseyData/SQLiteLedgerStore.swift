@@ -259,6 +259,43 @@ public final class SQLiteLedgerStore: @unchecked Sendable, LedgerStore, SyncOutb
         }
     }
 
+    public func localSyncDiagnostics() async throws -> LocalSyncDiagnostics {
+        try withRead {
+            let statement = try connection.statement(
+                """
+                SELECT COUNT(*), MIN(operation.created_at)
+                FROM sync_operations AS operation
+                JOIN sync_operation_state AS state USING (operation_id)
+                WHERE state.status IN ('pending', 'retry')
+                """
+            )
+            guard try statement.step() else {
+                throw SQLiteLedgerError.integrityFailure(
+                    "The local sync diagnostics query returned no aggregate row."
+                )
+            }
+            let operationsQueued = Int(statement.int64(at: 0))
+            let oldestUnsyncedOperationAt = try statement.optionalText(at: 1)
+                .map(SQLiteValueCodec.date)
+            let conflictCount = Int(
+                try connection.scalarInt(
+                    "SELECT COUNT(*) FROM sync_operation_state WHERE status = 'conflict'"
+                )
+            )
+            guard (operationsQueued == 0) == (oldestUnsyncedOperationAt == nil) else {
+                throw SQLiteLedgerError.integrityFailure(
+                    "The local sync queue count and oldest operation are inconsistent."
+                )
+            }
+            return LocalSyncDiagnostics(
+                syncState: try readSyncState(),
+                operationsQueued: operationsQueued,
+                oldestUnsyncedOperationAt: oldestUnsyncedOperationAt,
+                conflictCount: conflictCount
+            )
+        }
+    }
+
     func markOperationAccepted(
         operationID: UUIDv7,
         canonicalRevision: Int,
