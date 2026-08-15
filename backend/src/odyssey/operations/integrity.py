@@ -30,6 +30,15 @@ from odyssey.db.projections import CurrentEntityProjectionRebuilder
 from odyssey.db.session import Database
 from odyssey.domain.common import new_uuid7
 from odyssey.operations.kill_switches import KillSwitchKey, KillSwitchService
+from odyssey.sync.models import (
+    CanonicalEntityRecord,
+    ServerChangeRecord,
+    SyncConflictRecord,
+    SyncConflictResolutionRecord,
+    SyncOperationRecord,
+    SyncStateRecord,
+)
+from odyssey.sync.service import SYNC_STATE_KEY
 
 INTEGRITY_CHECKER_VERSION = "integrity.v2"
 
@@ -122,6 +131,8 @@ async def database_checks(connection: AsyncConnection) -> list[IntegrityCheckRes
             "server_changes_reject_update",
             "sync_batch_receipts_reject_delete",
             "sync_batch_receipts_reject_update",
+            "sync_conflict_resolutions_reject_delete",
+            "sync_conflict_resolutions_reject_update",
             "sync_operations_reject_delete",
             "sync_operations_reject_update",
         }
@@ -171,6 +182,7 @@ async def database_checks(connection: AsyncConnection) -> list[IntegrityCheckRes
         "source_records_immutable",
         "server_changes_immutable",
         "sync_batch_receipts_immutable",
+        "sync_conflict_resolutions_immutable",
         "sync_operations_immutable",
     }
     missing_triggers = required_triggers - triggers
@@ -365,6 +377,101 @@ async def attachment_manifest_check(session: AsyncSession) -> IntegrityCheckResu
     )
 
 
+async def sync_consistency_check(session: AsyncSession) -> IntegrityCheckResult:
+    state = await session.get(SyncStateRecord, SYNC_STATE_KEY)
+    last_change_id = int(await session.scalar(select(func.max(ServerChangeRecord.change_id))) or 0)
+    change_count = int(
+        await session.scalar(select(func.count()).select_from(ServerChangeRecord)) or 0
+    )
+    state_cursor = state.last_change_id if state is not None else 0
+    continuity_failures = int(last_change_id != change_count or state_cursor != last_change_id)
+
+    latest_changes: dict[tuple[str, UUID], ServerChangeRecord] = {}
+    changes = tuple(
+        (
+            await session.scalars(select(ServerChangeRecord).order_by(ServerChangeRecord.change_id))
+        ).all()
+    )
+    for change in changes:
+        latest_changes[(change.entity_type, change.entity_id)] = change
+    canonical_mismatches = 0
+    entities = tuple((await session.scalars(select(CanonicalEntityRecord))).all())
+    for entity in entities:
+        latest = latest_changes.get((entity.entity_type, entity.entity_id))
+        if latest is None or (
+            entity.canonical_revision != latest.canonical_revision
+            or entity.content_hash != latest.content_hash
+            or entity.tombstoned != latest.tombstone
+            or entity.deletion_epoch != latest.deletion_epoch
+        ):
+            canonical_mismatches += 1
+
+    missing_operation_changes = int(
+        await session.scalar(
+            select(func.count())
+            .select_from(SyncOperationRecord)
+            .outerjoin(
+                ServerChangeRecord,
+                SyncOperationRecord.server_change_id == ServerChangeRecord.change_id,
+            )
+            .where(
+                SyncOperationRecord.status == "accepted",
+                SyncOperationRecord.server_change_id.is_not(None),
+                ServerChangeRecord.change_id.is_(None),
+            )
+        )
+        or 0
+    )
+    resolved_without_receipt = int(
+        await session.scalar(
+            select(func.count())
+            .select_from(SyncConflictRecord)
+            .outerjoin(
+                SyncConflictResolutionRecord,
+                SyncConflictRecord.id == SyncConflictResolutionRecord.conflict_id,
+            )
+            .where(
+                SyncConflictRecord.status == "resolved",
+                SyncConflictResolutionRecord.id.is_(None),
+            )
+        )
+        or 0
+    )
+    pending_with_receipt = int(
+        await session.scalar(
+            select(func.count())
+            .select_from(SyncConflictRecord)
+            .join(
+                SyncConflictResolutionRecord,
+                SyncConflictRecord.id == SyncConflictResolutionRecord.conflict_id,
+            )
+            .where(SyncConflictRecord.status == "pending")
+        )
+        or 0
+    )
+    failures = (
+        continuity_failures
+        + canonical_mismatches
+        + missing_operation_changes
+        + resolved_without_receipt
+        + pending_with_receipt
+    )
+    return IntegrityCheckResult(
+        code="sync_and_tombstone_consistency",
+        status=CheckStatus.SUCCESS if failures == 0 else CheckStatus.FAIL,
+        summary="Sync cursor, canonical changes, tombstones, and resolutions reconcile",
+        observed={
+            "server_changes": change_count,
+            "state_cursor": state_cursor,
+            "last_change_id": last_change_id,
+            "canonical_mismatches": canonical_mismatches,
+            "missing_operation_changes": missing_operation_changes,
+            "resolved_without_receipt": resolved_without_receipt,
+            "pending_with_receipt": pending_with_receipt,
+        },
+    )
+
+
 def backup_freshness_check(
     backup: Path | None, *, now: datetime, maximum_age: timedelta
 ) -> IntegrityCheckResult:
@@ -399,12 +506,6 @@ def backup_freshness_check(
 def deferred_checks() -> list[IntegrityCheckResult]:
     return [
         IntegrityCheckResult(
-            code="sync_and_tombstone_consistency",
-            status=CheckStatus.NOT_APPLICABLE,
-            summary="Sync operation and tombstone tables are introduced in Milestone 0.3",
-            observed={},
-        ),
-        IntegrityCheckResult(
             code="external_reference_deduplication",
             status=CheckStatus.NOT_APPLICABLE,
             summary="External connector records are not enabled",
@@ -431,6 +532,7 @@ async def run_integrity_checks(
                 await provenance_check(session),
                 await projection_check(session),
                 await attachment_manifest_check(session),
+                await sync_consistency_check(session),
                 backup_freshness_check(
                     backup,
                     now=started_at,

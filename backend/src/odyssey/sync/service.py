@@ -112,7 +112,11 @@ def canonical_hash(value: dict[str, Any]) -> str:
 
 
 def request_hash(request: SyncPushRequest) -> str:
-    return canonical_hash(request.model_dump(mode="json"))
+    document = request.model_dump(mode="json")
+    document["operations"] = [
+        canonical_operation_document(operation) for operation in request.operations
+    ]
+    return canonical_hash(document)
 
 
 def operation_hash(operation: SyncOperationInput) -> str:

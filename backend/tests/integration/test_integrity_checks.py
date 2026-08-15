@@ -50,6 +50,7 @@ def test_integrity_failure_is_persisted_and_freezes_compaction(tmp_path: Path) -
                 "integrity_runs",
                 "server_changes",
                 "sync_batch_receipts",
+                "sync_conflict_resolutions",
                 "sync_operations",
             ):
                 await connection.exec_driver_sql(

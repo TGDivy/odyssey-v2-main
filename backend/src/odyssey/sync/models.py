@@ -178,6 +178,31 @@ class SyncBatchReceiptRecord(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
+class SyncConflictResolutionRecord(Base):
+    __tablename__ = "sync_conflict_resolutions"
+    __table_args__ = (
+        UniqueConstraint("conflict_id", name="uq_sync_conflict_resolutions_conflict_id"),
+        UniqueConstraint("operation_id", name="uq_sync_conflict_resolutions_operation_id"),
+        Index("ix_sync_conflict_resolutions_created", "created_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    conflict_id: Mapped[UUID] = mapped_column(
+        ForeignKey("sync_conflicts.id", ondelete="RESTRICT"), nullable=False
+    )
+    operation_id: Mapped[UUID] = mapped_column(
+        ForeignKey("sync_operations.operation_id", ondelete="RESTRICT"), nullable=False
+    )
+    device_id: Mapped[UUID] = mapped_column(
+        ForeignKey("sync_devices.id", ondelete="RESTRICT"), nullable=False
+    )
+    strategy: Mapped[str] = mapped_column(String(30), nullable=False)
+    request_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    resolved_document: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    response: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
 def reject_sync_immutable_mutation(
     _mapper: Mapper[Any] | None,
     _connection: Connection | None,
@@ -186,6 +211,11 @@ def reject_sync_immutable_mutation(
     raise ImmutableLedgerMutationError("sync operation/change/receipt records are append-only")
 
 
-for immutable_model in (SyncOperationRecord, ServerChangeRecord, SyncBatchReceiptRecord):
+for immutable_model in (
+    SyncOperationRecord,
+    ServerChangeRecord,
+    SyncBatchReceiptRecord,
+    SyncConflictResolutionRecord,
+):
     event.listen(immutable_model, "before_update", reject_sync_immutable_mutation)
     event.listen(immutable_model, "before_delete", reject_sync_immutable_mutation)

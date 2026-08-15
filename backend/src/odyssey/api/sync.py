@@ -12,7 +12,16 @@ from odyssey.api.errors import OdysseyError
 from odyssey.config import Settings, get_settings
 from odyssey.domain.common import UUID7
 from odyssey.operations.kill_switches import KillSwitchKey, KillSwitchService
+from odyssey.sync.conflicts import (
+    SyncConflictNotFoundError,
+    SyncConflictService,
+    SyncConflictStrategyError,
+)
 from odyssey.sync.contracts import (
+    SyncConflictListResponse,
+    SyncConflictResolutionRequest,
+    SyncConflictResolutionResponse,
+    SyncConflictStatusFilter,
     SyncDeviceDiagnostics,
     SyncDeviceDiagnosticsInput,
     SyncDiagnosticsResponse,
@@ -51,7 +60,23 @@ def diagnostics_service(settings: Settings) -> SyncDiagnosticsService:
     )
 
 
+def conflict_service(settings: Settings) -> SyncConflictService:
+    return SyncConflictService(service(settings))
+
+
 def sync_error(error: SyncError, settings: Settings) -> OdysseyError:
+    if isinstance(error, SyncConflictNotFoundError):
+        return OdysseyError(
+            code=error.code,
+            message="The requested sync conflict does not exist.",
+            status_code=404,
+        )
+    if isinstance(error, SyncConflictStrategyError):
+        return OdysseyError(
+            code=error.code,
+            message="That resolution would violate this entity's merge policy.",
+            status_code=422,
+        )
     if isinstance(error, ClientSchemaTooOldError):
         return OdysseyError(
             code=error.code,
@@ -190,3 +215,43 @@ async def diagnostics(
             owner_id=owner.owner_id,
             now=datetime.now(UTC),
         )
+
+
+@router.get("/conflicts", response_model=SyncConflictListResponse)
+async def conflicts(
+    session: SessionDependency,
+    _owner: OwnerDependency,
+    settings: SettingsDependency,
+    status: SyncConflictStatusFilter = SyncConflictStatusFilter.PENDING,
+    limit: Annotated[int, Query(ge=1, le=200)] = 100,
+) -> SyncConflictListResponse:
+    async with session.begin():
+        return await conflict_service(settings).list(
+            session,
+            status=status,
+            limit=limit,
+            server_time=datetime.now(UTC),
+        )
+
+
+@router.post(
+    "/conflicts/{conflict_id}/resolve",
+    response_model=SyncConflictResolutionResponse,
+)
+async def resolve_conflict(
+    conflict_id: UUID7,
+    body: SyncConflictResolutionRequest,
+    session: SessionDependency,
+    _owner: OwnerDependency,
+    settings: SettingsDependency,
+) -> SyncConflictResolutionResponse:
+    try:
+        async with session.begin():
+            return await conflict_service(settings).resolve(
+                session,
+                conflict_id=conflict_id,
+                request=body,
+                server_time=datetime.now(UTC),
+            )
+    except SyncError as error:
+        raise sync_error(error, settings) from error

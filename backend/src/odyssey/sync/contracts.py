@@ -176,6 +176,78 @@ class SyncDiagnosticsResponse(StrictModel):
     repair: SyncRepairOptions
 
 
+class ConflictResolutionStrategy(StrEnum):
+    KEEP_CURRENT = "keep_current"
+    ACCEPT_INCOMING = "accept_incoming"
+    MERGE = "merge"
+
+
+class SyncConflictStatusFilter(StrEnum):
+    PENDING = "pending"
+    RESOLVED = "resolved"
+    ALL = "all"
+
+
+class SyncConflictDetail(StrictModel):
+    conflict_id: UUID7
+    operation_id: UUID7
+    originating_device_id: UUID7
+    entity_type: str
+    entity_id: UUID7
+    code: str
+    base_revision: int | None
+    current_revision: int | None
+    current_document: dict[str, JsonValue]
+    incoming_document: dict[str, JsonValue]
+    conflicting_fields: tuple[str, ...]
+    status: str
+    created_at: AwareDatetime
+    resolved_at: AwareDatetime | None
+    explanation: str
+    allowed_strategies: tuple[ConflictResolutionStrategy, ...]
+
+
+class SyncConflictListResponse(StrictModel):
+    conflicts: tuple[SyncConflictDetail, ...]
+    pending_count: int = Field(ge=0)
+    server_time: AwareDatetime
+
+
+class SyncConflictResolutionRequest(StrictModel):
+    operation_id: UUID7
+    device_id: UUID7
+    device_sequence: int = Field(ge=1)
+    client_schema_version: int = Field(ge=1)
+    expected_current_revision: int = Field(ge=1)
+    strategy: ConflictResolutionStrategy
+    merged_document: dict[str, JsonValue] | None = None
+    created_at: AwareDatetime
+    idempotency_key: str | None = Field(default=None, min_length=1, max_length=500)
+    sensitivity_class: DataClass = DataClass.PRIVATE
+
+    @model_validator(mode="after")
+    def validate_resolution(self) -> "SyncConflictResolutionRequest":
+        if self.strategy is ConflictResolutionStrategy.MERGE and self.merged_document is None:
+            raise ValueError("merge conflict resolution requires a merged document")
+        if (
+            self.strategy is not ConflictResolutionStrategy.MERGE
+            and self.merged_document is not None
+        ):
+            raise ValueError("only merge conflict resolution accepts a merged document")
+        return self
+
+
+class SyncConflictResolutionResponse(StrictModel):
+    resolution_id: UUID7
+    conflict_id: UUID7
+    status: str
+    strategy: ConflictResolutionStrategy
+    accepted_operation: AcceptedOperation
+    next_cursor: str
+    server_time: AwareDatetime
+    server_schema_version: int = Field(ge=1)
+
+
 def parse_cursor(value: str) -> int:
     if not CURSOR_PATTERN.fullmatch(value):
         raise ValueError("cursor must use c_<nonnegative integer>")
@@ -189,4 +261,6 @@ def format_cursor(value: int) -> str:
 
 
 def canonical_operation_document(operation: SyncOperationInput) -> dict[str, Any]:
-    return operation.model_dump(mode="json")
+    document = operation.model_dump(mode="json")
+    document["idempotency_key"] = operation.idempotency_key or str(operation.operation_id)
+    return document

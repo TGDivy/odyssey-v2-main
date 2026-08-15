@@ -469,6 +469,15 @@
         "title": "CapturePayloadKind",
         "type": "string"
       },
+      "ConflictResolutionStrategy": {
+        "enum": [
+          "keep_current",
+          "accept_incoming",
+          "merge"
+        ],
+        "title": "ConflictResolutionStrategy",
+        "type": "string"
+      },
       "DataClass": {
         "enum": [
           "public",
@@ -699,6 +708,303 @@
         ],
         "title": "SyncChange",
         "type": "object"
+      },
+      "SyncConflictDetail": {
+        "additionalProperties": false,
+        "properties": {
+          "allowed_strategies": {
+            "items": {
+              "$ref": "#/components/schemas/ConflictResolutionStrategy"
+            },
+            "title": "Allowed Strategies",
+            "type": "array"
+          },
+          "base_revision": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Revision"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "conflict_id": {
+            "format": "uuid",
+            "title": "Conflict Id",
+            "type": "string"
+          },
+          "conflicting_fields": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Conflicting Fields",
+            "type": "array"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "current_document": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Current Document",
+            "type": "object"
+          },
+          "current_revision": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Revision"
+          },
+          "entity_id": {
+            "format": "uuid",
+            "title": "Entity Id",
+            "type": "string"
+          },
+          "entity_type": {
+            "title": "Entity Type",
+            "type": "string"
+          },
+          "explanation": {
+            "title": "Explanation",
+            "type": "string"
+          },
+          "incoming_document": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Incoming Document",
+            "type": "object"
+          },
+          "operation_id": {
+            "format": "uuid",
+            "title": "Operation Id",
+            "type": "string"
+          },
+          "originating_device_id": {
+            "format": "uuid",
+            "title": "Originating Device Id",
+            "type": "string"
+          },
+          "resolved_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved At"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "conflict_id",
+          "operation_id",
+          "originating_device_id",
+          "entity_type",
+          "entity_id",
+          "code",
+          "base_revision",
+          "current_revision",
+          "current_document",
+          "incoming_document",
+          "conflicting_fields",
+          "status",
+          "created_at",
+          "resolved_at",
+          "explanation",
+          "allowed_strategies"
+        ],
+        "title": "SyncConflictDetail",
+        "type": "object"
+      },
+      "SyncConflictListResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "conflicts": {
+            "items": {
+              "$ref": "#/components/schemas/SyncConflictDetail"
+            },
+            "title": "Conflicts",
+            "type": "array"
+          },
+          "pending_count": {
+            "minimum": 0.0,
+            "title": "Pending Count",
+            "type": "integer"
+          },
+          "server_time": {
+            "format": "date-time",
+            "title": "Server Time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "conflicts",
+          "pending_count",
+          "server_time"
+        ],
+        "title": "SyncConflictListResponse",
+        "type": "object"
+      },
+      "SyncConflictResolutionRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "client_schema_version": {
+            "minimum": 1.0,
+            "title": "Client Schema Version",
+            "type": "integer"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "device_id": {
+            "format": "uuid",
+            "title": "Device Id",
+            "type": "string"
+          },
+          "device_sequence": {
+            "minimum": 1.0,
+            "title": "Device Sequence",
+            "type": "integer"
+          },
+          "expected_current_revision": {
+            "minimum": 1.0,
+            "title": "Expected Current Revision",
+            "type": "integer"
+          },
+          "idempotency_key": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idempotency Key"
+          },
+          "merged_document": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/JsonValue"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Merged Document"
+          },
+          "operation_id": {
+            "format": "uuid",
+            "title": "Operation Id",
+            "type": "string"
+          },
+          "sensitivity_class": {
+            "$ref": "#/components/schemas/DataClass",
+            "default": "private"
+          },
+          "strategy": {
+            "$ref": "#/components/schemas/ConflictResolutionStrategy"
+          }
+        },
+        "required": [
+          "operation_id",
+          "device_id",
+          "device_sequence",
+          "client_schema_version",
+          "expected_current_revision",
+          "strategy",
+          "created_at"
+        ],
+        "title": "SyncConflictResolutionRequest",
+        "type": "object"
+      },
+      "SyncConflictResolutionResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "accepted_operation": {
+            "$ref": "#/components/schemas/AcceptedOperation"
+          },
+          "conflict_id": {
+            "format": "uuid",
+            "title": "Conflict Id",
+            "type": "string"
+          },
+          "next_cursor": {
+            "title": "Next Cursor",
+            "type": "string"
+          },
+          "resolution_id": {
+            "format": "uuid",
+            "title": "Resolution Id",
+            "type": "string"
+          },
+          "server_schema_version": {
+            "minimum": 1.0,
+            "title": "Server Schema Version",
+            "type": "integer"
+          },
+          "server_time": {
+            "format": "date-time",
+            "title": "Server Time",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "strategy": {
+            "$ref": "#/components/schemas/ConflictResolutionStrategy"
+          }
+        },
+        "required": [
+          "resolution_id",
+          "conflict_id",
+          "status",
+          "strategy",
+          "accepted_operation",
+          "next_cursor",
+          "server_time",
+          "server_schema_version"
+        ],
+        "title": "SyncConflictResolutionResponse",
+        "type": "object"
+      },
+      "SyncConflictStatusFilter": {
+        "enum": [
+          "pending",
+          "resolved",
+          "all"
+        ],
+        "title": "SyncConflictStatusFilter",
+        "type": "string"
       },
       "SyncConflictSummary": {
         "additionalProperties": false,
@@ -1773,6 +2079,145 @@
           }
         },
         "summary": "Changes",
+        "tags": [
+          "sync"
+        ]
+      }
+    },
+    "/v1/sync/conflicts": {
+      "get": {
+        "operationId": "conflicts_v1_sync_conflicts_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/SyncConflictStatusFilter",
+              "default": "pending"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncConflictListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Conflicts",
+        "tags": [
+          "sync"
+        ]
+      }
+    },
+    "/v1/sync/conflicts/{conflict_id}/resolve": {
+      "post": {
+        "operationId": "resolve_conflict_v1_sync_conflicts__conflict_id__resolve_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "conflict_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Conflict Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SyncConflictResolutionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncConflictResolutionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Resolve Conflict",
         "tags": [
           "sync"
         ]
