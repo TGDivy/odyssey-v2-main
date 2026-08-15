@@ -8,14 +8,14 @@ export UV_LINK_MODE="${UV_LINK_MODE:-copy}"
 printf '\n[backend] formatting\n'
 (
   cd "${repository_root}/backend"
-  uv run ruff format --check . ../tools/codegen/generate.py ../tools/fixtures/generate_synthetic_life.py
+  uv run ruff format --check . ../tools
 )
 
 printf '\n[backend] lint and types\n'
 (
   cd "${repository_root}/backend"
-  uv run ruff check . ../tools/codegen/generate.py ../tools/fixtures/generate_synthetic_life.py
-  uv run mypy src ../tools/codegen/generate.py ../tools/fixtures/generate_synthetic_life.py
+  uv run ruff check . ../tools
+  uv run mypy src ../tools
 )
 
 printf '\n[backend] tests and coverage\n'

@@ -53,6 +53,7 @@ ignore = ["S101"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = ["S105", "S106"]
+"tests/integration/test_import_export.py" = ["S603"]
 "src/odyssey/domain/common.py" = ["S105"]
 "../tools/fixtures/*.py" = ["S311"]
 

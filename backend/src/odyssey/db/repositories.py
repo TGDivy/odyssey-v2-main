@@ -14,7 +14,7 @@ from odyssey.db.models import (
     ProvenanceRecord,
     SourceRecord,
 )
-from odyssey.domain.common import new_uuid7
+from odyssey.domain.common import Provenance, new_uuid7
 from odyssey.domain.events import DomainEvent
 
 
@@ -39,13 +39,75 @@ class AppendResult:
     event_id: UUID
     sequence: int
     created: bool
+    source_created: bool
 
 
 class SourceRecordConflictError(RuntimeError):
     pass
 
 
+class ProvenanceConflictError(RuntimeError):
+    pass
+
+
 class LedgerRepository:
+    async def append_source_record(
+        self,
+        session: AsyncSession,
+        *,
+        source: SourceRecordWrite,
+        provenance: Provenance,
+    ) -> bool:
+        existing_provenance = await session.get(ProvenanceRecord, provenance.id)
+        if existing_provenance is None:
+            session.add(
+                ProvenanceRecord(
+                    id=provenance.id,
+                    source_kind=provenance.source_kind,
+                    source_id=provenance.source_id,
+                    actor_type=provenance.actor.actor_type.value,
+                    actor_id=provenance.actor.actor_id,
+                    recorded_at=provenance.captured_at,
+                    transformation_chain=list(provenance.transformation_chain),
+                    content_hash=provenance.content_hash,
+                    details=dict(provenance.details),
+                )
+            )
+        elif (
+            existing_provenance.source_kind != provenance.source_kind
+            or existing_provenance.source_id != provenance.source_id
+            or existing_provenance.content_hash != provenance.content_hash
+        ):
+            raise ProvenanceConflictError(
+                f"provenance {provenance.id} was reused with different content"
+            )
+
+        existing_source = await session.get(SourceRecord, source.id)
+        if existing_source is not None:
+            if existing_source.content_hash != source.content_hash:
+                raise SourceRecordConflictError(
+                    f"source record {source.id} was reused with different content"
+                )
+            return False
+        session.add(
+            SourceRecord(
+                id=source.id,
+                source_kind=source.source_kind,
+                external_source_id=source.external_source_id,
+                occurred_at=source.occurred_at,
+                observed_at=source.observed_at,
+                recorded_at=source.recorded_at,
+                timezone_id=source.timezone_id,
+                temporal_precision=source.temporal_precision,
+                content_hash=source.content_hash,
+                sensitivity=source.sensitivity,
+                payload=source.payload,
+                provenance_id=source.provenance_id,
+            )
+        )
+        await session.flush()
+        return True
+
     async def append_source_event(
         self,
         session: AsyncSession,
@@ -59,45 +121,18 @@ class LedgerRepository:
         )
         if existing is not None:
             return AppendResult(
-                event_id=existing.event_id, sequence=existing.sequence, created=False
+                event_id=existing.event_id,
+                sequence=existing.sequence,
+                created=False,
+                source_created=False,
             )
 
         provenance = event.provenance
-        session.add(
-            ProvenanceRecord(
-                id=provenance.id,
-                source_kind=provenance.source_kind,
-                source_id=provenance.source_id,
-                actor_type=provenance.actor.actor_type.value,
-                actor_id=provenance.actor.actor_id,
-                recorded_at=provenance.captured_at,
-                transformation_chain=list(provenance.transformation_chain),
-                content_hash=provenance.content_hash,
-                details=dict(provenance.details),
-            )
+        source_created = await self.append_source_record(
+            session,
+            source=source,
+            provenance=provenance,
         )
-        existing_source = await session.get(SourceRecord, source.id)
-        if existing_source is None:
-            session.add(
-                SourceRecord(
-                    id=source.id,
-                    source_kind=source.source_kind,
-                    external_source_id=source.external_source_id,
-                    occurred_at=source.occurred_at,
-                    observed_at=source.observed_at,
-                    recorded_at=source.recorded_at,
-                    timezone_id=source.timezone_id,
-                    temporal_precision=source.temporal_precision,
-                    content_hash=source.content_hash,
-                    sensitivity=source.sensitivity,
-                    payload=source.payload,
-                    provenance_id=source.provenance_id,
-                )
-            )
-        elif existing_source.content_hash != source.content_hash:
-            raise SourceRecordConflictError(
-                f"source record {source.id} was reused with different content"
-            )
         ledger_record = LedgerEventRecord(
             event_id=event.event_id,
             event_type=event.event_type,
@@ -136,4 +171,5 @@ class LedgerRepository:
             event_id=ledger_record.event_id,
             sequence=ledger_record.sequence,
             created=True,
+            source_created=source_created,
         )

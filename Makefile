@@ -7,7 +7,7 @@ export UV_LINK_MODE
 
 .DEFAULT_GOAL := help
 
-.PHONY: help diagnostics bootstrap dev stop verify format lint test schemas fixtures apple-project clean
+.PHONY: help diagnostics bootstrap dev stop verify format lint test schemas fixtures rebuild-projections apple-project clean
 
 help: ## Show repository commands
 	@awk 'BEGIN {FS = ":.*## "; printf "Odyssey commands:\n"} /^[a-zA-Z_-]+:.*## / {printf "  %-14s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -41,6 +41,9 @@ schemas: ## Regenerate schema artifacts
 
 fixtures: ## Regenerate deterministic synthetic-life fixtures
 	@cd backend && uv run python ../tools/fixtures/generate_synthetic_life.py
+
+rebuild-projections: ## Rebuild current state from the immutable ledger
+	@cd backend && uv run python ../tools/data-repair/rebuild_projections.py
 
 apple-project: ## Generate the Xcode project on macOS
 	@bash tools/apple/generate-project.sh
