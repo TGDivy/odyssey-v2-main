@@ -1,9 +1,12 @@
 import asyncio
+from pathlib import Path
 
 from fastapi.testclient import TestClient
 
 from odyssey.api.errors import OdysseyError
 from odyssey.config import Environment, Settings
+from odyssey.db.base import Base
+from odyssey.db.session import Database
 from odyssey.main import create_app
 from odyssey.worker import run as run_worker
 
@@ -103,5 +106,16 @@ def test_unhandled_error_is_redacted() -> None:
     assert "private provider payload" not in response.text
 
 
-def test_worker_starts_without_credentials() -> None:
-    asyncio.run(run_worker(once=True))
+def test_worker_starts_without_credentials(tmp_path: Path) -> None:
+    async def scenario() -> None:
+        database = Database(f"sqlite+aiosqlite:///{tmp_path / 'worker.sqlite'}")
+        async with database.engine.begin() as connection:
+            await connection.run_sync(Base.metadata.create_all)
+        await run_worker(
+            once=True,
+            settings=Settings(env=Environment.TEST),
+            database=database,
+        )
+        await database.dispose()
+
+    asyncio.run(scenario())

@@ -43,6 +43,10 @@ class Settings(BaseSettings):
     api_docs_enabled: bool = True
     minimum_client_schema_version: int = Field(default=1, ge=1)
     current_sync_schema_version: int = Field(default=1, ge=1)
+    worker_poll_seconds: float = Field(default=1.0, gt=0)
+    worker_batch_size: int = Field(default=50, ge=1, le=500)
+    worker_lease_seconds: int = Field(default=60, ge=1, le=3600)
+    worker_max_attempts: int = Field(default=8, ge=1, le=100)
 
     @model_validator(mode="after")
     def validate_schema_window(self) -> "Settings":
@@ -60,6 +64,7 @@ class Settings(BaseSettings):
             "commit_sha": self.commit_sha,
             "minimum_client_schema_version": self.minimum_client_schema_version,
             "current_sync_schema_version": self.current_sync_schema_version,
+            "worker_batch_size": self.worker_batch_size,
             "storage_configured": bool(self.storage_endpoint and self.storage_bucket),
         }
 
