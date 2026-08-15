@@ -24,6 +24,17 @@ matching trace and correlation IDs. Exporter setup, emitted signal names,
 privacy exclusions, alert thresholds, and staging checks are documented in
 [`docs/architecture/observability.md`](../docs/architecture/observability.md).
 
+## Owner authentication
+
+Production mode verifies Sign in with Apple identity tokens against cached
+official JWKS, allowlists the durable singleton Apple subject, and issues
+short-lived Odyssey access tokens bound to separately revocable devices. Device
+refresh and one-time recovery credentials are stored only as SHA-256 hashes.
+Configuration, client storage rules, bootstrap, and endpoint semantics are in
+[`docs/architecture/authentication.md`](../docs/architecture/authentication.md);
+the executable recovery procedure is
+[`docs/runbooks/account-recovery.md`](../docs/runbooks/account-recovery.md).
+
 ## Durable data operations
 
 Run migrations before importing data. This credential-free SQLite example uses

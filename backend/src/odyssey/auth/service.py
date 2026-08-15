@@ -6,7 +6,8 @@ from hmac import compare_digest
 from secrets import token_urlsafe
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import delete, func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from odyssey.auth.apple import (
     AppleIdentityConfigurationError,
@@ -26,6 +27,7 @@ from odyssey.auth.contracts import (
     DeviceStatus,
     DeviceSummary,
     OwnerPrincipal,
+    RecoveryExchangeRequest,
 )
 from odyssey.auth.persistence import (
     AppleAuthChallengeRecord,
@@ -33,6 +35,7 @@ from odyssey.auth.persistence import (
     AuthDeviceRecord,
     DeviceCredentialRecord,
     OwnerIdentityRecord,
+    OwnerRecoveryCredentialRecord,
 )
 from odyssey.auth.tokens import (
     AccessTokenConfigurationError,
@@ -104,6 +107,38 @@ class AuthService:
             expires_at=expires_at,
         )
         async with self.database.sessions() as session, session.begin():
+            await session.execute(
+                delete(AppleAuthChallengeRecord).where(AppleAuthChallengeRecord.expires_at <= now)
+            )
+            pending_challenges = int(
+                await session.scalar(
+                    select(func.count())
+                    .select_from(AppleAuthChallengeRecord)
+                    .where(AppleAuthChallengeRecord.consumed_at.is_(None))
+                )
+                or 0
+            )
+            pending_for_device = int(
+                await session.scalar(
+                    select(func.count())
+                    .select_from(AppleAuthChallengeRecord)
+                    .where(
+                        AppleAuthChallengeRecord.device_id == request.device_id,
+                        AppleAuthChallengeRecord.consumed_at.is_(None),
+                    )
+                )
+                or 0
+            )
+            if (
+                pending_challenges >= self.settings.auth_max_pending_challenges
+                or pending_for_device >= self.settings.auth_max_pending_challenges_per_device
+            ):
+                raise AuthServiceError(
+                    code="AUTH_CHALLENGE_CAPACITY_REACHED",
+                    message="Authentication challenge capacity is temporarily exhausted.",
+                    status_code=429,
+                    retryable=True,
+                )
             session.add(challenge)
         return AppleChallengeResponse(
             challenge_id=challenge.id,
@@ -183,63 +218,17 @@ class AuthService:
             else:
                 identity.last_authenticated_at = now
 
-            device = await session.get(AuthDeviceRecord, request.device_id)
-            enrolled = device is None
-            if device is None:
-                device = AuthDeviceRecord(
-                    id=request.device_id,
-                    owner_id=OWNER_ID,
-                    display_name=request.display_name,
-                    platform=request.platform.value,
-                    app_version=request.app_version,
-                    status=DeviceStatus.ACTIVE,
-                    enrolled_at=now,
-                    last_authenticated_at=now,
-                    last_seen_at=now,
-                )
-                session.add(device)
-                await session.flush()
-            elif device.status != DeviceStatus.ACTIVE:
-                raise AuthServiceError(
-                    code="DEVICE_REVOKED",
-                    message="This device enrollment has been revoked.",
-                    status_code=401,
-                )
-            else:
-                device.display_name = request.display_name
-                device.platform = request.platform.value
-                device.app_version = request.app_version
-                device.last_authenticated_at = now
-                device.last_seen_at = now
-
-            credential = await session.get(DeviceCredentialRecord, request.device_id)
-            if credential is None:
-                credential = DeviceCredentialRecord(
-                    device_id=request.device_id,
-                    credential_hash=self.hash_secret(refresh_credential),
-                    issued_at=now,
-                    expires_at=refresh_expires_at,
-                )
-                session.add(credential)
-            else:
-                credential.credential_hash = self.hash_secret(refresh_credential)
-                credential.issued_at = now
-                credential.expires_at = refresh_expires_at
-                credential.last_used_at = None
-                credential.revoked_at = None
-            session.add(
-                AuthDeviceAuditRecord(
-                    id=new_uuid7(),
-                    device_id=device.id,
-                    event_type="enrolled" if enrolled else "credential_reissued",
-                    occurred_at=now,
-                    actor_device_id=None,
-                    reason_code=None,
-                    details={
-                        "platform": request.platform.value,
-                        "app_version": request.app_version,
-                    },
-                )
+            device = await self.enroll_device(
+                session,
+                device_id=request.device_id,
+                display_name=request.display_name,
+                platform=request.platform.value,
+                app_version=request.app_version,
+                refresh_credential=refresh_credential,
+                refresh_expires_at=refresh_expires_at,
+                now=now,
+                enrolled_event="enrolled",
+                reissued_event="credential_reissued",
             )
             if challenge is not None and challenge.consumed_at is None:
                 challenge.consumed_at = now
@@ -253,6 +242,64 @@ class AuthService:
             except AccessTokenConfigurationError as error:
                 raise self.configuration_error() from error
 
+        return DeviceEnrollmentResponse(
+            access_token=access_token.token,
+            access_token_expires_at=access_token.expires_at,
+            refresh_credential=refresh_credential,
+            refresh_credential_expires_at=refresh_expires_at,
+            device=self.device_summary(device),
+        )
+
+    async def exchange_recovery_credential(
+        self,
+        request: RecoveryExchangeRequest,
+        *,
+        now: datetime,
+    ) -> DeviceEnrollmentResponse:
+        self.require_apple_configuration()
+        refresh_credential = token_urlsafe(48)
+        refresh_expires_at = now + timedelta(days=self.settings.auth_refresh_credential_ttl_days)
+        async with self.database.sessions() as session, session.begin():
+            recovery = await session.scalar(
+                select(OwnerRecoveryCredentialRecord)
+                .where(
+                    OwnerRecoveryCredentialRecord.credential_hash
+                    == self.hash_secret(request.recovery_credential)
+                )
+                .with_for_update()
+            )
+            identity = await session.get(OwnerIdentityRecord, OWNER_ID)
+            if (
+                recovery is None
+                or identity is None
+                or recovery.owner_id != OWNER_ID
+                or recovery.consumed_at is not None
+                or recovery.revoked_at is not None
+                or self.aware(recovery.expires_at) <= now
+            ):
+                raise self.authentication_error()
+            device = await self.enroll_device(
+                session,
+                device_id=request.device_id,
+                display_name=request.display_name,
+                platform=request.platform.value,
+                app_version=request.app_version,
+                refresh_credential=refresh_credential,
+                refresh_expires_at=refresh_expires_at,
+                now=now,
+                enrolled_event="recovery_enrolled",
+                reissued_event="recovery_credential_reissued",
+            )
+            recovery.consumed_at = now
+            recovery.consumed_by_device_id = device.id
+            try:
+                access_token = self.access_tokens.issue(
+                    owner_id=OWNER_ID,
+                    device_id=device.id,
+                    now=now,
+                )
+            except AccessTokenConfigurationError as error:
+                raise self.configuration_error() from error
         return DeviceEnrollmentResponse(
             access_token=access_token.token,
             access_token_expires_at=access_token.expires_at,
@@ -384,6 +431,77 @@ class AuthService:
                     )
                 )
         return self.device_summary(device)
+
+    async def enroll_device(
+        self,
+        session: AsyncSession,
+        *,
+        device_id: UUID,
+        display_name: str,
+        platform: str,
+        app_version: str,
+        refresh_credential: str,
+        refresh_expires_at: datetime,
+        now: datetime,
+        enrolled_event: str,
+        reissued_event: str,
+    ) -> AuthDeviceRecord:
+        device = await session.get(AuthDeviceRecord, device_id)
+        enrolled = device is None
+        if device is None:
+            device = AuthDeviceRecord(
+                id=device_id,
+                owner_id=OWNER_ID,
+                display_name=display_name,
+                platform=platform,
+                app_version=app_version,
+                status=DeviceStatus.ACTIVE,
+                enrolled_at=now,
+                last_authenticated_at=now,
+                last_seen_at=now,
+            )
+            session.add(device)
+            await session.flush()
+        elif device.status != DeviceStatus.ACTIVE or device.owner_id != OWNER_ID:
+            raise AuthServiceError(
+                code="DEVICE_REVOKED",
+                message="This device enrollment has been revoked.",
+                status_code=401,
+            )
+        else:
+            device.display_name = display_name
+            device.platform = platform
+            device.app_version = app_version
+            device.last_authenticated_at = now
+            device.last_seen_at = now
+
+        credential = await session.get(DeviceCredentialRecord, device_id)
+        if credential is None:
+            credential = DeviceCredentialRecord(
+                device_id=device_id,
+                credential_hash=self.hash_secret(refresh_credential),
+                issued_at=now,
+                expires_at=refresh_expires_at,
+            )
+            session.add(credential)
+        else:
+            credential.credential_hash = self.hash_secret(refresh_credential)
+            credential.issued_at = now
+            credential.expires_at = refresh_expires_at
+            credential.last_used_at = None
+            credential.revoked_at = None
+        session.add(
+            AuthDeviceAuditRecord(
+                id=new_uuid7(),
+                device_id=device.id,
+                event_type=enrolled_event if enrolled else reissued_event,
+                occurred_at=now,
+                actor_device_id=None,
+                reason_code=None,
+                details={"platform": platform, "app_version": app_version},
+            )
+        )
+        return device
 
     async def validate_challenge(
         self,

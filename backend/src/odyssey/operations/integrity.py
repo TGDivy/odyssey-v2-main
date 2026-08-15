@@ -18,6 +18,14 @@ from odyssey.attachments.models import (
     AttachmentRecord,
     AttachmentUploadRecord,
 )
+from odyssey.auth.contracts import DeviceStatus
+from odyssey.auth.persistence import (
+    AuthDeviceAuditRecord,
+    AuthDeviceRecord,
+    DeviceCredentialRecord,
+    OwnerIdentityRecord,
+    OwnerRecoveryCredentialRecord,
+)
 from odyssey.db.backups import BackupError, verify_database_backup, verify_manifest
 from odyssey.db.models import (
     AssertionRecord,
@@ -40,7 +48,7 @@ from odyssey.sync.models import (
 from odyssey.sync.rebuild import SyncProjectionRebuilder, SyncProjectionRebuildError
 from odyssey.sync.service import SYNC_STATE_KEY
 
-INTEGRITY_CHECKER_VERSION = "integrity.v2"
+INTEGRITY_CHECKER_VERSION = "integrity.v3"
 
 
 class CheckStatus(StrEnum):
@@ -113,6 +121,8 @@ async def database_checks(connection: AsyncConnection) -> list[IntegrityCheckRes
         )
         triggers = {str(row[0]) for row in trigger_rows.all()}
         required_triggers = {
+            "auth_device_audit_reject_delete",
+            "auth_device_audit_reject_update",
             "attachment_chunks_reject_delete",
             "attachment_chunks_reject_update",
             "attachment_objects_reject_delete",
@@ -461,6 +471,89 @@ async def sync_consistency_check(session: AsyncSession) -> IntegrityCheckResult:
     )
 
 
+async def auth_device_integrity_check(session: AsyncSession) -> IntegrityCheckResult:
+    identities = tuple((await session.scalars(select(OwnerIdentityRecord))).all())
+    devices = tuple((await session.scalars(select(AuthDeviceRecord))).all())
+    credentials = tuple((await session.scalars(select(DeviceCredentialRecord))).all())
+    recovery_credentials = tuple(
+        (await session.scalars(select(OwnerRecoveryCredentialRecord))).all()
+    )
+    if not identities and not devices and not credentials and not recovery_credentials:
+        return IntegrityCheckResult(
+            code="auth_device_integrity",
+            status=CheckStatus.NOT_APPLICABLE,
+            summary="Production owner authentication has not been bootstrapped",
+            observed={},
+        )
+    credential_by_device = {credential.device_id: credential for credential in credentials}
+    device_ids = {device.id for device in devices}
+    audited_device_ids = set(
+        (
+            await session.scalars(
+                select(AuthDeviceAuditRecord.device_id).where(
+                    AuthDeviceAuditRecord.event_type.in_(("enrolled", "recovery_enrolled"))
+                )
+            )
+        ).all()
+    )
+    active_without_credential = sum(
+        1
+        for device in devices
+        if device.status == DeviceStatus.ACTIVE and device.id not in credential_by_device
+    )
+    revoked_with_live_credential = sum(
+        1
+        for device in devices
+        if device.status == DeviceStatus.REVOKED
+        and (credential := credential_by_device.get(device.id)) is not None
+        and credential.revoked_at is None
+    )
+    malformed_hashes = sum(
+        1
+        for value in (
+            *(credential.credential_hash for credential in credentials),
+            *(credential.credential_hash for credential in recovery_credentials),
+        )
+        if len(value) != 64 or any(character not in "0123456789abcdef" for character in value)
+    )
+    recovery_lifecycle_mismatches = sum(
+        1
+        for credential in recovery_credentials
+        if (
+            credential.consumed_at is not None
+            and (
+                credential.revoked_at is not None
+                or credential.consumed_by_device_id not in device_ids
+            )
+        )
+        or (credential.consumed_at is None and credential.consumed_by_device_id is not None)
+    )
+    missing_enrollment_audits = len(device_ids - audited_device_ids)
+    healthy = (
+        len(identities) == 1
+        and identities[0].owner_id == "owner"
+        and active_without_credential == 0
+        and revoked_with_live_credential == 0
+        and malformed_hashes == 0
+        and recovery_lifecycle_mismatches == 0
+        and missing_enrollment_audits == 0
+    )
+    return IntegrityCheckResult(
+        code="auth_device_integrity",
+        status=CheckStatus.SUCCESS if healthy else CheckStatus.FAIL,
+        summary="Owner identity, device credentials, recovery lifecycle, and audit linkage",
+        observed={
+            "owner_identity_count": len(identities),
+            "device_count": len(devices),
+            "active_without_credential": active_without_credential,
+            "revoked_with_live_credential": revoked_with_live_credential,
+            "malformed_hashes": malformed_hashes,
+            "recovery_lifecycle_mismatches": recovery_lifecycle_mismatches,
+            "missing_enrollment_audits": missing_enrollment_audits,
+        },
+    )
+
+
 def backup_freshness_check(
     backup: Path | None, *, now: datetime, maximum_age: timedelta
 ) -> IntegrityCheckResult:
@@ -522,6 +615,7 @@ async def run_integrity_checks(
                 await projection_check(session),
                 await attachment_manifest_check(session),
                 await sync_consistency_check(session),
+                await auth_device_integrity_check(session),
                 backup_freshness_check(
                     backup,
                     now=started_at,

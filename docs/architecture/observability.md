@@ -72,6 +72,7 @@ create traces.
 | `odyssey.http.server.requests` | counter | method, route template, status code |
 | `odyssey.http.server.errors` | counter | method, route template, status code |
 | `odyssey.http.server.duration` | histogram, seconds | method, route template, status code |
+| `odyssey.auth.denials` | counter | route template, status code 401 or 403 |
 | `odyssey.outbox.jobs` | counter | bounded outcome: completed, retry, dead letter |
 | `odyssey.outbox.batch.duration` | histogram, seconds | none |
 | `odyssey.outbox.queue.depth` | gauge | bounded state: pending, processing, retry, dead letter |

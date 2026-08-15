@@ -10,6 +10,11 @@ from jwt.algorithms import RSAAlgorithm
 from pydantic import ValidationError
 
 from odyssey.auth.apple import AppleIdentityTokenError, AppleIdentityVerifier
+from odyssey.auth.recovery_material import (
+    RecoveryMaterialError,
+    decrypt_recovery_material,
+    encrypt_recovery_material,
+)
 from odyssey.auth.tokens import (
     AccessTokenConfigurationError,
     AccessTokenError,
@@ -188,3 +193,24 @@ def test_auth_configuration_fails_closed() -> None:
     )
     assert settings.safe_diagnostics()["apple_client_configured"] is True
     assert "synthetic-signing-key" not in repr(settings.safe_diagnostics())
+
+
+def test_recovery_material_is_authenticated_and_passphrase_encrypted() -> None:
+    material = {
+        "credential": "odyssey-recovery-v1_synthetic-secret-material",
+        "credential_id": str(new_uuid7()),
+        "expires_at": datetime.now(UTC).isoformat(),
+        "label": "drill",
+    }
+    passphrase = "synthetic recovery passphrase"
+
+    envelope = encrypt_recovery_material(material, passphrase=passphrase)
+
+    assert material["credential"] not in repr(envelope)
+    assert decrypt_recovery_material(envelope, passphrase=passphrase) == material
+    with pytest.raises(RecoveryMaterialError, match="could not be decrypted"):
+        decrypt_recovery_material(envelope, passphrase="incorrect passphrase value")
+    tampered = dict(envelope)
+    tampered["format"] = "unsupported"
+    with pytest.raises(RecoveryMaterialError, match="could not be decrypted"):
+        decrypt_recovery_material(tampered, passphrase=passphrase)

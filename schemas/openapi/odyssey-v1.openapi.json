@@ -920,6 +920,46 @@
         "title": "ReadyResponse",
         "type": "object"
       },
+      "RecoveryExchangeRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "app_version": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "App Version",
+            "type": "string"
+          },
+          "device_id": {
+            "format": "uuid",
+            "title": "Device Id",
+            "type": "string"
+          },
+          "display_name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Display Name",
+            "type": "string"
+          },
+          "platform": {
+            "$ref": "#/components/schemas/DevicePlatform"
+          },
+          "recovery_credential": {
+            "maxLength": 512,
+            "minLength": 32,
+            "title": "Recovery Credential",
+            "type": "string"
+          }
+        },
+        "required": [
+          "recovery_credential",
+          "device_id",
+          "display_name",
+          "platform",
+          "app_version"
+        ],
+        "title": "RecoveryExchangeRequest",
+        "type": "object"
+      },
       "RejectedOperation": {
         "additionalProperties": false,
         "properties": {
@@ -2413,6 +2453,47 @@
           }
         ],
         "summary": "Revoke Device",
+        "tags": [
+          "authentication"
+        ]
+      }
+    },
+    "/v1/auth/recovery/exchange": {
+      "post": {
+        "operationId": "exchange_recovery_credential_v1_auth_recovery_exchange_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecoveryExchangeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceEnrollmentResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Exchange Recovery Credential",
         "tags": [
           "authentication"
         ]

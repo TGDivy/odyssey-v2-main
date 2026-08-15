@@ -15,7 +15,7 @@ from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 from pydantic import ValidationError
 
-from odyssey.config import Environment, Settings, TelemetryExporter
+from odyssey.config import AuthMode, Environment, Settings, TelemetryExporter
 from odyssey.main import create_app
 from odyssey.telemetry import runtime as runtime_module
 from odyssey.telemetry.alerts import AlertSeverity, evaluate_outbox_alerts
@@ -105,6 +105,33 @@ def test_failed_request_trace_does_not_capture_exception_message() -> None:
     assert spans[0].status.is_ok is False
     assert spans[0].events == ()
     assert "private provider response" not in repr(spans[0])
+
+
+def test_auth_denial_metric_has_only_bounded_route_and_status() -> None:
+    with telemetry_fixture() as (telemetry, _span_exporter, metric_reader):
+        app = create_app(
+            Settings(env=Environment.TEST, auth_mode=AuthMode.SIGN_IN_WITH_APPLE),
+            telemetry=telemetry,
+        )
+        with TestClient(app) as client:
+            response = client.get("/v1/admin/diagnostics")
+            metrics = metric_reader.get_metrics_data()
+
+    assert response.status_code == 401
+    assert metrics is not None
+    denial_points = [
+        point
+        for resource_metrics in metrics.resource_metrics
+        for scope_metrics in resource_metrics.scope_metrics
+        for metric in scope_metrics.metrics
+        if metric.name == "odyssey.auth.denials"
+        for point in metric.data.data_points
+    ]
+    assert len(denial_points) == 1
+    assert denial_points[0].attributes == {
+        "http.route": "/v1/admin/diagnostics",
+        "http.response.status_code": 401,
+    }
 
 
 def test_otlp_settings_validate_endpoint_and_keep_headers_secret() -> None:

@@ -12,6 +12,8 @@ explicitly marked local-only.
   validate it, enroll a fresh client, and reconcile surviving operations.
 - [`record-trace.md`](record-trace.md) — trace a synthetic record through source,
   provenance, ledger, outbox, and projection state.
+- [`account-recovery.md`](account-recovery.md) — provision one-time encrypted
+  recovery material, enroll a fresh device, and revoke lost credentials.
 
 ## Non-negotiable rules
 

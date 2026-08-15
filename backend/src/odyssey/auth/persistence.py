@@ -79,6 +79,28 @@ class DeviceCredentialRecord(Base):
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
+class OwnerRecoveryCredentialRecord(Base):
+    __tablename__ = "owner_recovery_credentials"
+    __table_args__ = (
+        UniqueConstraint("credential_hash", name="uq_owner_recovery_credentials_hash"),
+        Index("ix_owner_recovery_credentials_expires", "expires_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    owner_id: Mapped[str] = mapped_column(
+        ForeignKey("owner_identities.owner_id", ondelete="RESTRICT"), nullable=False
+    )
+    credential_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    label: Mapped[str] = mapped_column(String(100), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_by: Mapped[str] = mapped_column(String(100), nullable=False)
+    consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    consumed_by_device_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    revoked_by: Mapped[str | None] = mapped_column(String(100))
+
+
 class AppleAuthChallengeRecord(Base):
     __tablename__ = "apple_auth_challenges"
     __table_args__ = (

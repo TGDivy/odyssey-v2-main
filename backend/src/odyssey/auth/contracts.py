@@ -82,6 +82,14 @@ class AccessTokenRefreshRequest(StrictModel):
     refresh_credential: str = Field(min_length=32, max_length=512)
 
 
+class RecoveryExchangeRequest(StrictModel):
+    recovery_credential: str = Field(min_length=32, max_length=512)
+    device_id: UUID7
+    display_name: str = Field(min_length=1, max_length=100)
+    platform: DevicePlatform
+    app_version: str = Field(min_length=1, max_length=100)
+
+
 class AccessTokenResponse(StrictModel):
     token_type: Literal["Bearer"] = Field(default="Bearer")
     access_token: str

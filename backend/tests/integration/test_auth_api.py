@@ -1,5 +1,6 @@
 import asyncio
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
+from hashlib import sha256
 from pathlib import Path
 from uuid import UUID
 
@@ -13,12 +14,14 @@ from odyssey.auth.persistence import (
     AuthDeviceRecord,
     DeviceCredentialRecord,
     OwnerIdentityRecord,
+    OwnerRecoveryCredentialRecord,
 )
 from odyssey.config import AuthMode, Environment, Settings
 from odyssey.db.base import Base
 from odyssey.db.session import Database
 from odyssey.domain.common import new_uuid7
 from odyssey.main import create_app
+from odyssey.operations.integrity import CheckStatus, auth_device_integrity_check
 
 ALLOWED_SUBJECT = "000999.synthetic-owner"
 IDENTITY_TOKEN = "synthetic-apple-identity-token-" + ("x" * 120)
@@ -171,6 +174,7 @@ def test_enrollment_refresh_listing_and_revocation_are_device_bound(tmp_path: Pa
                 await session.scalar(select(func.count()).select_from(AuthDeviceAuditRecord)) or 0
             )
             second_record = await session.get(AuthDeviceRecord, UUID(second_device))
+            integrity = await auth_device_integrity_check(session)
         assert identity is not None
         assert identity.apple_subject == ALLOWED_SUBJECT
         assert all(len(credential.credential_hash) == 64 for credential in credentials)
@@ -179,6 +183,7 @@ def test_enrollment_refresh_listing_and_revocation_are_device_bound(tmp_path: Pa
         assert audit_count == 3
         assert second_record is not None
         assert second_record.status == "revoked"
+        assert integrity.status is CheckStatus.SUCCESS
         await database.dispose()
 
     asyncio.run(assert_persistence())
@@ -268,3 +273,93 @@ def test_bootstrap_subject_and_missing_configuration_fail_closed(tmp_path: Path)
     assert unavailable.json()["error"]["code"] == "AUTH_CONFIGURATION_UNAVAILABLE"
     assert protected.status_code == 401
     asyncio.run(database.dispose())
+
+
+def test_challenge_creation_is_bounded_per_device(tmp_path: Path) -> None:
+    database = prepare_database(tmp_path / "auth-challenge-capacity.sqlite")
+    settings = auth_settings().model_copy(
+        update={
+            "auth_max_pending_challenges": 2,
+            "auth_max_pending_challenges_per_device": 1,
+        }
+    )
+    app = create_app(settings, database=database)
+    device_id = str(new_uuid7())
+    with TestClient(app) as client:
+        first = client.post("/v1/auth/apple/challenges", json={"device_id": device_id})
+        denied = client.post("/v1/auth/apple/challenges", json={"device_id": device_id})
+
+    assert first.status_code == 200
+    assert denied.status_code == 429
+    assert denied.json()["error"]["code"] == "AUTH_CHALLENGE_CAPACITY_REACHED"
+    asyncio.run(database.dispose())
+
+
+def test_one_time_recovery_credential_enrolls_fresh_device(tmp_path: Path) -> None:
+    database = prepare_database(tmp_path / "auth-recovery.sqlite")
+    now = datetime.now(UTC)
+    raw_recovery = "odyssey-recovery-v1_" + ("r" * 48)
+    recovery_id = new_uuid7()
+
+    async def seed_recovery() -> None:
+        async with database.sessions() as session, session.begin():
+            session.add(
+                OwnerIdentityRecord(
+                    owner_id="owner",
+                    apple_subject=ALLOWED_SUBJECT,
+                    created_at=now,
+                    last_authenticated_at=now,
+                )
+            )
+            session.add(
+                OwnerRecoveryCredentialRecord(
+                    id=recovery_id,
+                    owner_id="owner",
+                    credential_hash=sha256(raw_recovery.encode()).hexdigest(),
+                    label="drill",
+                    created_at=now,
+                    expires_at=now + timedelta(days=1),
+                    created_by="integration-test",
+                )
+            )
+
+    asyncio.run(seed_recovery())
+    app = create_app(auth_settings(), database=database)
+    device_id = str(new_uuid7())
+    request = {
+        "recovery_credential": raw_recovery,
+        "device_id": device_id,
+        "display_name": "Recovered synthetic iPhone",
+        "platform": "ios",
+        "app_version": "1.0-recovery-test",
+    }
+    with TestClient(app) as client:
+        recovered = client.post("/v1/auth/recovery/exchange", json=request)
+        replay = client.post("/v1/auth/recovery/exchange", json=request)
+        assert recovered.status_code == 200
+        assert replay.status_code == 401
+        refreshed = client.post(
+            "/v1/auth/token/refresh",
+            json={
+                "device_id": device_id,
+                "refresh_credential": recovered.json()["refresh_credential"],
+            },
+        )
+        assert refreshed.status_code == 200
+
+    async def assert_consumed() -> None:
+        async with database.sessions() as session:
+            recovery = await session.get(OwnerRecoveryCredentialRecord, recovery_id)
+            audit = await session.scalar(
+                select(AuthDeviceAuditRecord).where(
+                    AuthDeviceAuditRecord.device_id == UUID(device_id)
+                )
+            )
+        assert recovery is not None
+        assert recovery.consumed_at is not None
+        assert recovery.consumed_by_device_id == UUID(device_id)
+        assert audit is not None
+        assert audit.event_type == "recovery_enrolled"
+        await database.dispose()
+
+    asyncio.run(assert_consumed())

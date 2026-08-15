@@ -19,6 +19,7 @@ from odyssey.auth.contracts import (
     DeviceRevocationRequest,
     DeviceSummary,
     OwnerPrincipal,
+    RecoveryExchangeRequest,
 )
 from odyssey.auth.service import OWNER_ID, AuthService, AuthServiceError
 from odyssey.config import AuthMode
@@ -119,6 +120,17 @@ async def refresh_access_token(
 ) -> AccessTokenResponse:
     try:
         return await service.refresh_access_token(body, now=datetime.now(UTC))
+    except AuthServiceError as error:
+        raise auth_error(error) from error
+
+
+@router.post("/recovery/exchange", response_model=DeviceEnrollmentResponse)
+async def exchange_recovery_credential(
+    body: RecoveryExchangeRequest,
+    service: AuthServiceDependency,
+) -> DeviceEnrollmentResponse:
+    try:
+        return await service.exchange_recovery_credential(body, now=datetime.now(UTC))
     except AuthServiceError as error:
         raise auth_error(error) from error
 

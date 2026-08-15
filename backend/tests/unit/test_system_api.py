@@ -37,6 +37,8 @@ def test_diagnostics_excludes_secret_configuration() -> None:
         database_url="postgresql://user:secret@private.example/odyssey",
         storage_secret_key="must-not-leak",
         attachment_upload_signing_key="must-also-not-leak",
+        apple_bootstrap_subject="private-apple-subject",
+        auth_access_token_signing_key="private-auth-signing-key-at-least-32-bytes",
     )
     with TestClient(create_app(settings)) as client:
         response = client.get("/v1/admin/diagnostics")
@@ -45,6 +47,8 @@ def test_diagnostics_excludes_secret_configuration() -> None:
     assert response.status_code == 200
     assert "must-not-leak" not in body
     assert "must-also-not-leak" not in body
+    assert "private-apple-subject" not in body
+    assert "private-auth-signing-key" not in body
     assert "private.example" not in body
     assert response.json()["configuration"]["environment"] == "test"
     assert response.json()["telemetry"]["payload_capture"] is False

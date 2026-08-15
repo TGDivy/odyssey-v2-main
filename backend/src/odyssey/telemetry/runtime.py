@@ -70,6 +70,11 @@ class TelemetryRuntime:
             unit="s",
             description="HTTP server request duration.",
         )
+        self._auth_denials = self.meter.create_counter(
+            "odyssey.auth.denials",
+            unit="{denial}",
+            description="Authentication and authorization denials.",
+        )
         self._outbox_jobs = self.meter.create_counter(
             "odyssey.outbox.jobs",
             unit="{job}",
@@ -145,6 +150,14 @@ class TelemetryRuntime:
         self._http_duration.record(duration_seconds, attributes)
         if status_code >= 400:
             self._http_errors.add(1, attributes)
+        if status_code in {401, 403}:
+            self._auth_denials.add(
+                1,
+                {
+                    "http.route": route,
+                    "http.response.status_code": status_code,
+                },
+            )
 
     def record_outbox_batch(
         self,

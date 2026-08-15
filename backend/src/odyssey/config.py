@@ -60,6 +60,8 @@ class Settings(BaseSettings):
     auth_clock_skew_seconds: int = Field(default=30, ge=0, le=300)
     auth_refresh_credential_ttl_days: int = Field(default=90, ge=1, le=365)
     auth_challenge_ttl_seconds: int = Field(default=300, ge=60, le=900)
+    auth_max_pending_challenges: int = Field(default=1000, ge=1, le=100_000)
+    auth_max_pending_challenges_per_device: int = Field(default=5, ge=1, le=100)
     proactive_enabled: bool = False
     telemetry_exporter: TelemetryExporter = TelemetryExporter.NONE
     telemetry_otlp_endpoint: str = ""
@@ -88,6 +90,8 @@ class Settings(BaseSettings):
             raise ValueError("current sync schema cannot be below the supported minimum")
         if self.maximum_attachment_bytes < self.attachment_chunk_bytes:
             raise ValueError("maximum attachment size cannot be below the upload chunk size")
+        if self.auth_max_pending_challenges_per_device > self.auth_max_pending_challenges:
+            raise ValueError("per-device auth challenge capacity cannot exceed global capacity")
         if self.env in {Environment.STAGING, Environment.PRODUCTION} and not (
             self.attachment_upload_signing_key.get_secret_value()
         ):
