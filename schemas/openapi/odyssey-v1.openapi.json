@@ -697,6 +697,15 @@
         "title": "CausalStatus",
         "type": "string"
       },
+      "ClaimRelation": {
+        "enum": [
+          "supporting",
+          "counterevidence",
+          "unclear"
+        ],
+        "title": "ClaimRelation",
+        "type": "string"
+      },
       "ConfidenceBand": {
         "enum": [
           "very_low",
@@ -980,6 +989,15 @@
           "future_recommendations"
         ],
         "title": "CorrectionApplyScope",
+        "type": "string"
+      },
+      "CounterevidenceStatus": {
+        "enum": [
+          "included",
+          "searched_none_found",
+          "not_required"
+        ],
+        "title": "CounterevidenceStatus",
         "type": "string"
       },
       "DataClass": {
@@ -1711,6 +1729,193 @@
         "title": "EvidenceFreshness",
         "type": "string"
       },
+      "EvidenceQueryRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "personal_context_scope": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Personal Context Scope",
+            "type": "string"
+          },
+          "population_context": {
+            "additionalProperties": true,
+            "title": "Population Context",
+            "type": "object"
+          },
+          "question": {
+            "maxLength": 4000,
+            "minLength": 3,
+            "title": "Question",
+            "type": "string"
+          },
+          "source_policy": {
+            "$ref": "#/components/schemas/EvidenceSourcePolicy"
+          }
+        },
+        "required": [
+          "question",
+          "personal_context_scope",
+          "source_policy"
+        ],
+        "title": "EvidenceQueryRequest",
+        "type": "object"
+      },
+      "EvidenceQueryResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "applicability_summary": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Applicability Summary",
+            "type": "array"
+          },
+          "assembled_at": {
+            "format": "date-time",
+            "title": "Assembled At",
+            "type": "string"
+          },
+          "counterevidence_claims": {
+            "items": {
+              "$ref": "#/components/schemas/ScientificClaimResult"
+            },
+            "title": "Counterevidence Claims",
+            "type": "array"
+          },
+          "counterevidence_status": {
+            "$ref": "#/components/schemas/CounterevidenceStatus"
+          },
+          "personal_experiments": {
+            "items": {
+              "$ref": "#/components/schemas/PersonalExperimentResult"
+            },
+            "title": "Personal Experiments",
+            "type": "array"
+          },
+          "personal_observations": {
+            "items": {
+              "$ref": "#/components/schemas/PersonalObservationResult"
+            },
+            "title": "Personal Observations",
+            "type": "array"
+          },
+          "personal_scope_status": {
+            "$ref": "#/components/schemas/PersonalScopeStatus"
+          },
+          "query_id": {
+            "format": "uuid",
+            "title": "Query Id",
+            "type": "string"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          },
+          "retrieval_version": {
+            "title": "Retrieval Version",
+            "type": "string"
+          },
+          "scientific_claims": {
+            "items": {
+              "$ref": "#/components/schemas/ScientificClaimResult"
+            },
+            "title": "Scientific Claims",
+            "type": "array"
+          },
+          "source_entity_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Source Entity Ids",
+            "type": "array"
+          },
+          "uncertainties": {
+            "items": {
+              "$ref": "#/components/schemas/EvidenceUncertainty"
+            },
+            "title": "Uncertainties",
+            "type": "array"
+          }
+        },
+        "required": [
+          "query_id",
+          "question",
+          "scientific_claims",
+          "counterevidence_claims",
+          "personal_observations",
+          "personal_experiments",
+          "personal_scope_status",
+          "counterevidence_status",
+          "applicability_summary",
+          "uncertainties",
+          "source_entity_ids",
+          "assembled_at",
+          "retrieval_version"
+        ],
+        "title": "EvidenceQueryResponse",
+        "type": "object"
+      },
+      "EvidenceSourcePolicy": {
+        "additionalProperties": false,
+        "properties": {
+          "include_emerging": {
+            "default": false,
+            "title": "Include Emerging",
+            "type": "boolean"
+          },
+          "maximum_results": {
+            "default": 20,
+            "maximum": 50.0,
+            "minimum": 1.0,
+            "title": "Maximum Results",
+            "type": "integer"
+          },
+          "minimum_quality": {
+            "$ref": "#/components/schemas/ConfidenceBand"
+          },
+          "require_counterevidence": {
+            "default": true,
+            "title": "Require Counterevidence",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "minimum_quality"
+        ],
+        "title": "EvidenceSourcePolicy",
+        "type": "object"
+      },
+      "EvidenceUncertainty": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/EvidenceUncertaintyCode"
+          },
+          "explanation": {
+            "title": "Explanation",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "explanation"
+        ],
+        "title": "EvidenceUncertainty",
+        "type": "object"
+      },
+      "EvidenceUncertaintyCode": {
+        "enum": [
+          "NO_SCIENTIFIC_MATCH",
+          "COUNTEREVIDENCE_NOT_FOUND",
+          "PERSONAL_SCOPE_NOT_APPROVED",
+          "MALFORMED_RECORDS_EXCLUDED",
+          "APPLICABILITY_REQUIRES_JUDGMENT"
+        ],
+        "title": "EvidenceUncertaintyCode",
+        "type": "string"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -1996,6 +2201,101 @@
           "replicated_experiment"
         ],
         "title": "PersonalCausalEvidence",
+        "type": "string"
+      },
+      "PersonalExperimentResult": {
+        "additionalProperties": false,
+        "properties": {
+          "domain_tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Domain Tags",
+            "type": "array"
+          },
+          "effect_estimate": {
+            "title": "Effect Estimate",
+            "type": "string"
+          },
+          "experiment_id": {
+            "format": "uuid",
+            "title": "Experiment Id",
+            "type": "string"
+          },
+          "interpretation": {
+            "title": "Interpretation",
+            "type": "string"
+          },
+          "interval_or_uncertainty": {
+            "title": "Interval Or Uncertainty",
+            "type": "string"
+          },
+          "replication_state": {
+            "title": "Replication State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "experiment_id",
+          "interpretation",
+          "effect_estimate",
+          "interval_or_uncertainty",
+          "replication_state",
+          "domain_tags"
+        ],
+        "title": "PersonalExperimentResult",
+        "type": "object"
+      },
+      "PersonalObservationResult": {
+        "additionalProperties": false,
+        "properties": {
+          "domain_tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Domain Tags",
+            "type": "array"
+          },
+          "observation_id": {
+            "format": "uuid",
+            "title": "Observation Id",
+            "type": "string"
+          },
+          "observed_at": {
+            "format": "date-time",
+            "title": "Observed At",
+            "type": "string"
+          },
+          "source_refs": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Source Refs",
+            "type": "array"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "observation_id",
+          "summary",
+          "observed_at",
+          "domain_tags",
+          "source_refs"
+        ],
+        "title": "PersonalObservationResult",
+        "type": "object"
+      },
+      "PersonalScopeStatus": {
+        "enum": [
+          "approved",
+          "not_approved",
+          "not_requested"
+        ],
+        "title": "PersonalScopeStatus",
         "type": "string"
       },
       "PreparedDecisionOption": {
@@ -2310,6 +2610,84 @@
         ],
         "title": "SchemaCompatibility",
         "type": "string"
+      },
+      "ScientificClaimResult": {
+        "additionalProperties": false,
+        "properties": {
+          "applicability_to_user": {
+            "title": "Applicability To User",
+            "type": "string"
+          },
+          "claim_id": {
+            "format": "uuid",
+            "title": "Claim Id",
+            "type": "string"
+          },
+          "claim_text": {
+            "title": "Claim Text",
+            "type": "string"
+          },
+          "confidence": {
+            "$ref": "#/components/schemas/ConfidenceBand"
+          },
+          "domain_tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Domain Tags",
+            "type": "array"
+          },
+          "emerging": {
+            "default": false,
+            "title": "Emerging",
+            "type": "boolean"
+          },
+          "exact_support_span_refs": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Exact Support Span Refs",
+            "type": "array"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limitations",
+            "type": "array"
+          },
+          "relation": {
+            "$ref": "#/components/schemas/ClaimRelation"
+          },
+          "source_id": {
+            "format": "uuid",
+            "title": "Source Id",
+            "type": "string"
+          },
+          "source_title": {
+            "title": "Source Title",
+            "type": "string"
+          },
+          "source_type": {
+            "title": "Source Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "claim_id",
+          "claim_text",
+          "relation",
+          "source_id",
+          "source_title",
+          "source_type",
+          "confidence",
+          "applicability_to_user",
+          "exact_support_span_refs",
+          "limitations",
+          "domain_tags"
+        ],
+        "title": "ScientificClaimResult",
+        "type": "object"
       },
       "Stakes": {
         "enum": [
@@ -4023,6 +4401,52 @@
         "summary": "Prepare Decision",
         "tags": [
           "decisions"
+        ]
+      }
+    },
+    "/v1/evidence/query": {
+      "post": {
+        "operationId": "query_evidence_v1_evidence_query_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EvidenceQueryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvidenceQueryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Query Evidence",
+        "tags": [
+          "evidence"
         ]
       }
     },

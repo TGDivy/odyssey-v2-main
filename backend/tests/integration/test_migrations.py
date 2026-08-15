@@ -22,7 +22,7 @@ def test_initial_migration_creates_immutable_ledger(
 
     connection = sqlite3.connect(database_path)
     revision = connection.execute("SELECT version_num FROM alembic_version").fetchone()
-    assert revision == ("20260815_0014",)
+    assert revision == ("20260815_0015",)
 
     provenance_id = str(uuid4())
     connection.execute(

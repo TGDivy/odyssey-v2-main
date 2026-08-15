@@ -37,7 +37,7 @@ deployment, external account configuration, or physical-device behavior.
 | §11 intent/intervention engine | `partial` | deterministic versioned silence/delivery policy plus B.6 owner-only evaluation of synced opportunities/intents, global pause, delivery-time client state, durable budgets and immutable audit | Opportunity generation, scheduling, response/outcome learning and platform delivery surfaces. |
 | §12 memory architecture | `partial` | immutable ledger/projections, capture/archive contracts, rebuild/export tools and immutable source-linked context snapshots | Admission, retrieval plans, contradiction, condensation, forgetting/redaction and broader source annotation services. |
 | §13 personal learning | `partial` | experiment contracts plus C.6 sample/multiplicity/missingness/temporal/confounder/robustness/context/safety promotion policy | Durable hypothesis/preregistration workflow, analysis runner, replication, preference drift and owner review. |
-| §14 scientific evidence | `contract-only` | `evidence/models.py`; source/claim/appraisal schemas | Evidence ingestion/query, appraisal policy, counterevidence, applicability, citations, updates. |
+| §14 scientific evidence | `partial` | source/claim/appraisal contracts plus B.8 deterministic quality-filtered citation retrieval, counterevidence search, applicability, explicit uncertainty and immutable query replay | Curated ingestion/appraisal workflow, source update/retraction jobs, broader synthesis and evidence UI. |
 | §15 score philosophy | `partial` | Constitution prohibits universal Life Score/people ranking; optional C.5 qualitative day-alignment policy is disabled by default, non-scalar, coverage/exception/comparison guarded and canonical-history independent | Owner-approved experiment flag, product surface and longitudinal harm/usefulness evaluation only if deliberately enabled. |
 | §16 AI philosophy | `contract-only` | `ai/models.py` | Capability router, structured fallbacks, refusal/uncertainty, provenance, evaluations, rollback. |
 | §17 trust and agency | `partial` | deterministic authority policy plus B.7 append-only event correction that reports whether future recommendations change and fails closed for unconsumed future scope | Durable Trust Center, future correction retrieval, revocation UI and autonomous-action audit UI. |
@@ -72,7 +72,7 @@ deployment, external account configuration, or physical-device behavior.
 | §47 implementation-agent handoff | `partial` | README, assumptions, architecture docs, runbooks, detailed owner handoff | Maintain final requirement ledger and unresolved credential/manual-step register. |
 | §48 scenario stress tests | `missing` | isolated sync/recovery tests only | Encode every scenario as deterministic fixtures/replays plus owner-only Apple scenarios. |
 | Appendix A domain contracts | `verified` | Pydantic contracts and generated JSON Schemas | Behavioral validation still belongs to each owning section above. |
-| Appendix B API/events | `partial` | error/auth/capture/sync/attachment/system routes, B.4 context, B.5 decision, B.6 intervention and B.7 idempotent append-only feedback/correction plus immutable event registry | Evidence query and encrypted asynchronous export APIs. |
+| Appendix B API/events | `partial` | error/auth/capture/sync/attachment/system routes plus B.4–B.8 behavioral APIs and immutable event registry | Encrypted asynchronous export API B.9 remains. |
 | Appendix C policies | `verified` | C.1–C.7 are versioned deterministic pure policies with focused boundary/replay-style automated tests; C.5 is disabled by default | Cross-policy golden scenarios remain tracked under §29 rather than policy implementation. |
 | Appendix D sources | `documented` | cited research and official-source register | Record source-version/update policy in evidence implementation. |
 | Appendix E traceability/definition of done | `partial` | this audit plus master traceability table | Close every unchecked E.2 row with automated or owner evidence. |
@@ -95,7 +95,7 @@ deployment, external account configuration, or physical-device behavior.
 | 2.3 intent engine v1 | `partial` | C.1 silence gate, budgets, cooldown and channel policy are tested; opportunity generation/durability/delivery are absent. |
 | 2.4 AI synthesis/evaluations | `deferred` | Correctly gated until deterministic context, evidence and evaluations exist. |
 | 2.5 one-month dogfood | `missing` | Requires owner use and prior Edition 2 gates. |
-| 3.1 evidence library | `contract-only` | Contracts only. |
+| 3.1 evidence library | `partial` | Contracts and B.8 deterministic scoped scientific/personal query with immutable replay exist; ingestion, appraisal review, update jobs and UI remain. |
 | 3.2 N-of-1 laboratory | `partial` | Contracts and conservative C.6 pattern-promotion gate exist; experiment execution, analysis, replication and review loops remain. |
 | 3.3 training/nutrition depth | `deferred` | No unsafe or unsupported guidance is enabled. |
 | 3.4 archive v1 | `contract-only` | Episode/chapter contracts and raw capture list only. |
@@ -140,8 +140,8 @@ personal state or complete the longitudinal protocol.
 | Standing permissions visible/revocable | `repo` | `partial` | C.4 evaluates active/revoked/time-bounded/scoped grants; durable Trust Center and synced revocation UI remain. |
 | External action confirmation | `repo` | `verified` | C.4 elevates risky execution and requires contemporaneous confirmation for external commits; no external executor is enabled. |
 | Synced global proactive pause | `repo` | `partial` | B.6 reads the sync-converged `proactive_control` and hard-suppresses; Trust Center/native multi-device control surface remains. |
-| Source/claim provenance inspectable | `repo` | `partial` | Provenance contracts and ledger exist; evidence UI/query absent. |
-| Population/personal evidence distinct | `repo` | `contract-only` | Evidence contracts distinguish them; query behavior absent. |
+| Source/claim provenance inspectable | `repo` | `partial` | B.8 returns exact support-span/source identifiers and persists exact query replay; evidence UI and broader trace navigation remain. |
+| Population/personal evidence distinct | `repo` | `verified` | B.8 returns separate scientific, personal-observation and personal-experiment collections and excludes personal records without explicit scope approval. |
 | Historical replay passes | `repo` | `missing` | No cross-domain replay suite. |
 | Severe failures have regressions | `repo` | `partial` | Sync/auth/restore faults covered; spec-wide scenario suite absent. |
 | One-week protocol runnable | `repo` | `missing` | Prose only. |
@@ -164,7 +164,7 @@ At this snapshot:
 
 - The last full `make verify` baseline reported 106 backend tests, 85.65% backend
   coverage, 67 deterministic generated schema artifacts, OpenTofu validation,
-  and five mocked OpenTofu plans; focused work since then adds policy/context/intervention/decision/feedback tests and fourteen migrations.
+  and five mocked OpenTofu plans; focused work since then adds policy/context/intervention/decision/feedback/evidence tests and fifteen migrations.
 - The portable Swift 6.1 release suite reported 45 tests passing.
 - iOS sources passed parser-only validation and `apple/project.yml` passed YAML
   structure checks.
