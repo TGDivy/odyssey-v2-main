@@ -41,7 +41,7 @@ deployment, external account configuration, or physical-device behavior.
 | §15 score philosophy | `documented` | Constitution prohibits universal Life Score; no ranking implementation | Optional removable day-alignment experiment with data-quality and comparison guards. |
 | §16 AI philosophy | `contract-only` | `ai/models.py` | Capability router, structured fallbacks, refusal/uncertainty, provenance, evaluations, rollback. |
 | §17 trust and agency | `partial` | standing authorization/policy-decision contracts plus deterministic risk, scope, condition, review, limit, pause and confirmation policy | Durable Trust Center, revocation sync, correction effects and autonomous-action audit UI. |
-| §18 experience architecture | `partial` | iPhone quiet Now, capture, Archive, Workshop/repair surfaces | Tomorrow Map, decision/evidence flows, re-entry, accessibility and complete platform depth. |
+| §18 experience architecture | `partial` | iPhone quiet Now, capture, Archive, Workshop/repair surfaces and deterministic guilt-free re-entry surface contract | Tomorrow Map, rendered re-entry, decision/evidence flows, accessibility and complete platform depth. |
 | §19 visual and art direction | `partial` | native SwiftUI shells and shared assets scaffold | Tokens, map/world states, motion/accessibility treatment, snapshots, reduced-motion proof. |
 | §20 Apple ecosystem | `partial` | iOS/Watch/macOS shells, widgets/intents/share targets, portable data/auth/sync packages | Real HealthKit/EventKit/location/watch/widget adapters and Xcode/device validation. |
 | §21 integrations | `deferred` | entitlements and adapter seams only | Implement consented adapters incrementally; keep OAuth/webhooks/provider credentials disabled. |
@@ -73,7 +73,7 @@ deployment, external account configuration, or physical-device behavior.
 | §48 scenario stress tests | `missing` | isolated sync/recovery tests only | Encode every scenario as deterministic fixtures/replays plus owner-only Apple scenarios. |
 | Appendix A domain contracts | `verified` | Pydantic contracts and generated JSON Schemas | Behavioral validation still belongs to each owning section above. |
 | Appendix B API/events | `partial` | error envelope, auth/capture/sync/attachment/system routes; immutable event registry | Context, decision, intervention, feedback, evidence and encrypted asynchronous export APIs. |
-| Appendix C policies | `partial` | C.1–C.4 and C.6 deterministic engines exist with focused boundary/replay-style tests | Implement C.5 and C.7 plus the cross-policy golden replay suite. |
+| Appendix C policies | `partial` | C.1–C.4, C.6 and C.7 deterministic engines exist with focused boundary/replay-style tests | Implement optional C.5 plus the cross-policy golden replay suite. |
 | Appendix D sources | `documented` | cited research and official-source register | Record source-version/update policy in evidence implementation. |
 | Appendix E traceability/definition of done | `partial` | this audit plus master traceability table | Close every unchecked E.2 row with automated or owner evidence. |
 
@@ -88,7 +88,7 @@ deployment, external account configuration, or physical-device behavior.
 | 1.1 Charter/Season Workshop | `contract-only` | Contracts and a repair Workshop surface exist; editor/history/acceptance loop does not. |
 | 1.2 capture/personal library | `partial` | Offline durable text capture and local Archive exist; media/import/search/annotation breadth remains. |
 | 1.3 Apple context adapters | `missing` | Targets/seams exist without real incremental HealthKit/calendar/location adapters. |
-| 1.4 Now/Tomorrow Map v1 | `partial` | Quiet Now exists; deterministic context and Tomorrow Map do not. |
+| 1.4 Now/Tomorrow Map v1 | `partial` | Quiet Now and C.7 re-entry policy exist; deterministic context, Tomorrow Map and rendered re-entry do not. |
 | 1.5 telemetry/review | `contract-only` | Schemas exist; declared questions and product review loop do not. |
 | 2.1 decision journal | `contract-only` | Decision schemas/events exist without a usable loop. |
 | 2.2 consequence engine v1 | `partial` | C.2 bounded propagation core is tested; domain rules, durable inputs/outputs, calibration, replay API and product surface remain. |
@@ -113,7 +113,7 @@ personal state or complete the longitudinal protocol.
 | Accepted Charter, life stage and season | `lived` | `missing` | Contracts only; requires editor and explicit owner acceptance. |
 | Now can intentionally show silence | `repo` | `implemented` | Quiet iPhone Now state exists; deterministic silence policy remains to connect. |
 | No universal Life Score or people ranking | `repo` | `verified` | Constitution and implementation omit both. |
-| Guilt-free re-entry | `repo` | `missing` | No re-entry policy/surface at snapshot. |
+| Guilt-free re-entry | `repo` | `partial` | C.7 guarantees at most three current changes, one question, stale expiry, clean options, backlog suppression and no absence penalty; native rendering remains. |
 | Two-line proactive copy | `repo` | `missing` | No enabled proactive copy pipeline or lint. |
 | Offline local capture | `repo` | `verified` | Atomic portable/native capture tests pass. |
 | Two-device convergence | `repo` | `verified` | Simulated backend/native convergence and conflict tests. |
