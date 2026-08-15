@@ -69,3 +69,22 @@ this bundle format is not the encrypted production backup path.
 Artifact verification does not make a backup recovery-valid. A backup remains
 marked `pending_clean_room_restore` until the separate restore drill restores it
 into an empty target and runs current migrations and integrity checks.
+
+Run that drill against a target that does not yet exist (SQLite) or an empty,
+isolated database (PostgreSQL):
+
+```bash
+uv run python ../tools/restore/clean_room_restore.py \
+  --backup /tmp/odyssey-pre-migration-backup \
+  --database-url 'sqlite+aiosqlite:////tmp/odyssey-restored.sqlite' \
+  --report /tmp/odyssey-restore-report.json
+```
+
+The restore refuses a non-empty target, re-verifies the bundle, restores the
+native database, applies the current Alembic head, rebuilds projections from the
+ledger, runs database/foreign-key/projection integrity checks, and writes an
+owner-only report. Database-only bundles explicitly report object restoration
+as not applicable; once Odyssey owns attachments, their manifest is a mandatory
+input rather than a silent skip. Secret rotation, fresh-client enrollment,
+unsynced-operation reconciliation, and isolated-environment destruction remain
+explicit report steps because they require operator or device context.

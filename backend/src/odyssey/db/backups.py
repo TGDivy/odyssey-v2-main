@@ -37,6 +37,7 @@ class BackupReport:
     artifact: BackupArtifact
     manifest_sha256: str
     artifact_verified: bool
+    table_counts: dict[str, int] | None
 
     def as_json(self) -> dict[str, Any]:
         value = asdict(self)
@@ -141,7 +142,9 @@ def require_executable(name: str) -> str:
     return executable
 
 
-def run_postgres_command(command: list[str], *, environment: dict[str, str]) -> None:
+def run_postgres_command(
+    command: list[str], *, environment: dict[str, str]
+) -> subprocess.CompletedProcess[str]:
     completed = subprocess.run(
         command,
         check=False,
@@ -152,6 +155,7 @@ def run_postgres_command(command: list[str], *, environment: dict[str, str]) -> 
     if completed.returncode != 0:
         message = completed.stderr.strip() or completed.stdout.strip() or "command failed"
         raise BackupError(message)
+    return completed
 
 
 def create_postgres_artifact(url: URL, destination: Path) -> None:
@@ -193,6 +197,8 @@ def verify_database_backup(destination: Path) -> BackupReport:
     manifest, manifest_hash = verify_manifest(destination)
     artifact_document = manifest["artifact"]
     artifact = BackupArtifact(**artifact_document)
+    if Path(artifact.path).name != artifact.path:
+        raise BackupError("backup artifact path must be a local filename")
     artifact_path = destination / artifact.path
     if not artifact_path.is_file():
         raise BackupError("backup artifact is missing")
@@ -218,6 +224,7 @@ def verify_database_backup(destination: Path) -> BackupReport:
         artifact=artifact,
         manifest_sha256=manifest_hash,
         artifact_verified=True,
+        table_counts=manifest.get("table_counts"),
     )
 
 
