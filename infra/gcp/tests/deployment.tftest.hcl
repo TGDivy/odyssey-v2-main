@@ -55,6 +55,7 @@ run "development_workloads" {
     environment           = "development"
     deploy_workloads      = true
     auth_mode             = "development"
+    owner_export_enabled  = true
     api_image             = "europe-west2-docker.pkg.dev/example/odyssey/api@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     backup_image          = "europe-west2-docker.pkg.dev/example/odyssey/backup@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
     cloud_sql_proxy_image = "gcr.io/cloud-sql-connectors/cloud-sql-proxy@sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
@@ -64,6 +65,16 @@ run "development_workloads" {
   assert {
     condition     = local.workload_count == 1 && local.backup_count == 1
     error_message = "an explicit complete image set must enable all bounded workloads"
+  }
+
+  assert {
+    condition = (
+      local.api_secret_environment.ODYSSEY_EXPORT_WRAPPING_KEY == "export-wrapping-key" &&
+      local.worker_secret_environment.ODYSSEY_EXPORT_WRAPPING_KEY == "export-wrapping-key" &&
+      local.worker_environment.ODYSSEY_ATTACHMENT_STORE_BACKEND == "gcs" &&
+      local.worker_environment.ODYSSEY_OWNER_EXPORT_ENABLED == "true"
+    )
+    error_message = "enabled owner exports must wire the same key and durable object store"
   }
 }
 

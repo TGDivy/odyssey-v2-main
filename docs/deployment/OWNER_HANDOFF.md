@@ -12,8 +12,10 @@ personal data.
 As of 2026-08-15, repository validation proves the credential-free contracts;
 it does not prove an owner deployment:
 
-- `make verify` passes with 106 tests, 85.65% backend coverage, 67 generated
-  schemas, deterministic fixtures, and the structural GCP contract.
+- The current backend baseline passes 195 tests at 86.81% coverage. Schema
+  generation verifies 67 artifacts, and OpenTofu 1.10.6 validates all five
+  mocked plans including encrypted-export wiring. Run the complete
+  cross-platform `make verify` again from the release commit before deployment.
 - OpenTofu 1.10.6 and Google provider 7.44.0 were separately validated against
   five mocked plans. No real Google Cloud resource has been provisioned or
   deployed.
@@ -1258,11 +1260,121 @@ delivery separately.
 
 ## 17. Perform the first export and restore drill
 
-**Gate: OWNER REQUIRED AND CURRENTLY BLOCKED.** A real cloud restore has not run,
-and production owner-passphrase encrypted export is not implemented. Plaintext
-local export is not acceptable for real owner data.
+**Gate: OWNER REQUIRED AND LIVE PROOF IS CURRENTLY BLOCKED.** The encrypted,
+signed, resumable owner-export implementation and deployment contract exist,
+but no real Cloud Run export or clean-room cloud restore has run. Plaintext
+local export remains unacceptable for real owner data.
 
 **Action**
+
+First enable the capability in staging. Confirm no export jobs are queued,
+create the wrapping-key version through stdin, set the private staging
+`.tfvars`, and apply the API and worker configuration together:
+
+```bash
+export ENVIRONMENT="staging"
+export PROJECT_ID="$STAGING_PROJECT_ID"
+openssl rand -base64 48 | gcloud secrets versions add \
+  "odyssey-${ENVIRONMENT}-export-wrapping-key" \
+  --project "$PROJECT_ID" --data-file=-
+```
+
+```hcl
+owner_export_enabled = true
+maximum_export_bytes = 536870912
+```
+
+Do not rotate this key while an `owner-export` outbox item is queued or
+processing. For rotation, remove API invoker access or otherwise freeze new
+authenticated export requests, let the old revision drain the queue, pause the
+worker schedule, add the new secret version, and deploy API and worker together
+before restoring traffic. Do not set the feature flag false before draining;
+that also disables the export handler. Preserve the signing public key from
+each authenticated job status; old completed artifacts use the old public key
+but need only their owner passphrase for decryption.
+
+On an encrypted owner-controlled machine, request an archive without placing
+the token or passphrase in command arguments. Store the response and artifact
+outside the repository:
+
+```bash
+umask 077
+export API_BASE="https://REPLACE_STAGING_API"
+export PRIVATE_EXPORT_DIR="/private/encrypted-volume/odyssey-export-drill"
+mkdir -p "$PRIVATE_EXPORT_DIR"
+read -r -s OWNER_ACCESS_TOKEN
+printf '\n'
+read -r -s OWNER_EXPORT_PASSPHRASE
+printf '\n'
+export JOB_RESPONSE="$PRIVATE_EXPORT_DIR/job.json"
+
+{
+  printf 'url = "%s/v1/exports"\n' "$API_BASE"
+  printf 'request = "POST"\n'
+  printf 'header = "Authorization: Bearer %s"\n' "$OWNER_ACCESS_TOKEN"
+  printf 'header = "Idempotency-Key: first-owner-export-%s"\n' \
+    "$(date -u +%Y%m%dT%H%M%SZ)"
+  printf 'header = "Content-Type: application/json"\n'
+  printf 'header = "X-Odyssey-Export-Passphrase: %s"\n' \
+    "$OWNER_EXPORT_PASSPHRASE"
+  printf 'data = "{\\"scope\\":\\"all_odyssey_owned_data\\",'
+  printf '\\"formats\\":[\\"jsonl\\",\\"csv\\",\\"markdown\\"],'
+  printf '\\"include_raw_sources\\":true,'
+  printf '\\"include_model_traces\\":false,'
+  printf '\\"encryption\\":{\\"mode\\":\\"owner_passphrase\\"}}"\n'
+} | curl --fail-with-body --silent --show-error --config - \
+  --output "$JOB_RESPONSE"
+
+export STATUS_PATH="$(jq -r '.status_url' "$JOB_RESPONSE")"
+```
+
+Poll the authenticated status until it is `completed`; stop on `failed` and
+retain only the error code. Then prove byte-range resume by downloading the
+first 1,024 bytes and continuing the same file:
+
+```bash
+{
+  printf 'header = "Authorization: Bearer %s"\n' "$OWNER_ACCESS_TOKEN"
+} | curl --fail-with-body --silent --show-error --config - \
+  "$API_BASE$STATUS_PATH" --output "$PRIVATE_EXPORT_DIR/status.json"
+jq -e '.status == "completed" and .artifact_sha256 and .signing_public_key' \
+  "$PRIVATE_EXPORT_DIR/status.json"
+
+export DOWNLOAD_PATH="$(jq -r '.download_url' "$PRIVATE_EXPORT_DIR/status.json")"
+export ARTIFACT="$PRIVATE_EXPORT_DIR/owner-export.odyx"
+{
+  printf 'header = "Authorization: Bearer %s"\n' "$OWNER_ACCESS_TOKEN"
+  printf 'header = "Range: bytes=0-1023"\n'
+} | curl --fail-with-body --silent --show-error --config - \
+  "$API_BASE$DOWNLOAD_PATH" --output "$ARTIFACT"
+{
+  printf 'header = "Authorization: Bearer %s"\n' "$OWNER_ACCESS_TOKEN"
+} | curl --fail-with-body --silent --show-error --config - \
+  --continue-at - "$API_BASE$DOWNLOAD_PATH" --output "$ARTIFACT"
+
+test "$(sha256sum "$ARTIFACT" | cut -d' ' -f1)" = \
+  "$(jq -r '.artifact_sha256' "$PRIVATE_EXPORT_DIR/status.json")"
+```
+
+Verify and extract with the authenticated status key. The tool prompts for the
+same passphrase; do not add it to the command line:
+
+```bash
+cd "$REPOSITORY_ROOT/backend"
+uv run python ../tools/export/decrypt_owner_export.py \
+  "$ARTIFACT" \
+  --expected-signing-public-key \
+    "$(jq -r '.signing_public_key' "$PRIVATE_EXPORT_DIR/status.json")" \
+  --output-dir "$PRIVATE_EXPORT_DIR/verified"
+unset OWNER_EXPORT_PASSPHRASE OWNER_ACCESS_TOKEN
+```
+
+Inspect the manifest, open representative Markdown/CSV/JSONL data, check one
+raw attachment hash, and confirm no credential or recovery tables exist. Keep
+the decrypted directory only for the drill window, on encrypted storage.
+
+Then perform the independent service-disaster restore. This validates cloud
+backup recovery, not owner-passphrase decryption:
 
 Follow every section of `docs/runbooks/clean-room-recovery.md` in a dedicated,
 expiring restore project. Select immutable GCS generations, materialize the
@@ -1296,15 +1408,19 @@ uv run python ../tools/restore/clean_room_restore.py \
 
 Apply current migrations, run integrity checks, enroll a fresh physical client,
 reconcile a surviving unsynced operation fixture, measure RPO/RTO, rotate
-temporary secrets, and destroy the isolated project. Separately, do not call the
-current plaintext JSONL exporter a production owner export; implement and
-validate passphrase-encrypted, resumable export first.
+temporary secrets, and destroy the isolated project. Do not substitute the
+legacy plaintext development JSONL exporter for the encrypted API artifact.
 
 **Expected output**
 
 - Restore report says database and object restore passed, exact manifest hash
   and object count match, integrity is healthy, and current migration head is
   applied.
+- Export creation returns `202`, status reaches `completed`, a resumed download
+  matches `artifact_sha256`, and owner verification reports a valid pinned
+  signature plus every file hash.
+- The decrypted manifest records schema revision, exclusions, redactions,
+  formats, raw attachment hashes, and no operational credential material.
 - Fresh-device history, cursors, and projection checksums match.
 - Cloud RPO is under 15 minutes and RTO under four hours, or the release remains
   blocked with measured remediation.
@@ -1316,15 +1432,22 @@ validate passphrase-encrypted, resumable export first.
   failed drill. Preserve evidence and stop promotion.
 - Missing PostgreSQL clients or private networking must be fixed in the
   isolated environment, not worked around by skipping verification.
-- If encrypted owner export is unavailable, record the blocker; never place a
-  plaintext real export in `/tmp`, Git, CI, or an unmanaged machine.
+- `EXPORT_SIZE_LIMIT_EXCEEDED` requires a reviewed limit/memory change or a
+  narrower future export scope; never bypass the limit with a plaintext dump.
+- Signature, pinned-key, manifest, range-resume, or attachment-hash mismatch is
+  a failed drill. Quarantine the encrypted artifact and stop promotion.
+- Never place a plaintext real export in `/tmp`, Git, CI, or an unmanaged
+  machine.
 
 **Evidence retained**
 
-- Selected generations/hashes, source commit, restore/integrity report hashes,
-  RPO/RTO, fresh-device convergence evidence, secret-rotation IDs, destruction
-  receipt, billing check, and owner approval/rejection. Keep decrypted artifacts
-  only for the minimum drill window on encrypted storage.
+- Export job ID, encrypted artifact/manifest hashes, pinned public key,
+  verification report, range response headers, selected backup generations,
+  source commit, restore/integrity report hashes, RPO/RTO, fresh-device
+  convergence evidence, secret-version IDs, destruction receipt, billing
+  check, and owner approval/rejection. Retain no passphrase, access token,
+  wrapping-key value, or decrypted owner payload in general evidence. Keep
+  decrypted artifacts only for the minimum drill window on encrypted storage.
 
 ## 18. Promote the production build
 

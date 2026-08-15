@@ -122,6 +122,23 @@ variable "proactive_enabled" {
   default     = false
 }
 
+variable "owner_export_enabled" {
+  description = "Enable encrypted owner exports after provisioning the wrapping-key secret."
+  type        = bool
+  default     = false
+}
+
+variable "maximum_export_bytes" {
+  description = "Maximum encrypted owner export artifact size."
+  type        = number
+  default     = 536870912
+
+  validation {
+    condition     = var.maximum_export_bytes >= 1024 && var.maximum_export_bytes <= 5368709120
+    error_message = "maximum_export_bytes must be between 1 KiB and 5 GiB"
+  }
+}
+
 variable "cloud_sql_tier" {
   description = "Cloud SQL machine tier."
   type        = string

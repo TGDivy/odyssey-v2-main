@@ -70,6 +70,7 @@ async def diagnostics(
             "queue": True,
             "cloud_model": settings.model_provider != "deterministic",
             "proactive_delivery": settings.proactive_enabled,
+            "owner_export": settings.owner_export_enabled,
             "telemetry_export": telemetry.enabled,
         },
         telemetry=telemetry.safe_diagnostics(),

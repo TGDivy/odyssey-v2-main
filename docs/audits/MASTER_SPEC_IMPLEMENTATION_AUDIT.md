@@ -45,7 +45,7 @@ deployment, external account configuration, or physical-device behavior.
 | §19 visual and art direction | `partial` | native SwiftUI shells and shared assets scaffold | Tokens, map/world states, motion/accessibility treatment, snapshots, reduced-motion proof. |
 | §20 Apple ecosystem | `partial` | iOS/Watch/macOS shells, widgets/intents/share targets, portable data/auth/sync packages | Real HealthKit/EventKit/location/watch/widget adapters and Xcode/device validation. |
 | §21 integrations | `deferred` | entitlements and adapter seams only | Implement consented adapters incrementally; keep OAuth/webhooks/provider credentials disabled. |
-| §22 data architecture | `partial` | append-only ledger, projections, provenance contracts, export/import, 10 migrations | Complete semantic services, selective memory, retention/redaction, scale budgets. |
+| §22 data architecture | `partial` | append-only ledger, projections, provenance contracts, encrypted owner export/import foundations, 16 migrations | Complete semantic services, selective memory, retention/redaction, scale budgets. |
 | §23 backend architecture | `partial` | FastAPI modular monolith, Postgres/SQLite support, worker/outbox, auth/sync/attachments and deterministic context assembly | Remaining domain modules and Appendix B routes, queues/workflows and operational SLO evidence. |
 | §24 AI/model architecture | `contract-only` | model-run schema | Provider-neutral router, tool boundaries, prompt defense, eval gates, budget and rollback control. |
 | §25 offline/synchronization | `verified` | server sync service, simulated clients, conflicts, native GRDB queue/coordinator, convergence tests | Xcode/device multi-device proof remains owner-only. |
@@ -58,7 +58,7 @@ deployment, external account configuration, or physical-device behavior.
 | §32 failure modes/pre-mortem | `partial` | kill switches, retry/conflict diagnostics, incident/recovery runbooks | Regression scenarios for each severe failure and owner drills. |
 | §33 technology choices | `documented` | master specification, ADR 0001, lockfiles, OpenTofu and XcodeGen manifests | Add ADRs whenever implementation departs from selected architecture. |
 | §34 repository architecture | `verified` | monorepo layout, portable paths, package/infra/docs/tool boundaries | Keep directory contract synchronized as editions are added. |
-| §35 testing strategy | `partial` | 106 backend tests, 45 portable Swift tests at snapshot, schema/fixture/IaC checks | Missing replay, golden, UI, performance, fault, Apple integration and live recovery suites. |
+| §35 testing strategy | `partial` | 195 backend tests, 45 portable Swift tests at snapshot, schema/fixture/IaC checks | Missing replay, golden, UI, performance, fault, Apple integration and live recovery suites. |
 | §36 deployment architecture | `implemented` | GCP OpenTofu, deployment workflow examples, migration/canary/rollback and handoff docs | Owner provisions accounts, imports secrets, deploys, validates alerts/backups/restore and signs apps. |
 | §37 development environments | `verified` | lockfiles, Compose, environment diagnostics, `make verify`, Mac-only skip reporting | Fresh personal Mac proof is owner-only. |
 | §38 roadmap | `partial` | Edition 0 substrate and iPhone capture/auth/sync slice | Edition 1–4 product loops and milestone acceptance artifacts remain. |
@@ -72,7 +72,7 @@ deployment, external account configuration, or physical-device behavior.
 | §47 implementation-agent handoff | `partial` | README, assumptions, architecture docs, runbooks, detailed owner handoff | Maintain final requirement ledger and unresolved credential/manual-step register. |
 | §48 scenario stress tests | `missing` | isolated sync/recovery tests only | Encode every scenario as deterministic fixtures/replays plus owner-only Apple scenarios. |
 | Appendix A domain contracts | `verified` | Pydantic contracts and generated JSON Schemas | Behavioral validation still belongs to each owning section above. |
-| Appendix B API/events | `partial` | error/auth/capture/sync/attachment/system routes plus B.4–B.8 behavioral APIs and immutable event registry | Encrypted asynchronous export API B.9 remains. |
+| Appendix B API/events | `verified` | error/auth/capture/sync/attachment/system routes, B.4–B.8 behavioral APIs, B.9 encrypted asynchronous signed/resumable owner exports, and immutable event registry | Preserve contract compatibility as product surfaces consume the APIs. |
 | Appendix C policies | `verified` | C.1–C.7 are versioned deterministic pure policies with focused boundary/replay-style automated tests; C.5 is disabled by default | Cross-policy golden scenarios remain tracked under §29 rather than policy implementation. |
 | Appendix D sources | `documented` | cited research and official-source register | Record source-version/update policy in evidence implementation. |
 | Appendix E traceability/definition of done | `partial` | this audit plus master traceability table | Close every unchecked E.2 row with automated or owner evidence. |
@@ -118,7 +118,7 @@ personal state or complete the longitudinal protocol.
 | Offline local capture | `repo` | `verified` | Atomic portable/native capture tests pass. |
 | Two-device convergence | `repo` | `verified` | Simulated backend/native convergence and conflict tests. |
 | Migration fixtures | `repo` | `partial` | Current migrations test; full historical fixture matrix absent. |
-| Intelligible owner export | `repo` | `partial` | Database export exists; full multi-format signed encrypted export absent. |
+| Intelligible owner export | `repo` | `verified` | B.9 emits signed passphrase-encrypted JSONL/CSV/Markdown ZIPs with optional raw attachments, explicit credential exclusions, immutable transition audit, retry-safe outbox processing, byte-range download, and owner verification CLI; live cloud drill remains owner-only. |
 | Cloud backup/PITR enabled | `owner` | `implemented` | IaC exists; no deployment evidence. |
 | Clean-room restore succeeded | `owner` | `implemented` | Tool/runbook exists; no owner execution evidence. |
 | No wipe-based release step | `repo` | `verified` | Migration and rollback docs explicitly forbid routine data wipes. |
@@ -162,9 +162,10 @@ personal state or complete the longitudinal protocol.
 
 At this snapshot:
 
-- The last full `make verify` baseline reported 106 backend tests, 85.65% backend
-  coverage, 67 deterministic generated schema artifacts, OpenTofu validation,
-  and five mocked OpenTofu plans; focused work since then adds policy/context/intervention/decision/feedback/evidence tests and fifteen migrations.
+- The current full backend run reports 195 tests and 86.81% coverage. Schema
+  generation verifies 67 deterministic artifacts; OpenTofu 1.10.6 validates
+  the deployment and all five mocked plans, including encrypted-export secret,
+  storage, IAM and worker wiring across sixteen migrations.
 - The portable Swift 6.1 release suite reported 45 tests passing.
 - iOS sources passed parser-only validation and `apple/project.yml` passed YAML
   structure checks.

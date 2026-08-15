@@ -105,6 +105,9 @@ class Settings(BaseSettings):
     attachment_chunk_bytes: int = Field(default=4 * 1024 * 1024, ge=1)
     maximum_attachment_bytes: int = Field(default=1024 * 1024 * 1024, ge=1)
     attachment_upload_ttl_seconds: int = Field(default=3600, ge=60, le=86400)
+    owner_export_enabled: bool = False
+    export_wrapping_key: SecretStr = SecretStr("")
+    maximum_export_bytes: int = Field(default=512 * 1024 * 1024, ge=1024)
 
     @model_validator(mode="after")
     def validate_schema_window(self) -> "Settings":
@@ -114,6 +117,11 @@ class Settings(BaseSettings):
             raise ValueError("maximum attachment size cannot be below the upload chunk size")
         if self.auth_max_pending_challenges_per_device > self.auth_max_pending_challenges:
             raise ValueError("per-device auth challenge capacity cannot exceed global capacity")
+        if (
+            self.owner_export_enabled
+            and len(self.export_wrapping_key.get_secret_value().encode()) < 32
+        ):
+            raise ValueError("owner export requires a wrapping key of at least 32 bytes")
         static_access_key = self.storage_access_key.get_secret_value()
         static_secret_key = self.storage_secret_key.get_secret_value()
         if bool(static_access_key) != bool(static_secret_key):
@@ -222,6 +230,9 @@ class Settings(BaseSettings):
             ),
             "storage_static_credentials_configured": bool(static_access_key),
             "storage_versioning_required": self.storage_require_versioning,
+            "owner_export_enabled": self.owner_export_enabled,
+            "export_wrapping_key_configured": bool(self.export_wrapping_key.get_secret_value()),
+            "maximum_export_bytes": self.maximum_export_bytes,
         }
 
 

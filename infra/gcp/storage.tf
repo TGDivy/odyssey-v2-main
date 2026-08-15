@@ -171,6 +171,22 @@ resource "google_storage_bucket_iam_member" "api_attachment_bucket_metadata" {
   member = "serviceAccount:${google_service_account.api.email}"
 }
 
+resource "google_storage_bucket_iam_member" "worker_attachments" {
+  count = var.owner_export_enabled ? 1 : 0
+
+  bucket = google_storage_bucket.attachments.name
+  role   = "roles/storage.objectAdmin"
+  member = "serviceAccount:${google_service_account.worker.email}"
+}
+
+resource "google_storage_bucket_iam_member" "worker_attachment_bucket_metadata" {
+  count = var.owner_export_enabled ? 1 : 0
+
+  bucket = google_storage_bucket.attachments.name
+  role   = "roles/storage.legacyBucketReader"
+  member = "serviceAccount:${google_service_account.worker.email}"
+}
+
 resource "google_storage_bucket_iam_member" "backup_attachments_reader" {
   bucket = google_storage_bucket.attachments.name
   role   = "roles/storage.objectViewer"

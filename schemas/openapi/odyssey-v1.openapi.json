@@ -1916,6 +1916,224 @@
         "title": "EvidenceUncertaintyCode",
         "type": "string"
       },
+      "ExportCreateRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "encryption": {
+            "$ref": "#/components/schemas/ExportEncryptionRequest"
+          },
+          "formats": {
+            "items": {
+              "$ref": "#/components/schemas/ExportFormat"
+            },
+            "maxItems": 3,
+            "minItems": 1,
+            "title": "Formats",
+            "type": "array"
+          },
+          "include_model_traces": {
+            "title": "Include Model Traces",
+            "type": "boolean"
+          },
+          "include_raw_sources": {
+            "title": "Include Raw Sources",
+            "type": "boolean"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/ExportScope"
+          }
+        },
+        "required": [
+          "scope",
+          "formats",
+          "include_raw_sources",
+          "include_model_traces",
+          "encryption"
+        ],
+        "title": "ExportCreateRequest",
+        "type": "object"
+      },
+      "ExportEncryptionMode": {
+        "enum": [
+          "owner_passphrase"
+        ],
+        "title": "ExportEncryptionMode",
+        "type": "string"
+      },
+      "ExportEncryptionRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "mode": {
+            "$ref": "#/components/schemas/ExportEncryptionMode"
+          }
+        },
+        "required": [
+          "mode"
+        ],
+        "title": "ExportEncryptionRequest",
+        "type": "object"
+      },
+      "ExportFormat": {
+        "enum": [
+          "jsonl",
+          "csv",
+          "markdown"
+        ],
+        "title": "ExportFormat",
+        "type": "string"
+      },
+      "ExportJobResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "artifact_bytes": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artifact Bytes"
+          },
+          "artifact_sha256": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artifact Sha256"
+          },
+          "attempts": {
+            "minimum": 0.0,
+            "title": "Attempts",
+            "type": "integer"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "download_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Download Url"
+          },
+          "export_format_version": {
+            "default": "odyssey-owner-export-v1",
+            "title": "Export Format Version",
+            "type": "string"
+          },
+          "job_id": {
+            "format": "uuid",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "last_error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error Code"
+          },
+          "manifest_sha256": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manifest Sha256"
+          },
+          "phase": {
+            "title": "Phase",
+            "type": "string"
+          },
+          "signing_public_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Signing Public Key"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ExportJobStatus"
+          },
+          "status_url": {
+            "title": "Status Url",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "status",
+          "phase",
+          "status_url",
+          "created_at",
+          "updated_at",
+          "attempts"
+        ],
+        "title": "ExportJobResponse",
+        "type": "object"
+      },
+      "ExportJobStatus": {
+        "enum": [
+          "queued",
+          "processing",
+          "completed",
+          "failed"
+        ],
+        "title": "ExportJobStatus",
+        "type": "string"
+      },
+      "ExportScope": {
+        "enum": [
+          "all_odyssey_owned_data"
+        ],
+        "title": "ExportScope",
+        "type": "string"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -4447,6 +4665,196 @@
         "summary": "Query Evidence",
         "tags": [
           "evidence"
+        ]
+      }
+    },
+    "/v1/exports": {
+      "post": {
+        "operationId": "create_export_v1_exports_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 500,
+              "minLength": 1,
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Owner-controlled passphrase; never persisted or included in the request body.",
+            "in": "header",
+            "name": "X-Odyssey-Export-Passphrase",
+            "required": true,
+            "schema": {
+              "description": "Owner-controlled passphrase; never persisted or included in the request body.",
+              "maxLength": 1024,
+              "minLength": 1,
+              "title": "X-Odyssey-Export-Passphrase",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExportCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportJobResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Export",
+        "tags": [
+          "exports"
+        ]
+      }
+    },
+    "/v1/exports/{job_id}": {
+      "get": {
+        "operationId": "get_export_v1_exports__job_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportJobResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Export",
+        "tags": [
+          "exports"
+        ]
+      }
+    },
+    "/v1/exports/{job_id}/download": {
+      "get": {
+        "operationId": "download_export_v1_exports__job_id__download_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Job Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Range",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Range"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/vnd.odyssey.owner-export": {}
+            },
+            "description": "Successful Response"
+          },
+          "206": {
+            "content": {
+              "application/vnd.odyssey.owner-export": {}
+            },
+            "description": "Partial Content"
+          },
+          "416": {
+            "description": "The requested byte range is not satisfiable."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Download Export",
+        "tags": [
+          "exports"
         ]
       }
     },

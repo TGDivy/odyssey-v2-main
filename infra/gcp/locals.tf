@@ -33,6 +33,7 @@ locals {
     "attachment-upload-signing-key",
     "auth-access-token-signing-key",
     "database-url",
+    "export-wrapping-key",
     "model-provider-api-key",
     "oauth-client-secret",
     "telemetry-otlp-headers",
@@ -73,6 +74,8 @@ locals {
     ODYSSEY_APPLE_CLIENT_ID                     = var.apple_client_id
     ODYSSEY_API_DOCS_ENABLED                    = tostring(var.api_docs_enabled)
     ODYSSEY_MODEL_PROVIDER                      = var.model_provider
+    ODYSSEY_OWNER_EXPORT_ENABLED                = tostring(var.owner_export_enabled)
+    ODYSSEY_MAXIMUM_EXPORT_BYTES                = tostring(var.maximum_export_bytes)
     ODYSSEY_PROACTIVE_ENABLED                   = tostring(var.proactive_enabled)
   })
 
@@ -84,13 +87,28 @@ locals {
     var.apple_bootstrap_enabled ? {
       ODYSSEY_APPLE_BOOTSTRAP_SUBJECT = "apple-bootstrap-subject"
     } : {},
+    var.owner_export_enabled ? {
+      ODYSSEY_EXPORT_WRAPPING_KEY = "export-wrapping-key"
+    } : {},
   )
 
   worker_environment = merge(local.common_runtime_environment, {
-    ODYSSEY_PROCESS_ROLE      = "worker"
-    ODYSSEY_DATABASE_URL      = local.database_urls.worker
-    ODYSSEY_WORKER_BATCH_SIZE = tostring(var.worker_batch_size)
+    ODYSSEY_PROCESS_ROLE                        = "worker"
+    ODYSSEY_DATABASE_URL                        = local.database_urls.worker
+    ODYSSEY_WORKER_BATCH_SIZE                   = tostring(var.worker_batch_size)
+    ODYSSEY_ATTACHMENT_STORE_BACKEND            = "gcs"
+    ODYSSEY_STORAGE_BUCKET                      = google_storage_bucket.attachments.name
+    ODYSSEY_STORAGE_KMS_KEY_ID                  = google_kms_crypto_key.objects.id
+    ODYSSEY_STORAGE_REQUIRE_VERSIONING          = "true"
+    ODYSSEY_STORAGE_REQUIRE_PUBLIC_ACCESS_BLOCK = "true"
+    ODYSSEY_GCP_PROJECT_ID                      = var.project_id
+    ODYSSEY_OWNER_EXPORT_ENABLED                = tostring(var.owner_export_enabled)
+    ODYSSEY_MAXIMUM_EXPORT_BYTES                = tostring(var.maximum_export_bytes)
   })
+
+  worker_secret_environment = var.owner_export_enabled ? {
+    ODYSSEY_EXPORT_WRAPPING_KEY = "export-wrapping-key"
+  } : {}
 
   migration_environment = merge(local.common_runtime_environment, {
     ODYSSEY_PROCESS_ROLE = "migration"

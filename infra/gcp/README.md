@@ -77,9 +77,11 @@ printf '%s' "${APPLE_BOOTSTRAP_SUBJECT}" | gcloud secrets versions add \
 unset APPLE_BOOTSTRAP_SUBJECT
 ```
 
-The other placeholders are reserved for integrations and telemetry. Add a
-version only when the corresponding capability is enabled. Never put a secret
-value in `.tfvars`, a plan, GitHub Actions variables, or command arguments.
+The other placeholders are reserved for integrations, telemetry, and encrypted
+owner export. Add an `export-wrapping-key` version only when
+`owner_export_enabled = true`; the API and worker must receive the same version
+and the outbox must be drained before rotation. Never put a secret value in
+`.tfvars`, a plan, GitHub Actions variables, or command arguments.
 After the first verified owner enrollment and recovery setup, set
 `apple_bootstrap_enabled = false`, deploy and retain a post-bootstrap rollback
 revision, then disable the one-time subject version as described in the owner
@@ -111,11 +113,12 @@ psql -v migration_user='replace-migration-user' \
 ```
 
 The migration identity owns the database and schema. The API receives table
-DML, the bounded worker can only read and update the outbox, and backup is
-read-only. Re-run the grant review when a migration introduces a new worker-
-owned table; do not broaden the worker to all tables for convenience. Only
-after the grant audit succeeds should `schedules_paused` become false and the
-public API IAM grant be enabled.
+DML. The bounded worker can read/update the outbox; when export is enabled it
+can read only the explicit export allowlist, update export jobs, and append
+export audit rows. Backup is read-only. Re-run the grant review when a migration
+introduces a new worker-owned table; do not broaden the worker to all tables for
+convenience. Only after the grant audit succeeds should `schedules_paused`
+become false and the public API IAM grant be enabled.
 
 ## 5. Enable workloads
 

@@ -58,6 +58,8 @@ REQUIRED_RESOURCES = {
     "google_storage_bucket.attachments",
     "google_storage_bucket.database_backups",
     "google_storage_bucket.object_archive",
+    "google_storage_bucket_iam_member.worker_attachment_bucket_metadata",
+    "google_storage_bucket_iam_member.worker_attachments",
     "terraform_data.deployment_guard",
 }
 
@@ -72,6 +74,12 @@ REQUIRED_SNIPPETS = {
         'version = "latest"',
         "deletion_protection",
     ),
+    "infra/gcp/locals.tf": (
+        "ODYSSEY_EXPORT_WRAPPING_KEY",
+        "ODYSSEY_OWNER_EXPORT_ENABLED",
+        "worker_secret_environment",
+    ),
+    "infra/gcp/secrets.tf": ("export-wrapping-key",),
     "infra/gcp/storage.tf": (
         "public_access_prevention",
         "soft_delete_policy",

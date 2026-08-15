@@ -9,8 +9,12 @@ from time import perf_counter
 import structlog
 
 from odyssey import __version__
+from odyssey.attachments.storage import AttachmentStore
+from odyssey.attachments.storage_factory import create_attachment_store
 from odyssey.config import Settings, get_settings
 from odyssey.db.session import Database
+from odyssey.exports.crypto import ExportKeyManager
+from odyssey.exports.service import OWNER_EXPORT_TOPIC, OwnerExportProcessor
 from odyssey.jobs.outbox import internal_event_dispatcher, process_outbox_batch
 from odyssey.logging import configure_logging
 from odyssey.telemetry.alerts import AlertSeverity, evaluate_outbox_alerts
@@ -22,6 +26,7 @@ async def run(
     once: bool = False,
     settings: Settings | None = None,
     database: Database | None = None,
+    attachment_store: AttachmentStore | None = None,
     telemetry: TelemetryRuntime | None = None,
 ) -> None:
     active_settings = settings or get_settings()
@@ -35,6 +40,17 @@ async def run(
     configure_logging(active_settings.log_level)
     logger = structlog.get_logger(__name__)
     dispatcher = internal_event_dispatcher()
+    if active_settings.owner_export_enabled:
+        active_attachment_store = attachment_store or create_attachment_store(active_settings)
+        await active_attachment_store.validate_configuration()
+        export_processor = OwnerExportProcessor(
+            database=active_database,
+            attachment_store=active_attachment_store,
+            key_manager=ExportKeyManager(active_settings.export_wrapping_key.get_secret_value()),
+            maximum_bytes=active_settings.maximum_export_bytes,
+            maximum_attempts=active_settings.worker_max_attempts,
+        )
+        dispatcher.register(OWNER_EXPORT_TOPIC, export_processor.handle)
     logger.info(
         "worker_ready",
         environment=active_settings.env.value,

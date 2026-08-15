@@ -162,8 +162,10 @@ def test_odyssey_access_tokens_are_short_lived_and_device_bound() -> None:
     assert claims.owner_id == "owner"
     assert claims.device_id == device_id
     assert issued.expires_at == now + timedelta(minutes=15)
+    encoded_header, encoded_payload, encoded_signature = issued.token.split(".")
+    tampered_signature = ("A" if encoded_signature[0] != "A" else "B") + encoded_signature[1:]
     with pytest.raises(AccessTokenError, match="access token is invalid"):
-        service.verify(f"{issued.token[:-1]}x")
+        service.verify(f"{encoded_header}.{encoded_payload}.{tampered_signature}")
 
     expired = service.issue(
         owner_id="owner",

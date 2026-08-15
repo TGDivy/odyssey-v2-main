@@ -22,7 +22,7 @@ def test_initial_migration_creates_immutable_ledger(
 
     connection = sqlite3.connect(database_path)
     revision = connection.execute("SELECT version_num FROM alembic_version").fetchone()
-    assert revision == ("20260815_0015",)
+    assert revision == ("20260815_0016",)
 
     provenance_id = str(uuid4())
     connection.execute(
@@ -68,6 +68,40 @@ def test_initial_migration_creates_immutable_ledger(
 
     with pytest.raises(sqlite3.IntegrityError, match="append-only"):
         connection.execute("UPDATE ledger_events SET event_type = 'changed'")
+
+    export_job_id = str(uuid4())
+    connection.execute(
+        """
+        INSERT INTO export_jobs (
+          id, owner_id, status, phase, scope, formats,
+          include_raw_sources, include_model_traces, owner_key_envelope,
+          worker_key_envelope, artifact_nonce, request_hash,
+          idempotency_key_hash, attempts, created_at, updated_at
+        ) VALUES (?, 'owner', 'queued', 'queued', 'all_odyssey_owned_data', ?,
+                  1, 0, ?, ?, ?, ?, ?, 0, ?, ?)
+        """,
+        (
+            export_job_id,
+            '["jsonl"]',
+            "{}",
+            "{}",
+            b"012345678901",
+            "a" * 64,
+            "b" * 64,
+            "2026-08-15T00:00:00Z",
+            "2026-08-15T00:00:00Z",
+        ),
+    )
+    connection.execute(
+        """
+        INSERT INTO export_job_audit (id, job_id, event_type, occurred_at, details)
+        VALUES (?, ?, 'queued', ?, '{}')
+        """,
+        (str(uuid4()), export_job_id, "2026-08-15T00:00:00Z"),
+    )
+    connection.commit()
+    with pytest.raises(sqlite3.IntegrityError, match="append-only"):
+        connection.execute("DELETE FROM export_job_audit")
 
     connection.close()
     get_settings.cache_clear()

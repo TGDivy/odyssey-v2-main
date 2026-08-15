@@ -297,6 +297,19 @@ resource "google_cloud_run_v2_job" "worker" {
             value = env.value
           }
         }
+
+        dynamic "env" {
+          for_each = local.worker_secret_environment
+          content {
+            name = env.key
+            value_source {
+              secret_key_ref {
+                secret  = google_secret_manager_secret.placeholder[env.value].secret_id
+                version = "latest"
+              }
+            }
+          }
+        }
       }
 
       containers {
@@ -333,7 +346,10 @@ resource "google_cloud_run_v2_job" "worker" {
 
   depends_on = [
     google_project_iam_member.worker_roles,
+    google_secret_manager_secret_iam_member.worker_access,
     google_sql_user.worker,
+    google_storage_bucket_iam_member.worker_attachments,
+    google_storage_bucket_iam_member.worker_attachment_bucket_metadata,
     terraform_data.deployment_guard,
   ]
 }

@@ -123,7 +123,7 @@ def test_cloud_backup_combines_database_and_verified_object_archive(
         manifest_content = database_backups.objects[report.manifest_objects[0].storage_key]
         envelope = CloudBackupEnvelope.model_validate_json(manifest_content)
         assert envelope.manifest_sha256 == report.manifest_sha256
-        assert envelope.manifest.database_schema_revision == "20260815_0010"
+        assert envelope.manifest.database_schema_revision == "20260815_0016"
         assert [item.retention_tier for item in envelope.manifest.database_objects] == [
             "daily",
             "monthly",

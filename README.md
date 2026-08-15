@@ -84,6 +84,35 @@ outside source control and is documented step by step in
 owner-only gates, expected outputs, troubleshooting, evidence, entitlements,
 deployment, rollback, export, and restoration.
 
+## Encrypted owner export
+
+Appendix B.9 is available at `POST /v1/exports`, is owner-authenticated, and is
+disabled until durable object storage and a dedicated wrapping key are
+configured. Jobs run through the transactional outbox; status and resumable
+download use `GET /v1/exports/{job_id}` and
+`GET /v1/exports/{job_id}/download`.
+
+For a synthetic local drill, set `ODYSSEY_OWNER_EXPORT_ENABLED=true`, generate
+at least 32 bytes of private `ODYSSEY_EXPORT_WRAPPING_KEY` material outside the
+repository, start both API and worker with the same value, and submit the owner
+passphrase only in `X-Odyssey-Export-Passphrase`. Verify a downloaded artifact
+without placing the passphrase on the command line:
+
+```bash
+cd backend
+uv run python ../tools/export/decrypt_owner_export.py \
+  /private/path/odyssey-export.odyx \
+  --expected-signing-public-key 'REPLACE_BASE64_KEY_FROM_JOB_STATUS'
+```
+
+The decrypted ZIP contains signed JSONL/CSV/Markdown datasets and optional raw
+attachments, but excludes authentication/recovery credentials, operational
+secrets, outbox state, and worker key material. See
+[`docs/architecture/owner-exports.md`](docs/architecture/owner-exports.md) for
+the format and threat boundary and
+[`docs/deployment/OWNER_HANDOFF.md`](docs/deployment/OWNER_HANDOFF.md) for the
+production key ceremony and first drill.
+
 ## Data policy
 
 Never commit real personal data, access tokens, provider payloads, signed Apple

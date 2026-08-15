@@ -20,16 +20,19 @@ resource "google_secret_manager_secret" "placeholder" {
 }
 
 resource "google_secret_manager_secret_iam_member" "api_access" {
-  for_each = toset([
-    "apple-bootstrap-subject",
-    "attachment-upload-signing-key",
-    "auth-access-token-signing-key",
-    "database-url",
-    "model-provider-api-key",
-    "oauth-client-secret",
-    "telemetry-otlp-headers",
-    "webhook-signing-secret",
-  ])
+  for_each = toset(concat(
+    [
+      "apple-bootstrap-subject",
+      "attachment-upload-signing-key",
+      "auth-access-token-signing-key",
+      "database-url",
+      "model-provider-api-key",
+      "oauth-client-secret",
+      "telemetry-otlp-headers",
+      "webhook-signing-secret",
+    ],
+    var.owner_export_enabled ? ["export-wrapping-key"] : [],
+  ))
 
   project   = var.project_id
   secret_id = google_secret_manager_secret.placeholder[each.value].secret_id
@@ -38,13 +41,16 @@ resource "google_secret_manager_secret_iam_member" "api_access" {
 }
 
 resource "google_secret_manager_secret_iam_member" "worker_access" {
-  for_each = toset([
-    "database-url",
-    "model-provider-api-key",
-    "oauth-client-secret",
-    "telemetry-otlp-headers",
-    "webhook-signing-secret",
-  ])
+  for_each = toset(concat(
+    [
+      "database-url",
+      "model-provider-api-key",
+      "oauth-client-secret",
+      "telemetry-otlp-headers",
+      "webhook-signing-secret",
+    ],
+    var.owner_export_enabled ? ["export-wrapping-key"] : [],
+  ))
 
   project   = var.project_id
   secret_id = google_secret_manager_secret.placeholder[each.value].secret_id
