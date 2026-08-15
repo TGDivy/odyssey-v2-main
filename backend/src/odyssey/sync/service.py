@@ -119,6 +119,10 @@ def operation_hash(operation: SyncOperationInput) -> str:
     return canonical_hash(canonical_operation_document(operation))
 
 
+def operation_idempotency_key(operation: SyncOperationInput) -> str:
+    return operation.idempotency_key or str(operation.operation_id)
+
+
 def utc_instant(value: datetime) -> datetime:
     return value if value.tzinfo is not None else value.replace(tzinfo=UTC)
 
@@ -214,7 +218,7 @@ class SyncService:
             idempotent_operation = await session.scalar(
                 select(SyncOperationRecord.operation_id).where(
                     SyncOperationRecord.device_id == request.device_id,
-                    SyncOperationRecord.idempotency_key == operation.idempotency_key,
+                    SyncOperationRecord.idempotency_key == operation_idempotency_key(operation),
                 )
             )
             if idempotent_operation is not None:
@@ -266,6 +270,7 @@ class SyncService:
             conflicts=tuple(conflicts),
             next_cursor=format_cursor(state.last_change_id),
             server_time=received_at,
+            server_schema_version=self.current_schema_version,
             minimum_client_schema_version=self.minimum_client_schema_version,
         )
         session.add(
@@ -319,6 +324,7 @@ class SyncService:
             next_cursor=format_cursor(next_change_id),
             has_more=has_more,
             server_time=now,
+            server_schema_version=self.current_schema_version,
             minimum_client_schema_version=self.minimum_client_schema_version,
         )
 
@@ -836,7 +842,7 @@ class SyncService:
             payload=dict(operation.payload),
             created_at=operation.created_at,
             received_at=received_at,
-            idempotency_key=operation.idempotency_key,
+            idempotency_key=operation_idempotency_key(operation),
             sensitivity_class=operation.sensitivity_class.value,
             request_hash=operation_hash(operation),
             status=status,

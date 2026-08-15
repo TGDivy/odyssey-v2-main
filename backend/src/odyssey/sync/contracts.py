@@ -28,7 +28,7 @@ class SyncOperationInput(StrictModel):
     base_revision: int | None = Field(default=None, ge=1)
     payload: dict[str, JsonValue] = Field(default_factory=dict)
     created_at: AwareDatetime
-    idempotency_key: str = Field(min_length=1, max_length=500)
+    idempotency_key: str | None = Field(default=None, min_length=1, max_length=500)
     sensitivity_class: DataClass = DataClass.PRIVATE
 
     @model_validator(mode="after")
@@ -88,6 +88,7 @@ class SyncPushResponse(StrictModel):
     conflicts: tuple[SyncConflictSummary, ...] = ()
     next_cursor: str
     server_time: AwareDatetime
+    server_schema_version: int = Field(ge=1)
     minimum_client_schema_version: int = Field(ge=1)
 
 
@@ -111,6 +112,7 @@ class SyncPullResponse(StrictModel):
     next_cursor: str
     has_more: bool
     server_time: AwareDatetime
+    server_schema_version: int = Field(ge=1)
     minimum_client_schema_version: int = Field(ge=1)
 
 

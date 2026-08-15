@@ -3,7 +3,7 @@
 from enum import StrEnum
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -42,6 +42,13 @@ class Settings(BaseSettings):
     commit_sha: str = "development"
     api_docs_enabled: bool = True
     minimum_client_schema_version: int = Field(default=1, ge=1)
+    current_sync_schema_version: int = Field(default=1, ge=1)
+
+    @model_validator(mode="after")
+    def validate_schema_window(self) -> "Settings":
+        if self.current_sync_schema_version < self.minimum_client_schema_version:
+            raise ValueError("current sync schema cannot be below the supported minimum")
+        return self
 
     def safe_diagnostics(self) -> dict[str, str | bool | int]:
         return {
@@ -52,6 +59,7 @@ class Settings(BaseSettings):
             "telemetry_exporter": self.telemetry_exporter,
             "commit_sha": self.commit_sha,
             "minimum_client_schema_version": self.minimum_client_schema_version,
+            "current_sync_schema_version": self.current_sync_schema_version,
             "storage_configured": bool(self.storage_endpoint and self.storage_bucket),
         }
 

@@ -1,6 +1,38 @@
 {
   "components": {
     "schemas": {
+      "AcceptedOperation": {
+        "additionalProperties": false,
+        "properties": {
+          "canonical_revision": {
+            "minimum": 1.0,
+            "title": "Canonical Revision",
+            "type": "integer"
+          },
+          "merge_result": {
+            "title": "Merge Result",
+            "type": "string"
+          },
+          "operation_id": {
+            "format": "uuid",
+            "title": "Operation Id",
+            "type": "string"
+          },
+          "server_change_id": {
+            "minimum": 1.0,
+            "title": "Server Change Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "operation_id",
+          "canonical_revision",
+          "server_change_id",
+          "merge_result"
+        ],
+        "title": "AcceptedOperation",
+        "type": "object"
+      },
       "CaptureCreateRequest": {
         "additionalProperties": false,
         "properties": {
@@ -186,6 +218,7 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "JsonValue": {},
       "LiveResponse": {
         "properties": {
           "status": {
@@ -222,6 +255,403 @@
           "checked_at"
         ],
         "title": "ReadyResponse",
+        "type": "object"
+      },
+      "RejectedOperation": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "operation_id": {
+            "format": "uuid",
+            "title": "Operation Id",
+            "type": "string"
+          },
+          "retryable": {
+            "title": "Retryable",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "operation_id",
+          "code",
+          "message",
+          "retryable"
+        ],
+        "title": "RejectedOperation",
+        "type": "object"
+      },
+      "SyncChange": {
+        "additionalProperties": false,
+        "properties": {
+          "canonical_revision": {
+            "minimum": 1.0,
+            "title": "Canonical Revision",
+            "type": "integer"
+          },
+          "change_id": {
+            "minimum": 1.0,
+            "title": "Change Id",
+            "type": "integer"
+          },
+          "deletion_epoch": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deletion Epoch"
+          },
+          "entity_id": {
+            "format": "uuid",
+            "title": "Entity Id",
+            "type": "string"
+          },
+          "entity_type": {
+            "title": "Entity Type",
+            "type": "string"
+          },
+          "merge_result": {
+            "title": "Merge Result",
+            "type": "string"
+          },
+          "mutation_type": {
+            "$ref": "#/components/schemas/SyncMutationType"
+          },
+          "origin_device_id": {
+            "format": "uuid",
+            "title": "Origin Device Id",
+            "type": "string"
+          },
+          "origin_operation_id": {
+            "format": "uuid",
+            "title": "Origin Operation Id",
+            "type": "string"
+          },
+          "payload": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Payload",
+            "type": "object"
+          },
+          "server_received_at": {
+            "format": "date-time",
+            "title": "Server Received At",
+            "type": "string"
+          },
+          "tombstone": {
+            "title": "Tombstone",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "change_id",
+          "canonical_revision",
+          "entity_type",
+          "entity_id",
+          "mutation_type",
+          "payload",
+          "tombstone",
+          "merge_result",
+          "origin_device_id",
+          "origin_operation_id",
+          "server_received_at"
+        ],
+        "title": "SyncChange",
+        "type": "object"
+      },
+      "SyncConflictSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "conflict_id": {
+            "format": "uuid",
+            "title": "Conflict Id",
+            "type": "string"
+          },
+          "conflicting_fields": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Conflicting Fields",
+            "type": "array"
+          },
+          "current_revision": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Revision"
+          },
+          "entity_id": {
+            "format": "uuid",
+            "title": "Entity Id",
+            "type": "string"
+          },
+          "entity_type": {
+            "title": "Entity Type",
+            "type": "string"
+          },
+          "operation_id": {
+            "format": "uuid",
+            "title": "Operation Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "conflict_id",
+          "operation_id",
+          "entity_type",
+          "entity_id",
+          "code",
+          "current_revision"
+        ],
+        "title": "SyncConflictSummary",
+        "type": "object"
+      },
+      "SyncMutationType": {
+        "enum": [
+          "create",
+          "update",
+          "delete"
+        ],
+        "title": "SyncMutationType",
+        "type": "string"
+      },
+      "SyncOperationInput": {
+        "additionalProperties": false,
+        "properties": {
+          "base_revision": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Revision"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "device_sequence": {
+            "minimum": 1.0,
+            "title": "Device Sequence",
+            "type": "integer"
+          },
+          "entity_id": {
+            "format": "uuid",
+            "title": "Entity Id",
+            "type": "string"
+          },
+          "entity_type": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Entity Type",
+            "type": "string"
+          },
+          "idempotency_key": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idempotency Key"
+          },
+          "mutation_type": {
+            "$ref": "#/components/schemas/SyncMutationType"
+          },
+          "operation_id": {
+            "format": "uuid",
+            "title": "Operation Id",
+            "type": "string"
+          },
+          "payload": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Payload",
+            "type": "object"
+          },
+          "sensitivity_class": {
+            "$ref": "#/components/schemas/DataClass",
+            "default": "private"
+          }
+        },
+        "required": [
+          "operation_id",
+          "device_sequence",
+          "entity_type",
+          "entity_id",
+          "mutation_type",
+          "created_at"
+        ],
+        "title": "SyncOperationInput",
+        "type": "object"
+      },
+      "SyncPullResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "changes": {
+            "items": {
+              "$ref": "#/components/schemas/SyncChange"
+            },
+            "title": "Changes",
+            "type": "array"
+          },
+          "has_more": {
+            "title": "Has More",
+            "type": "boolean"
+          },
+          "minimum_client_schema_version": {
+            "minimum": 1.0,
+            "title": "Minimum Client Schema Version",
+            "type": "integer"
+          },
+          "next_cursor": {
+            "title": "Next Cursor",
+            "type": "string"
+          },
+          "server_schema_version": {
+            "minimum": 1.0,
+            "title": "Server Schema Version",
+            "type": "integer"
+          },
+          "server_time": {
+            "format": "date-time",
+            "title": "Server Time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "changes",
+          "next_cursor",
+          "has_more",
+          "server_time",
+          "server_schema_version",
+          "minimum_client_schema_version"
+        ],
+        "title": "SyncPullResponse",
+        "type": "object"
+      },
+      "SyncPushRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "base_cursor": {
+            "title": "Base Cursor",
+            "type": "string"
+          },
+          "client_schema_version": {
+            "minimum": 1.0,
+            "title": "Client Schema Version",
+            "type": "integer"
+          },
+          "device_id": {
+            "format": "uuid",
+            "title": "Device Id",
+            "type": "string"
+          },
+          "operations": {
+            "items": {
+              "$ref": "#/components/schemas/SyncOperationInput"
+            },
+            "maxItems": 500,
+            "minItems": 1,
+            "title": "Operations",
+            "type": "array"
+          }
+        },
+        "required": [
+          "device_id",
+          "client_schema_version",
+          "base_cursor",
+          "operations"
+        ],
+        "title": "SyncPushRequest",
+        "type": "object"
+      },
+      "SyncPushResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "accepted": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/AcceptedOperation"
+            },
+            "title": "Accepted",
+            "type": "array"
+          },
+          "conflicts": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/SyncConflictSummary"
+            },
+            "title": "Conflicts",
+            "type": "array"
+          },
+          "minimum_client_schema_version": {
+            "minimum": 1.0,
+            "title": "Minimum Client Schema Version",
+            "type": "integer"
+          },
+          "next_cursor": {
+            "title": "Next Cursor",
+            "type": "string"
+          },
+          "rejected": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/RejectedOperation"
+            },
+            "title": "Rejected",
+            "type": "array"
+          },
+          "server_schema_version": {
+            "minimum": 1.0,
+            "title": "Server Schema Version",
+            "type": "integer"
+          },
+          "server_time": {
+            "format": "date-time",
+            "title": "Server Time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "next_cursor",
+          "server_time",
+          "server_schema_version",
+          "minimum_client_schema_version"
+        ],
+        "title": "SyncPushResponse",
         "type": "object"
       },
       "ValidationError": {
@@ -386,6 +816,165 @@
         "summary": "Create Capture",
         "tags": [
           "captures"
+        ]
+      }
+    },
+    "/v1/sync/changes": {
+      "get": {
+        "operationId": "changes_v1_sync_changes_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "default": "c_0",
+              "minLength": 3,
+              "title": "Cursor",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 500,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Odyssey-Device-ID",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Odyssey-Device-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncPullResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Changes",
+        "tags": [
+          "sync"
+        ]
+      }
+    },
+    "/v1/sync/push": {
+      "post": {
+        "operationId": "push_v1_sync_push_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 500,
+              "minLength": 1,
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SyncPushRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncPushResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Push",
+        "tags": [
+          "sync"
         ]
       }
     }
