@@ -41,6 +41,10 @@ class AppendResult:
     created: bool
 
 
+class SourceRecordConflictError(RuntimeError):
+    pass
+
+
 class LedgerRepository:
     async def append_source_event(
         self,
@@ -72,22 +76,28 @@ class LedgerRepository:
                 details=dict(provenance.details),
             )
         )
-        session.add(
-            SourceRecord(
-                id=source.id,
-                source_kind=source.source_kind,
-                external_source_id=source.external_source_id,
-                occurred_at=source.occurred_at,
-                observed_at=source.observed_at,
-                recorded_at=source.recorded_at,
-                timezone_id=source.timezone_id,
-                temporal_precision=source.temporal_precision,
-                content_hash=source.content_hash,
-                sensitivity=source.sensitivity,
-                payload=source.payload,
-                provenance_id=source.provenance_id,
+        existing_source = await session.get(SourceRecord, source.id)
+        if existing_source is None:
+            session.add(
+                SourceRecord(
+                    id=source.id,
+                    source_kind=source.source_kind,
+                    external_source_id=source.external_source_id,
+                    occurred_at=source.occurred_at,
+                    observed_at=source.observed_at,
+                    recorded_at=source.recorded_at,
+                    timezone_id=source.timezone_id,
+                    temporal_precision=source.temporal_precision,
+                    content_hash=source.content_hash,
+                    sensitivity=source.sensitivity,
+                    payload=source.payload,
+                    provenance_id=source.provenance_id,
+                )
             )
-        )
+        elif existing_source.content_hash != source.content_hash:
+            raise SourceRecordConflictError(
+                f"source record {source.id} was reused with different content"
+            )
         ledger_record = LedgerEventRecord(
             event_id=event.event_id,
             event_type=event.event_type,
