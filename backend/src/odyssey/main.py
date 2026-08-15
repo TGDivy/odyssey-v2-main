@@ -1,5 +1,6 @@
 """Odyssey API application factory."""
 
+import re
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from time import perf_counter
@@ -9,6 +10,7 @@ import structlog
 import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
+from opentelemetry.trace import SpanKind
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import RequestResponseEndpoint
 from starlette.responses import Response
@@ -27,6 +29,9 @@ from odyssey.attachments.storage import LocalAttachmentStore
 from odyssey.config import Environment, Settings, get_settings
 from odyssey.db.session import Database
 from odyssey.logging import configure_logging, correlation_id_context
+from odyssey.telemetry.runtime import TelemetryRuntime, create_telemetry_runtime
+
+SAFE_CORRELATION_ID = re.compile(r"^[A-Za-z0-9_.:-]{1,128}$")
 
 
 def create_app(
@@ -34,6 +39,7 @@ def create_app(
     database: Database | None = None,
     attachment_store: LocalAttachmentStore | None = None,
     upload_token_signer: UploadTokenSigner | None = None,
+    telemetry: TelemetryRuntime | None = None,
 ) -> FastAPI:
     active_settings = settings or get_settings()
     active_database = database or Database(
@@ -46,6 +52,11 @@ def create_app(
     )
     signing_secret = active_settings.attachment_upload_signing_key.get_secret_value().encode()
     active_upload_token_signer = upload_token_signer or UploadTokenSigner(signing_secret or None)
+    active_telemetry = telemetry or create_telemetry_runtime(
+        active_settings,
+        service_name="odyssey-api",
+        service_version=__version__,
+    )
     configure_logging(active_settings.log_level)
     logger = structlog.get_logger(__name__)
 
@@ -57,9 +68,12 @@ def create_app(
             environment=active_settings.env.value,
             version=__version__,
         )
-        yield
-        await active_database.dispose()
-        logger.info("service_stopped", service="odyssey-api")
+        try:
+            yield
+        finally:
+            await active_database.dispose()
+            logger.info("service_stopped", service="odyssey-api")
+            active_telemetry.shutdown()
 
     application = FastAPI(
         title="Odyssey API",
@@ -78,27 +92,71 @@ def create_app(
     application.state.database = active_database
     application.state.attachment_store = active_attachment_store
     application.state.upload_token_signer = active_upload_token_signer
+    application.state.telemetry = active_telemetry
 
     @application.middleware("http")
     async def correlation_middleware(
         request: Request, call_next: RequestResponseEndpoint
     ) -> Response:
-        started_at = perf_counter()
-        correlation_id = request.headers.get("X-Correlation-ID") or str(uuid4())
+        supplied_correlation_id = request.headers.get("X-Correlation-ID", "")
+        correlation_id = (
+            supplied_correlation_id
+            if SAFE_CORRELATION_ID.fullmatch(supplied_correlation_id)
+            else str(uuid4())
+        )
         request.state.correlation_id = correlation_id
         token = correlation_id_context.set(correlation_id)
         try:
-            response = await call_next(request)
-            response.headers["X-Correlation-ID"] = correlation_id
-            route = request.scope.get("route")
-            logger.info(
-                "http_request_completed",
-                method=request.method,
-                route=getattr(route, "path", "unmatched"),
-                status_code=response.status_code,
-                duration_ms=round((perf_counter() - started_at) * 1000, 2),
-            )
-            return response
+            parent_context = active_telemetry.extract_context(request.headers)
+            with active_telemetry.span(
+                f"{request.method} request",
+                context=parent_context,
+                kind=SpanKind.SERVER,
+                attributes={"http.request.method": request.method},
+            ) as span:
+                started_at = perf_counter()
+                status_code = 500
+                error_type: str | None = None
+                trace_id, span_id = active_telemetry.span_ids(span)
+                request.state.trace_id = trace_id
+                try:
+                    response = await call_next(request)
+                    status_code = response.status_code
+                    response.headers["X-Correlation-ID"] = correlation_id
+                    response.headers["X-Trace-ID"] = trace_id
+                    response.headers["X-Span-ID"] = span_id
+                    for header, value in active_telemetry.inject_context().items():
+                        response.headers[header] = value
+                    return response
+                except Exception as error:
+                    error_type = type(error).__name__
+                    active_telemetry.mark_error(span, error_type)
+                    raise
+                finally:
+                    duration_seconds = perf_counter() - started_at
+                    route = request.scope.get("route")
+                    route_path = getattr(route, "path", "unmatched")
+                    span.update_name(f"{request.method} {route_path}")
+                    span.set_attribute("http.route", route_path)
+                    span.set_attribute("http.response.status_code", status_code)
+                    if status_code >= 500 and error_type is None:
+                        active_telemetry.mark_error(span, f"HTTP_{status_code}")
+                    active_telemetry.record_http_request(
+                        method=request.method,
+                        route=route_path,
+                        status_code=status_code,
+                        duration_seconds=duration_seconds,
+                    )
+                    logger.info(
+                        "http_request_completed",
+                        method=request.method,
+                        route=route_path,
+                        status_code=status_code,
+                        duration_ms=round(duration_seconds * 1000, 2),
+                        trace_id=trace_id,
+                        span_id=span_id,
+                        error_type=error_type,
+                    )
         finally:
             correlation_id_context.reset(token)
 

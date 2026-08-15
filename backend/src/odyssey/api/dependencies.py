@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from odyssey.attachments.service import UploadTokenSigner
 from odyssey.attachments.storage import LocalAttachmentStore
 from odyssey.db.session import Database
+from odyssey.telemetry.runtime import TelemetryRuntime
 
 
 def get_database(request: Request) -> Database:
@@ -38,3 +39,10 @@ def get_upload_token_signer(request: Request) -> UploadTokenSigner:
 
 
 UploadTokenSignerDependency = Annotated[UploadTokenSigner, Depends(get_upload_token_signer)]
+
+
+def get_telemetry_runtime(request: Request) -> TelemetryRuntime:
+    return cast(TelemetryRuntime, request.app.state.telemetry)
+
+
+TelemetryDependency = Annotated[TelemetryRuntime, Depends(get_telemetry_runtime)]

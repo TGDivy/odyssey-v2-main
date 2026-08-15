@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from sqlalchemy.exc import SQLAlchemyError
 
 from odyssey import __version__
-from odyssey.api.dependencies import DatabaseDependency
+from odyssey.api.dependencies import DatabaseDependency, TelemetryDependency
 from odyssey.api.errors import OdysseyError
 from odyssey.config import Settings, get_settings
 
@@ -29,8 +29,9 @@ class ReadyResponse(BaseModel):
 class DiagnosticsResponse(BaseModel):
     service: str
     version: str
-    configuration: dict[str, str | bool | int]
+    configuration: dict[str, str | bool | int | float]
     capabilities: dict[str, bool]
+    telemetry: dict[str, str | bool]
 
 
 @router.get("/health/live", response_model=LiveResponse)
@@ -53,7 +54,10 @@ async def ready(database: DatabaseDependency) -> ReadyResponse:
 
 
 @router.get("/v1/admin/diagnostics", response_model=DiagnosticsResponse)
-async def diagnostics(settings: SettingsDependency) -> DiagnosticsResponse:
+async def diagnostics(
+    settings: SettingsDependency,
+    telemetry: TelemetryDependency,
+) -> DiagnosticsResponse:
     return DiagnosticsResponse(
         service="odyssey-api",
         version=__version__,
@@ -61,8 +65,10 @@ async def diagnostics(settings: SettingsDependency) -> DiagnosticsResponse:
         capabilities={
             "database": True,
             "object_storage": False,
-            "queue": False,
+            "queue": True,
             "cloud_model": settings.model_provider != "deterministic",
             "proactive_delivery": settings.proactive_enabled,
+            "telemetry_export": telemetry.enabled,
         },
+        telemetry=telemetry.safe_diagnostics(),
     )
