@@ -1,0 +1,31 @@
+{
+  "artifacts": {
+    "ledger.jsonl": "85b179513e74173759340290bef492bdff9f361d92083f388282b9d9b441d6dd",
+    "source-records.jsonl": "4f0fc1804025abe4a0a1f534fc352083639d949797a3933dd6035bd477abdcc8"
+  },
+  "contains_real_personal_data": false,
+  "end_date": "2025-12-31",
+  "event_count": 2483,
+  "fixture_version": 1,
+  "record_count": 2532,
+  "scenario_counts": {
+    "archive": 3,
+    "conflicting_season_edits": 3,
+    "illness": 3,
+    "intervention_policy": 2,
+    "interview": 6,
+    "missing_data": 54,
+    "ordinary_day": 1042,
+    "ordinary_workday": 783,
+    "orientation": 2,
+    "race_training": 469,
+    "relationship_commitment": 3,
+    "season_transition": 2,
+    "travel_timezone": 3,
+    "weekly_reflection": 157
+  },
+  "seed": 20260815,
+  "start_date": "2023-01-01",
+  "synthetic_only": true,
+  "years": 3
+}

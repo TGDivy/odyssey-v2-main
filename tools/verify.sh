@@ -8,14 +8,14 @@ export UV_LINK_MODE="${UV_LINK_MODE:-copy}"
 printf '\n[backend] formatting\n'
 (
   cd "${repository_root}/backend"
-  uv run ruff format --check . ../tools/codegen/generate.py
+  uv run ruff format --check . ../tools/codegen/generate.py ../tools/fixtures/generate_synthetic_life.py
 )
 
 printf '\n[backend] lint and types\n'
 (
   cd "${repository_root}/backend"
-  uv run ruff check . ../tools/codegen/generate.py
-  uv run mypy src ../tools/codegen/generate.py
+  uv run ruff check . ../tools/codegen/generate.py ../tools/fixtures/generate_synthetic_life.py
+  uv run mypy src ../tools/codegen/generate.py ../tools/fixtures/generate_synthetic_life.py
 )
 
 printf '\n[backend] tests and coverage\n'
@@ -28,6 +28,12 @@ printf '\n[schemas] deterministic generation\n'
 (
   cd "${repository_root}/backend"
   uv run python ../tools/codegen/generate.py --check
+)
+
+printf '\n[fixtures] deterministic synthetic history\n'
+(
+  cd "${repository_root}/backend"
+  uv run python ../tools/fixtures/generate_synthetic_life.py --check
 )
 
 printf '\n[infrastructure] compose contract\n'
