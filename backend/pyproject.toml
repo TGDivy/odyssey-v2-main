@@ -5,10 +5,14 @@ description = "Local-first Odyssey API and worker modular monolith"
 readme = "README.md"
 requires-python = ">=3.13,<3.15"
 dependencies = [
+  "aiosqlite>=0.21.0,<1.0.0",
+  "alembic>=1.16.0,<2.0.0",
+  "asyncpg>=0.30.0,<1.0.0",
   "fastapi>=0.116.0,<1.0.0",
   "pydantic>=2.11.0,<3.0.0",
   "pydantic-settings>=2.10.0,<3.0.0",
   "structlog>=25.4.0,<26.0.0",
+  "sqlalchemy[asyncio]>=2.0.43,<3.0.0",
   "uvicorn[standard]>=0.35.0,<1.0.0",
 ]
 
