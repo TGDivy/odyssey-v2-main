@@ -1,7 +1,7 @@
 import asyncio
 import sqlite3
 from collections.abc import Iterator
-from contextlib import contextmanager
+from contextlib import closing, contextmanager
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -39,8 +39,8 @@ def server_client(path: Path) -> Iterator[TestClient]:
 
 def copy_sqlite_database(source: Path, destination: Path) -> None:
     with (
-        sqlite3.connect(source) as source_connection,
-        sqlite3.connect(destination) as destination_connection,
+        closing(sqlite3.connect(source)) as source_connection,
+        closing(sqlite3.connect(destination)) as destination_connection,
     ):
         source_connection.backup(destination_connection)
 
@@ -157,62 +157,56 @@ def test_response_loss_server_rollback_and_client_reinstall_converge(tmp_path: P
         DurableSimulatedClient(client_path, device_id=source_device_id) as surviving_client,
         server_client(server_path) as restored_server,
     ):
-            diagnostics = restored_server.get("/v1/sync/diagnostics")
-            assert diagnostics.status_code == 200
-            assert diagnostics.json()["server_cursor"] == "c_1"
+        diagnostics = restored_server.get("/v1/sync/diagnostics")
+        assert diagnostics.status_code == 200
+        assert diagnostics.json()["server_cursor"] == "c_1"
 
-            stale_pull = restored_server.get(
+        stale_pull = restored_server.get(
+            "/v1/sync/changes",
+            params={"cursor": surviving_client.cursor},
+            headers={"X-Odyssey-Device-ID": str(source_device_id)},
+        )
+        assert stale_pull.status_code == 409
+        assert stale_pull.json()["error"]["code"] == "SYNC_CURSOR_AHEAD"
+
+        plan = surviving_client.reconcile_server_restore(
+            diagnostics.json()["server_cursor"],
+            backup_history_verified=True,
+            backup_reference="server-before-later-operation.sqlite",
+            confirmed_by="integration-chaos-drill",
+        )
+        assert plan.requeued_operation_ids == (second_operation_id,)
+        recovery_batch = surviving_client.next_push()
+        assert recovery_batch is not None
+        assert recovery_batch.request.base_cursor == "c_1"
+        recovery_response = post_push(restored_server, recovery_batch)
+        assert recovery_response.status_code == 200
+        surviving_client.apply_push_response(
+            recovery_batch.idempotency_key,
+            SyncPushResponse.model_validate(recovery_response.json()),
+        )
+        assert surviving_client.cursor == "c_2"
+        assert surviving_client.acknowledgement_count(second_operation_id) == 2
+
+        with DurableSimulatedClient(reinstalled_path) as reinstalled_client:
+            pulled = restored_server.get(
                 "/v1/sync/changes",
-                params={"cursor": surviving_client.cursor},
-                headers={"X-Odyssey-Device-ID": str(source_device_id)},
+                params={"cursor": reinstalled_client.cursor, "limit": 500},
+                headers={"X-Odyssey-Device-ID": str(reinstalled_client.device_id)},
             )
-            assert stale_pull.status_code == 409
-            assert stale_pull.json()["error"]["code"] == "SYNC_CURSOR_AHEAD"
+            assert pulled.status_code == 200
+            reinstalled_client.apply_pull_response(SyncPullResponse.model_validate(pulled.json()))
+            recovered = reinstalled_client.entity("capture", capture_id)
+            assert recovered is not None
+            assert recovered.document["content_or_object_ref"] == ("Recover this synthetic capture")
+            assert recovered.document["interpretation_status"] == "pending"
+            assert recovered.canonical_revision == 1
+            marker = reinstalled_client.entity("capture_recovery_marker", recovery_marker_id)
+            assert marker is not None
+            assert marker.document["capture_id"] == str(capture_id)
+            assert reinstalled_client.cursor == "c_2"
 
-            plan = surviving_client.reconcile_server_restore(
-                diagnostics.json()["server_cursor"],
-                backup_history_verified=True,
-                backup_reference="server-before-later-operation.sqlite",
-                confirmed_by="integration-chaos-drill",
-            )
-            assert plan.requeued_operation_ids == (second_operation_id,)
-            recovery_batch = surviving_client.next_push()
-            assert recovery_batch is not None
-            assert recovery_batch.request.base_cursor == "c_1"
-            recovery_response = post_push(restored_server, recovery_batch)
-            assert recovery_response.status_code == 200
-            surviving_client.apply_push_response(
-                recovery_batch.idempotency_key,
-                SyncPushResponse.model_validate(recovery_response.json()),
-            )
-            assert surviving_client.cursor == "c_2"
-            assert surviving_client.acknowledgement_count(second_operation_id) == 2
-
-            with DurableSimulatedClient(reinstalled_path) as reinstalled_client:
-                pulled = restored_server.get(
-                    "/v1/sync/changes",
-                    params={"cursor": reinstalled_client.cursor, "limit": 500},
-                    headers={"X-Odyssey-Device-ID": str(reinstalled_client.device_id)},
-                )
-                assert pulled.status_code == 200
-                reinstalled_client.apply_pull_response(
-                    SyncPullResponse.model_validate(pulled.json())
-                )
-                recovered = reinstalled_client.entity("capture", capture_id)
-                assert recovered is not None
-                assert recovered.document["content_or_object_ref"] == (
-                    "Recover this synthetic capture"
-                )
-                assert recovered.document["interpretation_status"] == "pending"
-                assert recovered.canonical_revision == 1
-                marker = reinstalled_client.entity(
-                    "capture_recovery_marker", recovery_marker_id
-                )
-                assert marker is not None
-                assert marker.document["capture_id"] == str(capture_id)
-                assert reinstalled_client.cursor == "c_2"
-
-    with sqlite3.connect(server_path) as connection:
+    with closing(sqlite3.connect(server_path)) as connection:
         counts = {
             "source_records": int(
                 connection.execute("SELECT COUNT(*) FROM source_records").fetchone()[0]

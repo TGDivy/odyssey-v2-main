@@ -774,9 +774,7 @@ class DurableSimulatedClient:
             raise SimulatedClientError("existing client database uses another sync schema version")
 
     def _metadata(self) -> sqlite3.Row:
-        row = self._connection.execute(
-            "SELECT * FROM client_metadata WHERE singleton=1"
-        ).fetchone()
+        row = self._connection.execute("SELECT * FROM client_metadata WHERE singleton=1").fetchone()
         if row is None:
             raise SimulatedClientError("client metadata is missing")
         return cast(sqlite3.Row, row)
