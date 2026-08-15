@@ -204,6 +204,51 @@ public struct NativeLocalServices: Sendable {
             captureService: captureService
         )
     }
+
+    public func localDiagnostics(
+        attachmentBacklog: Int = 0
+    ) async throws -> NativeSyncDiagnostics {
+        guard attachmentBacklog >= 0 else {
+            throw DurableSyncCoordinatorError.invalidLocalState(
+                "Attachment backlog cannot be negative."
+            )
+        }
+        let local = try await ledgerStore.localSyncDiagnostics()
+        let state = local.syncState
+        let serverSchemaVersion = state.serverSchemaVersion
+        let compatibility: NativeSchemaCompatibility
+        if let serverSchemaVersion, serverSchemaVersion < SyncSchema.currentVersion {
+            compatibility = .serverUpgradeRequired
+        } else if serverSchemaVersion == SyncSchema.currentVersion {
+            compatibility = .compatible
+        } else {
+            compatibility = .unknown
+        }
+        return NativeSyncDiagnostics(
+            deviceID: state.deviceID,
+            lastSuccessfulPushAt: state.lastSuccessfulPushAt,
+            lastSuccessfulPullAt: state.lastSuccessfulPullAt,
+            operationsQueued: local.operationsQueued,
+            oldestUnsyncedOperationAt: local.oldestUnsyncedOperationAt,
+            conflictCount: local.conflictCount,
+            attachmentBacklog: attachmentBacklog,
+            deviceCursor: try SyncCursor(state.cursor),
+            serverCursor: try SyncCursor(state.serverCursor),
+            serverSchemaVersion: serverSchemaVersion,
+            schemaCompatibility: compatibility
+        )
+    }
+
+    public func recentCaptures(limit: Int = 50) throws -> [CaptureRecord] {
+        try ledgerStore.projectedEntities(entityType: ManualCaptureService.entityType, limit: limit)
+            .map {
+                try SyncJSONCoding.makeDecoder().decode(
+                    CaptureRecord.self,
+                    from: $0.document
+                )
+            }
+            .sorted { $0.capturedAt > $1.capturedAt }
+    }
 }
 
 public struct NativeRemoteServices: Sendable {

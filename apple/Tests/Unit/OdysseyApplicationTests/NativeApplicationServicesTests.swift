@@ -37,6 +37,15 @@ func localServicesUseStableCredentialIdentityAndApplicationSupportLayout() async
     #expect(configuration.preMigrationBackupDirectory.path.hasSuffix("/Backups/Migrations"))
     #expect(FileManager.default.fileExists(atPath: configuration.databaseURL.path))
     #expect(receipt.deviceSequence == 1)
+    let diagnostics = try await services.localDiagnostics()
+    #expect(diagnostics.operationsQueued == 1)
+    #expect(diagnostics.deviceCursor.value == 0)
+    let captures = try services.recentCaptures()
+    #expect(captures.count == 1)
+    #expect(
+        captures[0].originalPayload.contentOrObjectRef
+            == "available before remote configuration"
+    )
 }
 
 @Test

@@ -162,6 +162,10 @@ public actor DurableSyncCoordinator: SyncCoordinator {
         return try await task.value
     }
 
+    public func cancelSynchronization() {
+        activeSynchronization?.cancel()
+    }
+
     public func localDiagnostics() async throws -> NativeSyncDiagnostics {
         let local = try await store.localSyncDiagnostics()
         let attachmentBacklog = try await attachmentBacklogProvider()

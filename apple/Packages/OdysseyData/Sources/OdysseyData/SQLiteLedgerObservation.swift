@@ -3,6 +3,35 @@ import GRDB
 import OdysseyDomain
 
 extension SQLiteLedgerStore {
+    public func projectedEntities(
+        entityType: String,
+        limit: Int = 50
+    ) throws -> [ProjectedEntity] {
+        guard Self.isValidTypeName(entityType), (1 ... 500).contains(limit) else {
+            throw SQLiteLedgerError.invalidConfiguration(
+                "Projection pages require a valid entity type and 1 through 500 rows."
+            )
+        }
+        return try withRead {
+            let statement = try connection.statement(
+                """
+                SELECT entity_type, entity_id, revision, document, tombstone,
+                       source_event_id, updated_at
+                FROM entity_projections
+                WHERE entity_type = ? AND tombstone = 0
+                ORDER BY updated_at DESC, entity_id DESC
+                LIMIT ?
+                """
+            )
+            try statement.bind([.text(entityType), .integer(Int64(limit))])
+            var entities: [ProjectedEntity] = []
+            while try statement.step() {
+                entities.append(try Self.decodeProjectedEntity(statement))
+            }
+            return entities
+        }
+    }
+
     public func searchProjections(
         matching query: String,
         entityType: String? = nil,
