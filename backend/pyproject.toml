@@ -55,6 +55,7 @@ ignore = ["S101"]
 "tests/**/*.py" = ["S105", "S106"]
 "tests/integration/test_import_export.py" = ["S603"]
 "src/odyssey/domain/common.py" = ["S105"]
+"src/odyssey/db/backups.py" = ["S603", "S608"]
 "../tools/fixtures/*.py" = ["S311"]
 
 [tool.mypy]

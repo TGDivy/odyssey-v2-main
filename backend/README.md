@@ -49,3 +49,23 @@ Local exports are intentionally unencrypted development artifacts. Never place
 real personal data in `/tmp` or source control; production owner-passphrase
 encryption, resumable archive jobs, and signed manifests are separate deployment
 requirements.
+
+Before a local schema migration, create a native checkpoint in a new directory:
+
+```bash
+uv run python ../tools/backup/pre_migration_backup.py \
+  --database-url "$ODYSSEY_DATABASE_URL" \
+  --destination /tmp/odyssey-pre-migration-backup \
+  --allow-plaintext-local
+```
+
+SQLite uses its online backup API, so committed WAL state is included without a
+raw file copy. PostgreSQL uses `pg_dump` custom format and validates it with
+`pg_restore --list`. The tool refuses to overwrite an existing destination,
+writes owner-only files, checks the database/artifact structure, and verifies
+detached SHA-256 hashes. `--allow-plaintext-local` is deliberately explicit:
+this bundle format is not the encrypted production backup path.
+
+Artifact verification does not make a backup recovery-valid. A backup remains
+marked `pending_clean_room_restore` until the separate restore drill restores it
+into an empty target and runs current migrations and integrity checks.
