@@ -131,6 +131,15 @@
       "title": "EntityMetadata",
       "type": "object"
     },
+    "SeasonCreationSource": {
+      "enum": [
+        "user",
+        "assisted",
+        "imported"
+      ],
+      "title": "SeasonCreationSource",
+      "type": "string"
+    },
     "SeasonPortfolioItem": {
       "additionalProperties": false,
       "properties": {
@@ -295,6 +304,11 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
   "properties": {
+    "charter_revision_id": {
+      "format": "uuid",
+      "title": "Charter Revision Id",
+      "type": "string"
+    },
     "constraints": {
       "default": [],
       "items": {
@@ -303,8 +317,33 @@
       "title": "Constraints",
       "type": "array"
     },
+    "created_from": {
+      "$ref": "#/$defs/SeasonCreationSource"
+    },
     "effective_interval": {
       "$ref": "#/$defs/TemporalInterval"
+    },
+    "explicit_non_goals": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Explicit Non Goals",
+      "type": "array"
+    },
+    "failure_guardrails": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Failure Guardrails",
+      "type": "array"
+    },
+    "good_week_description": {
+      "maxLength": 4000,
+      "minLength": 1,
+      "title": "Good Week Description",
+      "type": "string"
     },
     "known_tradeoffs": {
       "default": [],
@@ -316,6 +355,14 @@
     },
     "metadata": {
       "$ref": "#/$defs/EntityMetadata"
+    },
+    "opportunity_budgets": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Opportunity Budgets",
+      "type": "array"
     },
     "portfolio_items": {
       "items": {
@@ -336,6 +383,14 @@
       "default": null,
       "title": "Primary Override Explanation"
     },
+    "progress_signals": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Progress Signals",
+      "type": "array"
+    },
     "protected_experiences": {
       "default": [],
       "items": {
@@ -350,8 +405,27 @@
       "title": "Rationale",
       "type": "string"
     },
+    "review_cadence": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Review Cadence",
+      "type": "string"
+    },
     "status": {
       "$ref": "#/$defs/SeasonStatus"
+    },
+    "supersedes_season_id": {
+      "anyOf": [
+        {
+          "format": "uuid",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Supersedes Season Id"
     },
     "title": {
       "maxLength": 200,
@@ -371,6 +445,14 @@
       "default": null,
       "title": "Transition Notes"
     },
+    "transition_triggers": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Transition Triggers",
+      "type": "array"
+    },
     "triggering_context": {
       "default": [],
       "items": {
@@ -382,11 +464,17 @@
   },
   "required": [
     "metadata",
+    "charter_revision_id",
     "title",
     "effective_interval",
     "status",
+    "created_from",
     "rationale",
-    "portfolio_items"
+    "portfolio_items",
+    "explicit_non_goals",
+    "good_week_description",
+    "transition_triggers",
+    "review_cadence"
   ],
   "title": "Season",
   "type": "object"

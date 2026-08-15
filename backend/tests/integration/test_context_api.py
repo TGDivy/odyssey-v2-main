@@ -84,7 +84,9 @@ def push_context_facts(client: TestClient, *, denied_sleep: bool = False) -> Non
     assert response.status_code == 200
 
 
-def test_context_assembly_persists_exact_model_free_snapshot(tmp_path: Path) -> None:
+def test_context_assembly_ignores_unaccepted_season_and_persists_snapshot(
+    tmp_path: Path,
+) -> None:
     database = prepare_database(tmp_path / "context.sqlite")
     app = create_app(Settings(env=Environment.TEST), database=database)
     with TestClient(app) as client:
@@ -104,14 +106,14 @@ def test_context_assembly_persists_exact_model_free_snapshot(tmp_path: Path) -> 
     body = response.json()
     statuses = {item["domain"]: item["status"] for item in body["snapshot"]["domains"]}
     assert statuses == {
-        "season": "fresh",
+        "season": "missing",
         "calendar": "fresh",
         "sleep": "fresh",
         "weather": "missing",
     }
-    assert body["missing_domains"] == ["weather"]
+    assert body["missing_domains"] == ["season", "weather"]
     assert body["denied_domains"] == []
-    assert body["snapshot"]["builder_version"] == "deterministic-context-builder-1.0"
+    assert body["snapshot"]["builder_version"] == "deterministic-context-builder-1.1"
     assert len(body["snapshot"]["content_hash"]) == 64
 
     async def verify_persistence() -> None:

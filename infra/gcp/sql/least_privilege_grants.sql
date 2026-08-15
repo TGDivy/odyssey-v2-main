@@ -20,6 +20,7 @@ SELECT format(
   'public.canonical_entities, public.context_snapshots, public.decision_preparations, '
   'public.evidence_queries, public.integrity_runs, public.intervention_evaluations, '
   'public.kill_switch_audit, public.kill_switches, public.ledger_events, '
+  'public.life_model_versions, '
   'public.owner_identities, public.projection_checkpoints, public.projection_records, '
   'public.provenance_records, public.recommendation_feedback, public.server_changes, '
   'public.source_records, public.sync_conflict_resolutions, public.sync_conflicts, '

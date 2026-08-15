@@ -2,7 +2,7 @@
   "artifacts": [
     {
       "path": "schemas/events/registry.v1.json",
-      "sha256": "2e1f959ce545fbdeb50a8cb5a2b6d692709c84e5c140b4999b7574bbe4349305"
+      "sha256": "bc1441d01ba3c855e68c88d12b2c62dbd8032ee91e787c329dc67dd38a3ee1c3"
     },
     {
       "path": "schemas/events/v1/action.status_changed.v1.schema.json",
@@ -77,6 +77,10 @@
       "sha256": "2c4b1562215b2e14f42f73db391a57d1556c9cfe9b194513819d4924f9addff5"
     },
     {
+      "path": "schemas/events/v1/life_stage.revised.v1.schema.json",
+      "sha256": "b4cb863d9c134e19396dcaf9c78df02ea3fb7f211fde7a0670ec8d015a03a788"
+    },
+    {
       "path": "schemas/events/v1/observation.normalized.v1.schema.json",
       "sha256": "ef277666a1a601c092c95fac681b21ae7a37112eeb604cc0673be00aa24e7deb"
     },
@@ -95,6 +99,10 @@
     {
       "path": "schemas/events/v1/season.activated.v1.schema.json",
       "sha256": "af8598be60cee6ff6172367d19748b34a6090d0fa42e3840d90354b528aaa02b"
+    },
+    {
+      "path": "schemas/events/v1/season.revised.v1.schema.json",
+      "sha256": "868d94f8bc81a4d08bf1597332298eace6073869e78677134dbe04dc2c3f11ca"
     },
     {
       "path": "schemas/events/v1/season.transitioned.v1.schema.json",
@@ -270,7 +278,7 @@
     },
     {
       "path": "schemas/jsonschema/v1/season.schema.json",
-      "sha256": "35b8f06a85977142c6ff435fd3bf3a663258720476bbae8285a65d4059d87dcc"
+      "sha256": "1f83f2c0744380d1720b36ae38da3cf91bd13f8202ba2eed2dd861cdd78976f2"
     },
     {
       "path": "schemas/jsonschema/v1/standing-authorization.schema.json",
@@ -282,7 +290,7 @@
     },
     {
       "path": "schemas/openapi/odyssey-v1.openapi.json",
-      "sha256": "283db70b1507eb3cf7b31666ae74682c27f2aa18e5a6bf41e42c107f8c2bc890"
+      "sha256": "026b57674487f16ac4969a3f484130bb90e80b2eb81a1532d10e542a2a25f588"
     }
   ],
   "schema_version": 1

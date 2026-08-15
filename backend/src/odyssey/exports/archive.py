@@ -23,7 +23,7 @@ from odyssey.db.base import Base
 from odyssey.exports.contracts import ExportFormat
 from odyssey.exports.crypto import EXPORT_FORMAT, ExportKeyManager
 
-DATABASE_SCHEMA_REVISION = "20260815_0016"
+DATABASE_SCHEMA_REVISION = "20260815_0017"
 MANIFEST_NAME = "manifest.json"
 MANIFEST_SIGNATURE_NAME = "manifest.ed25519"
 SIGNING_PUBLIC_KEY_NAME = "signing-public-key.txt"
@@ -256,6 +256,27 @@ DATASET_SPECS = (
             "retry_after",
             "policy_version",
             "request_context_hash",
+        ),
+    ),
+    ExportDatasetSpec(
+        "life_model_versions",
+        (
+            "id",
+            "owner_id",
+            "kind",
+            "logical_id",
+            "version_number",
+            "acceptance_sequence",
+            "supersedes_version_id",
+            "status",
+            "acceptance_method",
+            "accepted_at",
+            "content_hash",
+            "document",
+            "event_id",
+            "event_type",
+            "ledger_sequence",
+            "created_at",
         ),
     ),
     ExportDatasetSpec(

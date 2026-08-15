@@ -80,6 +80,19 @@ longitudinal evaluation. The scoring workflow, privacy rules, model-change
 gate, and current evidence boundaries are documented in
 [`docs/evaluation-protocols.md`](docs/evaluation-protocols.md).
 
+## Accepted orientation state
+
+Owner-authenticated commands under `/v1/seasons/*` now append immutable
+Charter, descriptive life-stage, and season versions with optimistic
+supersession, provenance, ledger events, and transactional outbox records.
+Only deliberately accepted versions enter server context assembly; a generic
+synced `season` document cannot silently become normative owner state.
+
+The API exposes current orientation and version history, but the native
+Charter/Season editor and offline acceptance queue are not implemented yet.
+Do not seed real orientation data through SQL or treat model output as accepted.
+See [`docs/architecture/life-model-acceptance.md`](docs/architecture/life-model-acceptance.md).
+
 ## Safety invariants
 
 - Local capture and core state never depend on network or model availability.

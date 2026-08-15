@@ -32,6 +32,18 @@
       "schema": "schemas/events/v1/charter.revised.v1.schema.json"
     },
     {
+      "aggregate_type": "life_stage",
+      "event_type": "life_stage.revised.v1",
+      "purpose": "Accepted descriptive life-stage revision",
+      "schema": "schemas/events/v1/life_stage.revised.v1.schema.json"
+    },
+    {
+      "aggregate_type": "season",
+      "event_type": "season.revised.v1",
+      "purpose": "Immutable season version or state revision",
+      "schema": "schemas/events/v1/season.revised.v1.schema.json"
+    },
+    {
       "aggregate_type": "season",
       "event_type": "season.activated.v1",
       "purpose": "Season activation",

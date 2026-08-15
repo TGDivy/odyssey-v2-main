@@ -22,7 +22,7 @@ def test_initial_migration_creates_immutable_ledger(
 
     connection = sqlite3.connect(database_path)
     revision = connection.execute("SELECT version_num FROM alembic_version").fetchone()
-    assert revision == ("20260815_0016",)
+    assert revision == ("20260815_0017",)
 
     provenance_id = str(uuid4())
     connection.execute(
@@ -198,6 +198,65 @@ def test_auth_device_audit_migration_is_append_only(
 
     with pytest.raises(sqlite3.IntegrityError, match="append-only"):
         connection.execute("UPDATE auth_device_audit SET event_type = 'changed'")
+
+    connection.close()
+    get_settings.cache_clear()
+
+
+def test_life_model_versions_migration_is_append_only(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    database_path = tmp_path / "life-model-migration.sqlite"
+    monkeypatch.setenv("ODYSSEY_DATABASE_URL", f"sqlite+aiosqlite:///{database_path}")
+    get_settings.cache_clear()
+    command.upgrade(Config("alembic.ini"), "head")
+    connection = sqlite3.connect(database_path)
+    version_id = str(uuid4())
+    connection.execute(
+        """
+        INSERT INTO life_model_versions (
+          id, owner_id, kind, logical_id, version_number, acceptance_sequence,
+          supersedes_version_id,
+          status, acceptance_method, accepted_at, content_hash, document,
+          event_id, event_type, ledger_sequence, created_at
+        ) VALUES (?, 'owner', 'charter', ?, 1, 1, NULL, NULL, 'owner_authored', ?, ?, '{}',
+                  ?, 'charter.revised.v1', 1, ?)
+        """,
+        (
+            version_id,
+            str(uuid4()),
+            "2026-08-15T00:00:00Z",
+            "a" * 64,
+            str(uuid4()),
+            "2026-08-15T00:00:00Z",
+        ),
+    )
+    connection.commit()
+
+    with pytest.raises(sqlite3.IntegrityError, match=r"life_model_versions\.owner_id"):
+        connection.execute(
+            """
+            INSERT INTO life_model_versions (
+              id, owner_id, kind, logical_id, version_number, acceptance_sequence,
+              supersedes_version_id,
+              status, acceptance_method, accepted_at, content_hash, document,
+              event_id, event_type, ledger_sequence, created_at
+            ) VALUES (?, 'owner', 'charter', ?, 1, 1, NULL, NULL, 'owner_authored', ?, ?, '{}',
+                      ?, 'charter.revised.v1', 2, ?)
+            """,
+            (
+                str(uuid4()),
+                str(uuid4()),
+                "2026-08-15T00:01:00Z",
+                "b" * 64,
+                str(uuid4()),
+                "2026-08-15T00:01:00Z",
+            ),
+        )
+    connection.rollback()
+
+    with pytest.raises(sqlite3.IntegrityError, match="append-only"):
+        connection.execute("UPDATE life_model_versions SET status = 'changed'")
 
     connection.close()
     get_settings.cache_clear()

@@ -29,8 +29,8 @@ deployment, external account configuration, or physical-device behavior.
 | Spec scope | Status | Repository evidence | Required next proof or implementation |
 | --- | --- | --- | --- |
 | §§1–5 product thesis, Constitution, premise, research consequences | `documented` | `docs/constitution.md`, `docs/ASSUMPTIONS.md`, master specification | Add automated copy/invariant checks where behavior becomes executable. |
-| §6 good-life model | `contract-only` | `domain/life.py` Charter and direction contracts; generated schemas | Versioned owner acceptance, resolution-by-time, and recommendation linkage. |
-| §7 life-stage and season model | `contract-only` | `domain/life.py`; event schemas | Immutable revision service, transition state machine, Workshop UI, replay tests. |
+| §6 good-life model | `partial` | deliberate owner-only immutable Charter revisions, optimistic supersession/history, provenance/ledger/outbox, as-of context resolution and strengthened required contract fields | Native editor/acceptance ceremony, offline queue, direction service, explicit recommendation citations and owner-lived Charter. |
+| §7 life-stage and season model | `partial` | owner-reviewed descriptive life-stage versions; Charter-bound season policy, legal terminal state machine, soft composition warnings, explicit successor events and immutable history | Native Workshop/history/conflict UI, local-first acceptance, frozen outgoing summary/retrospective and multi-device proof. |
 | §8 ontology and knowledge model | `partial` | provenance, temporal, assertion, event, person, relationship contracts; durable ledger | Admission, supersession, graph derivation, contradiction, redaction, and retrieval services. |
 | §9 decision architecture | `partial` | decision contracts/events, B.5 immutable context-bound preparation and B.7 idempotent recommendation feedback/event-only assertion supersession with exact durable-change reporting | Full lifecycle/choice/outcome service, future-learning correction consumption, replay and product UI. |
 | §10 temporal consequence engine | `partial` | versioned bounded graph traversal with time/depth/path limits, cycle/accumulation controls, uncertainty propagation, causal-status preservation, correlated-path collapse and deterministic ranking | Domain rule registry, direct-effect services, calibration reports, persistence, APIs, narrative/UI and historical replay suite. |
@@ -45,20 +45,20 @@ deployment, external account configuration, or physical-device behavior.
 | §19 visual and art direction | `partial` | native SwiftUI shells and shared assets scaffold | Tokens, map/world states, motion/accessibility treatment, snapshots, reduced-motion proof. |
 | §20 Apple ecosystem | `partial` | iOS/Watch/macOS shells, widgets/intents/share targets, portable data/auth/sync packages | Real HealthKit/EventKit/location/watch/widget adapters and Xcode/device validation. |
 | §21 integrations | `deferred` | entitlements and adapter seams only | Implement consented adapters incrementally; keep OAuth/webhooks/provider credentials disabled. |
-| §22 data architecture | `partial` | append-only ledger, projections, provenance contracts, encrypted owner export/import foundations, 16 migrations | Complete semantic services, selective memory, retention/redaction, scale budgets. |
-| §23 backend architecture | `partial` | FastAPI modular monolith, Postgres/SQLite support, worker/outbox, auth/sync/attachments and deterministic context assembly | Remaining domain modules and Appendix B routes, queues/workflows and operational SLO evidence. |
+| §22 data architecture | `partial` | append-only ledger, projections, provenance contracts, encrypted owner export/import foundations, accepted life-model history and 17 migrations | Complete semantic services, selective memory, retention/redaction, scale budgets. |
+| §23 backend architecture | `partial` | FastAPI modular monolith, Postgres/SQLite support, worker/outbox, auth/sync/attachments, accepted `/v1/seasons/*` commands/history and deterministic context assembly | Remaining domain modules and Appendix B routes, queues/workflows and operational SLO evidence. |
 | §24 AI/model architecture | `contract-only` | model-run schema | Provider-neutral router, tool boundaries, prompt defense, eval gates, budget and rollback control. |
 | §25 offline/synchronization | `verified` | server sync service, simulated clients, conflicts, native GRDB queue/coordinator, convergence tests | Xcode/device multi-device proof remains owner-only. |
 | §26 notification/background | `partial` | background refresh/widget/intent targets plus deterministic C.1/B.6 expiry, pause, burden and delivery-state policy | Local scheduling, rendered redaction, receipts/outcomes and physical-device tests. |
 | §27 observability | `partial` | structured payload-safe logging, OpenTelemetry runtime, alerts/IaC, record trace | Deploy collectors/dashboards and prove external alert delivery. |
 | §28 product telemetry/self-improvement | `contract-only` | product-event/change-proposal contracts and runtime redaction | Declared-question registry, approved metrics, proposal review, counterexamples, rollback experiments. |
-| §29 evaluation framework | `partial` | strict provider-neutral contracts/schemas, SHA-256 manifest, 20 synthetic stress cases, eight anchored hard-fail rubrics, six real-policy golden adapters, focused tests and `make verify` gate | Private historical replay, open-ended model grading, retrieval/scientific/security/performance/UI datasets, shadow evaluation and longitudinal reports. |
+| §29 evaluation framework | `partial` | strict provider-neutral contracts/schemas, SHA-256 manifest, 20 synthetic stress cases, eight anchored hard-fail rubrics, six real-policy golden adapters, focused tests and deterministic evaluation gate | Private historical replay, open-ended model grading, retrieval/scientific/security/performance/UI datasets, shadow evaluation and longitudinal reports. |
 | §30 security model | `partial` | owner auth, Keychain use, envelope encryption, secrets/IAM/KMS IaC, runbooks | Current threat model, penetration review, live least-privilege audit, lost-device/revocation drill. |
 | §31 durability/migrations | `partial` | append-only history, Alembic/GRDB migrations, backups, restore/integrity tools | Fixture migration matrix, deployed PITR/retention proof, clean-room restore evidence. |
 | §32 failure modes/pre-mortem | `partial` | kill switches, retry/conflict diagnostics, incident/recovery runbooks | Regression scenarios for each severe failure and owner drills. |
 | §33 technology choices | `documented` | master specification, ADR 0001, lockfiles, OpenTofu and XcodeGen manifests | Add ADRs whenever implementation departs from selected architecture. |
 | §34 repository architecture | `verified` | monorepo layout, portable paths, package/infra/docs/tool boundaries | Keep directory contract synchronized as editions are added. |
-| §35 testing strategy | `partial` | 199 backend tests, 45 portable Swift tests at snapshot, deterministic policy golden replay, schema/fixture/IaC checks | Missing historical/model, UI, performance, broader fault, Apple integration and live recovery suites. |
+| §35 testing strategy | `partial` | 207 backend tests pass at 86.90% coverage in this Linux snapshot, prior 45-test portable Swift baseline, deterministic policy golden replay, schema/fixture/IaC checks | Clear repository-wide formatter drift and rerun current Swift contract on macOS; historical/model, UI, performance, broader fault, Apple integration and live recovery suites remain. |
 | §36 deployment architecture | `implemented` | GCP OpenTofu, deployment workflow examples, migration/canary/rollback and handoff docs | Owner provisions accounts, imports secrets, deploys, validates alerts/backups/restore and signs apps. |
 | §37 development environments | `verified` | lockfiles, Compose, environment diagnostics, `make verify`, Mac-only skip reporting | Fresh personal Mac proof is owner-only. |
 | §38 roadmap | `partial` | Edition 0 substrate and iPhone capture/auth/sync slice | Edition 1–4 product loops and milestone acceptance artifacts remain. |
@@ -85,7 +85,7 @@ deployment, external account configuration, or physical-device behavior.
 | 0.2 local ledger/projections | `partial` | Durable ledger/rebuild/export exist; 10-year performance and every-version migration matrix are not yet proven. |
 | 0.3 cloud core/sync | `verified` | Auth, sync, attachments, conflicts and convergence/fault tests exist; live cloud proof is owner-only. |
 | 0.4 durability/observability | `implemented` | Tools/runbooks/IaC exist; isolated live restore and external alert evidence are owner-only. |
-| 1.1 Charter/Season Workshop | `contract-only` | Contracts and a repair Workshop surface exist; editor/history/acceptance loop does not. |
+| 1.1 Charter/Season Workshop | `partial` | Server acceptance/history/context loop, immutable transition policy and strengthened portable domain contract exist; current Workshop remains a repair surface. |
 | 1.2 capture/personal library | `partial` | Offline durable text capture and local Archive exist; media/import/search/annotation breadth remains. |
 | 1.3 Apple context adapters | `missing` | Targets/seams exist without real incremental HealthKit/calendar/location adapters. |
 | 1.4 Now/Tomorrow Map v1 | `partial` | Quiet Now, C.7 re-entry policy and immutable deterministic model-free server context assembly exist; Tomorrow Map and rendered re-entry do not. |
@@ -110,7 +110,7 @@ personal state or complete the longitudinal protocol.
 
 | Requirement | Gate | Status | Evidence or blocker |
 | --- | --- | --- | --- |
-| Accepted Charter, life stage and season | `lived` | `missing` | Contracts only; requires editor and explicit owner acceptance. |
+| Accepted Charter, life stage and season | `lived` | `partial` | Authenticated immutable server acceptance/history exists and generic sync cannot become normative; native editor/offline ceremony and actual owner acceptance remain. |
 | Now can intentionally show silence | `repo` | `implemented` | Quiet iPhone Now state exists; deterministic silence policy remains to connect. |
 | No universal Life Score or people ranking | `repo` | `verified` | Constitution and implementation omit both. |
 | Guilt-free re-entry | `repo` | `partial` | C.7 guarantees at most three current changes, one question, stale expiry, clean options, backlog suppression and no absence penalty; native rendering remains. |
@@ -162,11 +162,22 @@ personal state or complete the longitudinal protocol.
 
 At this snapshot:
 
-- The current full backend run reports 199 tests and 86.86% coverage. Schema
-  generation verifies 72 deterministic artifacts; OpenTofu 1.10.6 validates
-  the deployment and all five mocked plans, including encrypted-export secret,
-  storage, IAM and worker wiring across sixteen migrations.
-- The portable Swift 6.1 release suite reported 45 tests passing.
+- The current full backend run reports 207 tests passing at 86.90% coverage.
+  Full Ruff lint and strict mypy pass across 138 source files; all changed Python
+  files are format-clean. The repository-wide formatter gate still finds 16
+  pre-existing drifts outside this slice, so the aggregate verification script
+  stops before its remaining stages.
+- Schema generation verifies 74 deterministic artifacts, synthetic-history
+  generation verifies three artifacts, the evaluation corpus replays 20 cases
+  through eight rubrics and six golden adapters, and the GCP structural checker
+  verifies 88 resources and 29 required artifacts.
+- The prior OpenTofu 1.10.6 baseline validated the deployment and all five
+  mocked plans, including encrypted-export secret, storage, IAM and worker
+  wiring across seventeen migrations. OpenTofu is unavailable for a current
+  rerun in this environment.
+- The prior portable Swift 6.1 release suite reported 45 tests passing. Swift is
+  unavailable in this Linux environment after the current Season contract
+  extension, so that changed package still requires a macOS rerun.
 - iOS sources passed parser-only validation and `apple/project.yml` passed YAML
   structure checks.
 - No Xcode build, signing, simulator, Apple framework integration, TestFlight,

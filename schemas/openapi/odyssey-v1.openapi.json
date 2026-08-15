@@ -1,6 +1,15 @@
 {
   "components": {
     "schemas": {
+      "AcceptanceMethod": {
+        "enum": [
+          "owner_authored",
+          "owner_reviewed_assisted",
+          "owner_approved_import"
+        ],
+        "title": "AcceptanceMethod",
+        "type": "string"
+      },
       "AcceptedOperation": {
         "additionalProperties": false,
         "properties": {
@@ -80,6 +89,48 @@
         ],
         "title": "AccessTokenResponse",
         "type": "object"
+      },
+      "ActorRef": {
+        "additionalProperties": false,
+        "properties": {
+          "actor_id": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Actor Id",
+            "type": "string"
+          },
+          "actor_type": {
+            "$ref": "#/components/schemas/ActorType"
+          }
+        },
+        "required": [
+          "actor_type",
+          "actor_id"
+        ],
+        "title": "ActorRef",
+        "type": "object"
+      },
+      "ActorType": {
+        "enum": [
+          "user",
+          "device",
+          "system",
+          "integration",
+          "model"
+        ],
+        "title": "ActorType",
+        "type": "string"
+      },
+      "AllocationBand": {
+        "enum": [
+          "minimal",
+          "low",
+          "moderate",
+          "high",
+          "dominant"
+        ],
+        "title": "AllocationBand",
+        "type": "string"
       },
       "AppleChallengeRequest": {
         "additionalProperties": false,
@@ -697,6 +748,187 @@
         "title": "CausalStatus",
         "type": "string"
       },
+      "CharterRevisionRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "acceptance_method": {
+            "$ref": "#/components/schemas/AcceptanceMethod"
+          },
+          "charter": {
+            "$ref": "#/components/schemas/CharterVersion"
+          },
+          "device_id": {
+            "format": "uuid",
+            "title": "Device Id",
+            "type": "string"
+          },
+          "event_id": {
+            "format": "uuid",
+            "title": "Event Id",
+            "type": "string"
+          },
+          "expected_current_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Current Version Id"
+          }
+        },
+        "required": [
+          "event_id",
+          "device_id",
+          "acceptance_method",
+          "charter"
+        ],
+        "title": "CharterRevisionRequest",
+        "type": "object"
+      },
+      "CharterValue": {
+        "additionalProperties": false,
+        "properties": {
+          "anti_value_or_failure_mode": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anti Value Or Failure Mode"
+          },
+          "description": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Description",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "positive_expression": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Positive Expression",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "description",
+          "positive_expression"
+        ],
+        "title": "CharterValue",
+        "type": "object"
+      },
+      "CharterVersion": {
+        "additionalProperties": false,
+        "properties": {
+          "accepted_at": {
+            "format": "date-time",
+            "title": "Accepted At",
+            "type": "string"
+          },
+          "anti_optimization_statements": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Anti Optimization Statements",
+            "type": "array"
+          },
+          "charter_id": {
+            "format": "uuid",
+            "title": "Charter Id",
+            "type": "string"
+          },
+          "desired_ways_of_being": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Desired Ways Of Being",
+            "type": "array"
+          },
+          "effective_interval": {
+            "$ref": "#/components/schemas/TemporalInterval"
+          },
+          "interpretation_notes": {
+            "default": "",
+            "title": "Interpretation Notes",
+            "type": "string"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/EntityMetadata"
+          },
+          "non_negotiable_boundaries": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Non Negotiable Boundaries",
+            "type": "array"
+          },
+          "responsibilities": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Responsibilities",
+            "type": "array"
+          },
+          "supersedes_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supersedes Version Id"
+          },
+          "values": {
+            "items": {
+              "$ref": "#/components/schemas/CharterValue"
+            },
+            "title": "Values",
+            "type": "array"
+          },
+          "version_number": {
+            "minimum": 1.0,
+            "title": "Version Number",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "metadata",
+          "charter_id",
+          "version_number",
+          "effective_interval",
+          "values",
+          "responsibilities",
+          "desired_ways_of_being",
+          "non_negotiable_boundaries",
+          "anti_optimization_statements",
+          "accepted_at"
+        ],
+        "title": "CharterVersion",
+        "type": "object"
+      },
       "ClaimRelation": {
         "enum": [
           "supporting",
@@ -999,6 +1231,59 @@
         ],
         "title": "CounterevidenceStatus",
         "type": "string"
+      },
+      "CurrentOrientationResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "as_of": {
+            "format": "date-time",
+            "title": "As Of",
+            "type": "string"
+          },
+          "charter": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LifeModelVersionEnvelope"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "life_stage": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LifeModelVersionEnvelope"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "policy_version": {
+            "title": "Policy Version",
+            "type": "string"
+          },
+          "season": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LifeModelVersionEnvelope"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "as_of",
+          "charter",
+          "life_stage",
+          "season",
+          "policy_version"
+        ],
+        "title": "CurrentOrientationResponse",
+        "type": "object"
       },
       "DataClass": {
         "enum": [
@@ -1694,6 +1979,17 @@
         "title": "DirectEffect",
         "type": "object"
       },
+      "DirectionRole": {
+        "enum": [
+          "primary",
+          "foundation",
+          "maintenance",
+          "exploration",
+          "dormant"
+        ],
+        "title": "DirectionRole",
+        "type": "string"
+      },
       "DurableRecordChange": {
         "additionalProperties": false,
         "properties": {
@@ -1717,6 +2013,71 @@
           "operation"
         ],
         "title": "DurableRecordChange",
+        "type": "object"
+      },
+      "EntityMetadata": {
+        "additionalProperties": false,
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by": {
+            "$ref": "#/components/schemas/ActorRef"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "last_revised_at": {
+            "format": "date-time",
+            "title": "Last Revised At",
+            "type": "string"
+          },
+          "provenance_id": {
+            "format": "uuid",
+            "title": "Provenance Id",
+            "type": "string"
+          },
+          "revision": {
+            "minimum": 1.0,
+            "title": "Revision",
+            "type": "integer"
+          },
+          "schema_version": {
+            "minimum": 1.0,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "sensitivity": {
+            "$ref": "#/components/schemas/DataClass"
+          },
+          "tombstoned_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tombstoned At"
+          }
+        },
+        "required": [
+          "id",
+          "schema_version",
+          "created_at",
+          "created_by",
+          "last_revised_at",
+          "revision",
+          "sensitivity",
+          "provenance_id"
+        ],
+        "title": "EntityMetadata",
         "type": "object"
       },
       "EvidenceFreshness": {
@@ -2348,6 +2709,304 @@
         "title": "KnownDecisionOption",
         "type": "object"
       },
+      "LifeModelHistoryResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/LifeModelKind"
+          },
+          "policy_version": {
+            "title": "Policy Version",
+            "type": "string"
+          },
+          "versions": {
+            "items": {
+              "$ref": "#/components/schemas/LifeModelVersionEnvelope"
+            },
+            "title": "Versions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "kind",
+          "versions",
+          "policy_version"
+        ],
+        "title": "LifeModelHistoryResponse",
+        "type": "object"
+      },
+      "LifeModelKind": {
+        "enum": [
+          "charter",
+          "life_stage",
+          "season"
+        ],
+        "title": "LifeModelKind",
+        "type": "string"
+      },
+      "LifeModelRevisionReceipt": {
+        "additionalProperties": false,
+        "properties": {
+          "created": {
+            "title": "Created",
+            "type": "boolean"
+          },
+          "event_id": {
+            "format": "uuid",
+            "title": "Event Id",
+            "type": "string"
+          },
+          "ledger_sequence": {
+            "minimum": 1.0,
+            "title": "Ledger Sequence",
+            "type": "integer"
+          },
+          "policy_version": {
+            "title": "Policy Version",
+            "type": "string"
+          },
+          "version": {
+            "$ref": "#/components/schemas/LifeModelVersionEnvelope"
+          },
+          "warnings": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "version",
+          "event_id",
+          "ledger_sequence",
+          "created",
+          "policy_version"
+        ],
+        "title": "LifeModelRevisionReceipt",
+        "type": "object"
+      },
+      "LifeModelVersionEnvelope": {
+        "additionalProperties": false,
+        "properties": {
+          "acceptance_method": {
+            "$ref": "#/components/schemas/AcceptanceMethod"
+          },
+          "acceptance_sequence": {
+            "minimum": 1.0,
+            "title": "Acceptance Sequence",
+            "type": "integer"
+          },
+          "accepted_at": {
+            "format": "date-time",
+            "title": "Accepted At",
+            "type": "string"
+          },
+          "content_hash": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Content Hash",
+            "type": "string"
+          },
+          "document": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Document",
+            "type": "object"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/LifeModelKind"
+          },
+          "logical_id": {
+            "format": "uuid",
+            "title": "Logical Id",
+            "type": "string"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "supersedes_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supersedes Version Id"
+          },
+          "version_id": {
+            "format": "uuid",
+            "title": "Version Id",
+            "type": "string"
+          },
+          "version_number": {
+            "minimum": 1.0,
+            "title": "Version Number",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind",
+          "version_id",
+          "logical_id",
+          "version_number",
+          "acceptance_sequence",
+          "supersedes_version_id",
+          "status",
+          "acceptance_method",
+          "accepted_at",
+          "content_hash",
+          "document"
+        ],
+        "title": "LifeModelVersionEnvelope",
+        "type": "object"
+      },
+      "LifeStageRevisionRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "acceptance_method": {
+            "$ref": "#/components/schemas/AcceptanceMethod"
+          },
+          "accepted_at": {
+            "format": "date-time",
+            "title": "Accepted At",
+            "type": "string"
+          },
+          "device_id": {
+            "format": "uuid",
+            "title": "Device Id",
+            "type": "string"
+          },
+          "event_id": {
+            "format": "uuid",
+            "title": "Event Id",
+            "type": "string"
+          },
+          "expected_current_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Current Version Id"
+          },
+          "life_stage": {
+            "$ref": "#/components/schemas/LifeStageVersion"
+          }
+        },
+        "required": [
+          "event_id",
+          "device_id",
+          "acceptance_method",
+          "accepted_at",
+          "life_stage"
+        ],
+        "title": "LifeStageRevisionRequest",
+        "type": "object"
+      },
+      "LifeStageVersion": {
+        "additionalProperties": false,
+        "properties": {
+          "care_responsibilities": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Care Responsibilities",
+            "type": "array"
+          },
+          "career_context": {
+            "default": "",
+            "title": "Career Context",
+            "type": "string"
+          },
+          "effective_interval": {
+            "$ref": "#/components/schemas/TemporalInterval"
+          },
+          "financial_context": {
+            "default": "",
+            "title": "Financial Context",
+            "type": "string"
+          },
+          "geography_context": {
+            "default": "",
+            "title": "Geography Context",
+            "type": "string"
+          },
+          "health_capability_context": {
+            "default": "",
+            "title": "Health Capability Context",
+            "type": "string"
+          },
+          "horizons": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Horizons",
+            "type": "array"
+          },
+          "identity_transitions": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Identity Transitions",
+            "type": "array"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/EntityMetadata"
+          },
+          "partnership_family_context": {
+            "default": "",
+            "title": "Partnership Family Context",
+            "type": "string"
+          },
+          "stage_id": {
+            "format": "uuid",
+            "title": "Stage Id",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          },
+          "uncertainties": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Uncertainties",
+            "type": "array"
+          }
+        },
+        "required": [
+          "metadata",
+          "stage_id",
+          "effective_interval",
+          "title"
+        ],
+        "title": "LifeStageVersion",
+        "type": "object"
+      },
       "LiveResponse": {
         "properties": {
           "status": {
@@ -2906,6 +3565,320 @@
         ],
         "title": "ScientificClaimResult",
         "type": "object"
+      },
+      "Season": {
+        "additionalProperties": false,
+        "properties": {
+          "charter_revision_id": {
+            "format": "uuid",
+            "title": "Charter Revision Id",
+            "type": "string"
+          },
+          "constraints": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Constraints",
+            "type": "array"
+          },
+          "created_from": {
+            "$ref": "#/components/schemas/SeasonCreationSource"
+          },
+          "effective_interval": {
+            "$ref": "#/components/schemas/TemporalInterval"
+          },
+          "explicit_non_goals": {
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Explicit Non Goals",
+            "type": "array"
+          },
+          "failure_guardrails": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Failure Guardrails",
+            "type": "array"
+          },
+          "good_week_description": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Good Week Description",
+            "type": "string"
+          },
+          "known_tradeoffs": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Known Tradeoffs",
+            "type": "array"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/EntityMetadata"
+          },
+          "opportunity_budgets": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Opportunity Budgets",
+            "type": "array"
+          },
+          "portfolio_items": {
+            "items": {
+              "$ref": "#/components/schemas/SeasonPortfolioItem"
+            },
+            "title": "Portfolio Items",
+            "type": "array"
+          },
+          "primary_override_explanation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Primary Override Explanation"
+          },
+          "progress_signals": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Progress Signals",
+            "type": "array"
+          },
+          "protected_experiences": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Protected Experiences",
+            "type": "array"
+          },
+          "rationale": {
+            "maxLength": 8000,
+            "minLength": 1,
+            "title": "Rationale",
+            "type": "string"
+          },
+          "review_cadence": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Review Cadence",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/SeasonStatus"
+          },
+          "supersedes_season_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supersedes Season Id"
+          },
+          "title": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          },
+          "transition_notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transition Notes"
+          },
+          "transition_triggers": {
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Transition Triggers",
+            "type": "array"
+          },
+          "triggering_context": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Triggering Context",
+            "type": "array"
+          }
+        },
+        "required": [
+          "metadata",
+          "charter_revision_id",
+          "title",
+          "effective_interval",
+          "status",
+          "created_from",
+          "rationale",
+          "portfolio_items",
+          "explicit_non_goals",
+          "good_week_description",
+          "transition_triggers",
+          "review_cadence"
+        ],
+        "title": "Season",
+        "type": "object"
+      },
+      "SeasonCreationSource": {
+        "enum": [
+          "user",
+          "assisted",
+          "imported"
+        ],
+        "title": "SeasonCreationSource",
+        "type": "string"
+      },
+      "SeasonPortfolioItem": {
+        "additionalProperties": false,
+        "properties": {
+          "allocation_band": {
+            "$ref": "#/components/schemas/AllocationBand"
+          },
+          "direction_id": {
+            "format": "uuid",
+            "title": "Direction Id",
+            "type": "string"
+          },
+          "minimum_viable_commitment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minimum Viable Commitment"
+          },
+          "review_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Review Date"
+          },
+          "role": {
+            "$ref": "#/components/schemas/DirectionRole"
+          },
+          "sacrifice_limit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sacrifice Limit"
+          },
+          "success_signals": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Success Signals",
+            "type": "array"
+          }
+        },
+        "required": [
+          "direction_id",
+          "role",
+          "allocation_band"
+        ],
+        "title": "SeasonPortfolioItem",
+        "type": "object"
+      },
+      "SeasonRevisionRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "acceptance_method": {
+            "$ref": "#/components/schemas/AcceptanceMethod"
+          },
+          "accepted_at": {
+            "format": "date-time",
+            "title": "Accepted At",
+            "type": "string"
+          },
+          "device_id": {
+            "format": "uuid",
+            "title": "Device Id",
+            "type": "string"
+          },
+          "event_id": {
+            "format": "uuid",
+            "title": "Event Id",
+            "type": "string"
+          },
+          "expected_current_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Current Version Id"
+          },
+          "season": {
+            "$ref": "#/components/schemas/Season"
+          },
+          "season_id": {
+            "format": "uuid",
+            "title": "Season Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "device_id",
+          "season_id",
+          "acceptance_method",
+          "accepted_at",
+          "season"
+        ],
+        "title": "SeasonRevisionRequest",
+        "type": "object"
+      },
+      "SeasonStatus": {
+        "enum": [
+          "draft",
+          "calibration",
+          "active",
+          "transitioning",
+          "complete",
+          "abandoned"
+        ],
+        "title": "SeasonStatus",
+        "type": "string"
       },
       "Stakes": {
         "enum": [
@@ -3856,6 +4829,82 @@
         ],
         "title": "SyncRepairOptions",
         "type": "object"
+      },
+      "TemporalInterval": {
+        "additionalProperties": false,
+        "properties": {
+          "all_day_semantics": {
+            "default": false,
+            "title": "All Day Semantics",
+            "type": "boolean"
+          },
+          "end": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End"
+          },
+          "end_precision": {
+            "$ref": "#/components/schemas/TemporalPrecision",
+            "default": "unknown"
+          },
+          "start": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start"
+          },
+          "start_precision": {
+            "$ref": "#/components/schemas/TemporalPrecision",
+            "default": "unknown"
+          },
+          "timezone_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timezone Id"
+          }
+        },
+        "title": "TemporalInterval",
+        "type": "object"
+      },
+      "TemporalPrecision": {
+        "enum": [
+          "exact",
+          "minute",
+          "hour",
+          "day",
+          "month",
+          "approximate",
+          "unknown"
+        ],
+        "title": "TemporalPrecision",
+        "type": "string"
       },
       "ValidationError": {
         "properties": {
@@ -4970,6 +6019,257 @@
         "summary": "Record Recommendation Feedback",
         "tags": [
           "recommendations"
+        ]
+      }
+    },
+    "/v1/seasons/charter/revisions": {
+      "post": {
+        "operationId": "accept_charter_revision_v1_seasons_charter_revisions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CharterRevisionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LifeModelRevisionReceipt"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Accept Charter Revision",
+        "tags": [
+          "seasons"
+        ]
+      }
+    },
+    "/v1/seasons/history": {
+      "get": {
+        "operationId": "get_life_model_history_v1_seasons_history_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/LifeModelKind"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LifeModelHistoryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Life Model History",
+        "tags": [
+          "seasons"
+        ]
+      }
+    },
+    "/v1/seasons/life-stage/revisions": {
+      "post": {
+        "operationId": "accept_life_stage_revision_v1_seasons_life_stage_revisions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LifeStageRevisionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LifeModelRevisionReceipt"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Accept Life Stage Revision",
+        "tags": [
+          "seasons"
+        ]
+      }
+    },
+    "/v1/seasons/orientation": {
+      "get": {
+        "operationId": "get_current_orientation_v1_seasons_orientation_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "as_of",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "As Of"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrentOrientationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Current Orientation",
+        "tags": [
+          "seasons"
+        ]
+      }
+    },
+    "/v1/seasons/revisions": {
+      "post": {
+        "operationId": "accept_season_revision_v1_seasons_revisions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SeasonRevisionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LifeModelRevisionReceipt"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Accept Season Revision",
+        "tags": [
+          "seasons"
         ]
       }
     },

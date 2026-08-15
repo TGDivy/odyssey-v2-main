@@ -933,6 +933,29 @@ psql -h 127.0.0.1 -p 5432 -d odyssey \
   --command='SELECT version_num FROM alembic_version;'
 ```
 
+For this repository snapshot, stop if the result is not
+`20260815_0017`. Confirm the accepted life-model table is append-only and that
+the bounded worker has read-only export access after the grant script:
+
+```bash
+psql -h 127.0.0.1 -p 5432 -d odyssey --set ON_ERROR_STOP=on <<SQL
+SELECT version_num = '20260815_0017' AS expected_head FROM alembic_version;
+SELECT tgname FROM pg_trigger
+WHERE tgrelid = 'public.life_model_versions'::regclass
+  AND NOT tgisinternal;
+SELECT has_table_privilege('$WORKER_USER', 'public.life_model_versions', 'SELECT')
+  AS worker_can_export;
+SELECT has_table_privilege('$WORKER_USER', 'public.life_model_versions', 'INSERT')
+  AS worker_cannot_accept;
+SQL
+```
+
+Expected values are `true`, the `life_model_versions_immutable` trigger, `true`,
+and `false`. Treat an absent trigger or worker write privilege as a release
+blocker. Do not seed Charter, life-stage, or season rows with SQL: the current
+native editor is not implemented, and real accepted state must eventually pass
+through an authenticated owner-review command.
+
 The first owner row is created only by a successful nonce-bound
 `POST /v1/auth/apple/exchange` whose verified `sub` matches the bootstrap
 secret. After that enrollment and at least two encrypted recovery credentials,
@@ -962,7 +985,7 @@ it. Keep `APPLE_BOOTSTRAP_ENABLED=false` permanently after first enrollment.
 
 **Expected output**
 
-- Migration job succeeds once and Alembic reports the current head.
+- Migration job succeeds once and Alembic reports `20260815_0017`.
 - Migration identity owns database/schema; API has table DML; worker can only
   read/update outbox; backup is read-only.
 - A future first Apple exchange creates exactly one owner identity and one

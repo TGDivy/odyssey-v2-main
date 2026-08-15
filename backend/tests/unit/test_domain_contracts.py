@@ -17,6 +17,7 @@ from odyssey.domain.life import (
     AllocationBand,
     DirectionRole,
     Season,
+    SeasonCreationSource,
     SeasonPortfolioItem,
     SeasonStatus,
 )
@@ -97,11 +98,17 @@ def test_season_requires_explanation_for_more_than_two_primaries() -> None:
     now = datetime.now(UTC)
     common = {
         "metadata": metadata(),
+        "charter_revision_id": new_uuid7(),
         "title": "Synthetic season",
         "effective_interval": TemporalInterval(start=now, end=now + timedelta(days=90)),
         "status": SeasonStatus.DRAFT,
+        "created_from": SeasonCreationSource.USER,
         "rationale": "Test the portfolio invariant.",
         "portfolio_items": tuple(portfolio_item(DirectionRole.PRIMARY) for _ in range(3)),
+        "explicit_non_goals": ("Do not optimize every hour.",),
+        "good_week_description": "Important work and relationships both receive attention.",
+        "transition_triggers": ("Review when the launch ends.",),
+        "review_cadence": "P2W",
     }
 
     with pytest.raises(ValidationError, match="requires an explanation"):

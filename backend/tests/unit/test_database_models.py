@@ -14,6 +14,11 @@ from odyssey.db.models import (
     reject_ledger_delete,
     reject_ledger_update,
 )
+from odyssey.life.persistence import (
+    LifeModelVersionRecord,
+    reject_life_model_version_delete,
+    reject_life_model_version_update,
+)
 
 
 def ledger_record() -> LedgerEventRecord:
@@ -55,3 +60,30 @@ def test_orm_rejects_auth_device_audit_mutation() -> None:
 
     with pytest.raises(ImmutableAuthAuditError, match="append-only"):
         reject_auth_device_audit_mutation(None, None, record)
+
+
+def test_orm_rejects_accepted_life_model_update_and_delete() -> None:
+    now = datetime.now(UTC)
+    record = LifeModelVersionRecord(
+        id=uuid4(),
+        owner_id="owner",
+        kind="charter",
+        logical_id=uuid4(),
+        version_number=1,
+        acceptance_sequence=1,
+        supersedes_version_id=None,
+        status=None,
+        acceptance_method="owner_authored",
+        accepted_at=now,
+        content_hash="a" * 64,
+        document={},
+        event_id=uuid4(),
+        event_type="charter.revised.v1",
+        ledger_sequence=1,
+        created_at=now,
+    )
+
+    with pytest.raises(ImmutableLedgerMutationError, match="immutable"):
+        reject_life_model_version_update(None, None, record)
+    with pytest.raises(ImmutableLedgerMutationError, match="immutable"):
+        reject_life_model_version_delete(None, None, record)

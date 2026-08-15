@@ -39,11 +39,17 @@ func seasonRequiresPrimaryOverrideExplanation() throws {
     #expect(throws: DomainValidationError.tooManyPrimaryDirections) {
         try Season(
             metadata: metadata,
+            charterRevisionID: UUIDv7(),
             title: "Synthetic season",
             effectiveInterval: interval,
             status: .draft,
+            createdFrom: .user,
             rationale: "Validate the portfolio guard.",
-            portfolioItems: items
+            portfolioItems: items,
+            explicitNonGoals: ["Do not optimize every hour."],
+            goodWeekDescription: "Important work and relationships both receive attention.",
+            transitionTriggers: ["Review after the launch."],
+            reviewCadence: "P2W"
         )
     }
 }

@@ -56,6 +56,12 @@ class SeasonStatus(StrEnum):
     ABANDONED = "abandoned"
 
 
+class SeasonCreationSource(StrEnum):
+    USER = "user"
+    ASSISTED = "assisted"
+    IMPORTED = "imported"
+
+
 class DirectionRole(StrEnum):
     PRIMARY = "primary"
     FOUNDATION = "foundation"
@@ -84,16 +90,26 @@ class SeasonPortfolioItem(StrictModel):
 
 class Season(StrictModel):
     metadata: EntityMetadata
+    charter_revision_id: UUID7
     title: str = Field(min_length=1, max_length=200)
     effective_interval: TemporalInterval
     status: SeasonStatus
+    created_from: SeasonCreationSource
     rationale: str = Field(min_length=1, max_length=8_000)
     triggering_context: tuple[str, ...] = ()
     portfolio_items: tuple[SeasonPortfolioItem, ...]
+    explicit_non_goals: tuple[str, ...] = Field(min_length=1)
     constraints: tuple[str, ...] = ()
+    opportunity_budgets: tuple[str, ...] = ()
+    progress_signals: tuple[str, ...] = ()
+    failure_guardrails: tuple[str, ...] = ()
     protected_experiences: tuple[str, ...] = ()
     known_tradeoffs: tuple[str, ...] = ()
+    good_week_description: str = Field(min_length=1, max_length=4_000)
+    transition_triggers: tuple[str, ...] = Field(min_length=1)
+    review_cadence: str = Field(min_length=1, max_length=200)
     transition_notes: str | None = None
+    supersedes_season_id: UUID7 | None = None
     primary_override_explanation: str | None = None
 
     @model_validator(mode="after")
@@ -103,6 +119,19 @@ class Season(StrictModel):
             raise ValueError("more than two primary directions requires an explanation")
         if len({item.direction_id for item in self.portfolio_items}) != len(self.portfolio_items):
             raise ValueError("a direction can appear only once in a season portfolio")
+        string_lists = (
+            self.triggering_context,
+            self.explicit_non_goals,
+            self.constraints,
+            self.opportunity_budgets,
+            self.progress_signals,
+            self.failure_guardrails,
+            self.protected_experiences,
+            self.known_tradeoffs,
+            self.transition_triggers,
+        )
+        if any(len(values) != len(set(values)) for values in string_lists):
+            raise ValueError("season policy lists must not contain duplicates")
         return self
 
 

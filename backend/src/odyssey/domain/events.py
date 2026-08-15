@@ -62,6 +62,20 @@ EVENT_DEFINITIONS: tuple[EventDefinition, ...] = (
         ("supersedes_version_id",),
         "Accepted Charter revision",
     ),
+    EventDefinition(
+        "life_stage.revised.v1",
+        "life_stage",
+        ("life_stage_version_id",),
+        ("supersedes_version_id",),
+        "Accepted descriptive life-stage revision",
+    ),
+    EventDefinition(
+        "season.revised.v1",
+        "season",
+        ("season_version_id", "season_id", "new_status"),
+        ("supersedes_version_id", "previous_status"),
+        "Immutable season version or state revision",
+    ),
     EventDefinition("season.activated.v1", "season", ("season_id",), purpose="Season activation"),
     EventDefinition(
         "season.transitioned.v1",

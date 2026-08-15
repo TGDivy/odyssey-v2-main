@@ -1,8 +1,11 @@
 """Model-free context assembly from canonical synchronized facts."""
 
 import json
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
+from typing import cast
+from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,9 +22,11 @@ from odyssey.context.contracts import (
 )
 from odyssey.context.persistence import ContextSnapshotRecord
 from odyssey.domain.common import new_uuid7
+from odyssey.life.contracts import LifeModelKind
+from odyssey.life.service import LifeModelService
 from odyssey.sync.models import CanonicalEntityRecord
 
-CONTEXT_BUILDER_VERSION = "deterministic-context-builder-1.0"
+CONTEXT_BUILDER_VERSION = "deterministic-context-builder-1.1"
 
 _DOMAIN_ENTITY_TYPES = {
     ContextDomain.CALENDAR: frozenset({"calendar_event", "calendar_block"}),
@@ -52,6 +57,24 @@ _FRESHNESS_LIMITS: dict[ContextDomain, timedelta | None] = {
     ContextDomain.WEATHER: timedelta(hours=6),
 }
 _DENIED_PERMISSION_STATES = frozenset({"denied", "restricted", "revoked"})
+_ACCEPTED_LIFE_ENTITY_TYPES = frozenset(
+    {"charter", "charter_version", "life_stage", "season", "season_version"}
+)
+_LIFE_ENTITY_TYPE = {
+    LifeModelKind.CHARTER: "charter_version",
+    LifeModelKind.LIFE_STAGE: "life_stage",
+    LifeModelKind.SEASON: "season_version",
+}
+
+
+@dataclass(frozen=True, slots=True)
+class ContextSourceRow:
+    entity_type: str
+    entity_id: UUID
+    canonical_revision: int
+    updated_at: datetime
+    content_hash: str
+    document: dict[str, object]
 
 
 class ContextAssemblyError(RuntimeError):
@@ -78,7 +101,7 @@ class ContextAssemblyService:
         requested_types = set().union(
             *(_DOMAIN_ENTITY_TYPES[domain] for domain in request.requested_domains)
         )
-        rows = tuple(
+        canonical_rows = tuple(
             (
                 await session.scalars(
                     select(CanonicalEntityRecord)
@@ -94,6 +117,35 @@ class ContextAssemblyService:
                 )
             ).all()
         )
+        rows = tuple(
+            ContextSourceRow(
+                entity_type=row.entity_type,
+                entity_id=row.entity_id,
+                canonical_revision=row.canonical_revision,
+                updated_at=row.updated_at,
+                content_hash=row.content_hash,
+                document=cast(dict[str, object], row.document),
+            )
+            for row in canonical_rows
+            if row.entity_type not in _ACCEPTED_LIFE_ENTITY_TYPES
+        )
+        if ContextDomain.SEASON in request.requested_domains:
+            accepted_life = await LifeModelService.current_records(
+                session,
+                owner_id=owner_id,
+                as_of=request.as_of,
+            )
+            rows += tuple(
+                ContextSourceRow(
+                    entity_type=_LIFE_ENTITY_TYPE[kind],
+                    entity_id=record.id,
+                    canonical_revision=record.version_number,
+                    updated_at=record.accepted_at,
+                    content_hash=record.content_hash,
+                    document=cast(dict[str, object], record.document),
+                )
+                for kind, record in sorted(accepted_life.items(), key=lambda item: item[0].value)
+            )
         permission_rows = tuple(
             (
                 await session.scalars(
@@ -168,9 +220,7 @@ class ContextAssemblyService:
                 if item.status is ContextDomainStatus.DENIED
             ),
             stale_domains=tuple(
-                item.domain
-                for item in domain_snapshots
-                if item.status is ContextDomainStatus.STALE
+                item.domain for item in domain_snapshots if item.status is ContextDomainStatus.STALE
             ),
         )
         session.add(
@@ -193,7 +243,7 @@ class ContextAssemblyService:
     def _assemble_domain(
         *,
         domain: ContextDomain,
-        rows: tuple[CanonicalEntityRecord, ...],
+        rows: tuple[ContextSourceRow, ...],
         denied: bool,
         as_of: datetime,
         client_freshness: datetime | None,

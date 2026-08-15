@@ -8,6 +8,8 @@ public enum DomainValidationError: Error, Equatable, Sendable {
     case tombstonePrecedesCreation
     case tooManyPrimaryDirections
     case duplicateDirection
+    case duplicateSeasonPolicyEntry
+    case missingRequiredSeasonPolicy
 }
 
 public struct UUIDv7: Codable, Hashable, Sendable, CustomStringConvertible {
@@ -253,6 +255,12 @@ public enum SeasonStatus: String, Codable, Sendable {
     case abandoned
 }
 
+public enum SeasonCreationSource: String, Codable, Sendable {
+    case user
+    case assisted
+    case imported
+}
+
 public enum DirectionRole: String, Codable, Sendable {
     case primary
     case foundation
@@ -299,30 +307,50 @@ public struct SeasonPortfolioItem: Codable, Hashable, Sendable {
 
 public struct Season: Codable, Hashable, Sendable {
     public let metadata: EntityMetadata
+    public let charterRevisionID: UUIDv7
     public let title: String
     public let effectiveInterval: TemporalInterval
     public let status: SeasonStatus
+    public let createdFrom: SeasonCreationSource
     public let rationale: String
     public let triggeringContext: [String]
     public let portfolioItems: [SeasonPortfolioItem]
+    public let explicitNonGoals: [String]
     public let constraints: [String]
+    public let opportunityBudgets: [String]
+    public let progressSignals: [String]
+    public let failureGuardrails: [String]
     public let protectedExperiences: [String]
     public let knownTradeoffs: [String]
+    public let goodWeekDescription: String
+    public let transitionTriggers: [String]
+    public let reviewCadence: String
     public let transitionNotes: String?
+    public let supersedesSeasonID: UUIDv7?
     public let primaryOverrideExplanation: String?
 
     public init(
         metadata: EntityMetadata,
+        charterRevisionID: UUIDv7,
         title: String,
         effectiveInterval: TemporalInterval,
         status: SeasonStatus,
+        createdFrom: SeasonCreationSource,
         rationale: String,
         triggeringContext: [String] = [],
         portfolioItems: [SeasonPortfolioItem],
+        explicitNonGoals: [String],
         constraints: [String] = [],
+        opportunityBudgets: [String] = [],
+        progressSignals: [String] = [],
+        failureGuardrails: [String] = [],
         protectedExperiences: [String] = [],
         knownTradeoffs: [String] = [],
+        goodWeekDescription: String,
+        transitionTriggers: [String],
+        reviewCadence: String,
         transitionNotes: String? = nil,
+        supersedesSeasonID: UUIDv7? = nil,
         primaryOverrideExplanation: String? = nil
     ) throws {
         let primaryCount = portfolioItems.count { $0.role == .primary }
@@ -332,17 +360,46 @@ public struct Season: Codable, Hashable, Sendable {
         if Set(portfolioItems.map(\.directionID)).count != portfolioItems.count {
             throw DomainValidationError.duplicateDirection
         }
+        let policyLists = [
+            triggeringContext,
+            explicitNonGoals,
+            constraints,
+            opportunityBudgets,
+            progressSignals,
+            failureGuardrails,
+            protectedExperiences,
+            knownTradeoffs,
+            transitionTriggers,
+        ]
+        if policyLists.contains(where: { Set($0).count != $0.count }) {
+            throw DomainValidationError.duplicateSeasonPolicyEntry
+        }
+        if explicitNonGoals.isEmpty || goodWeekDescription.isEmpty ||
+            transitionTriggers.isEmpty || reviewCadence.isEmpty
+        {
+            throw DomainValidationError.missingRequiredSeasonPolicy
+        }
         self.metadata = metadata
+        self.charterRevisionID = charterRevisionID
         self.title = title
         self.effectiveInterval = effectiveInterval
         self.status = status
+        self.createdFrom = createdFrom
         self.rationale = rationale
         self.triggeringContext = triggeringContext
         self.portfolioItems = portfolioItems
+        self.explicitNonGoals = explicitNonGoals
         self.constraints = constraints
+        self.opportunityBudgets = opportunityBudgets
+        self.progressSignals = progressSignals
+        self.failureGuardrails = failureGuardrails
         self.protectedExperiences = protectedExperiences
         self.knownTradeoffs = knownTradeoffs
+        self.goodWeekDescription = goodWeekDescription
+        self.transitionTriggers = transitionTriggers
+        self.reviewCadence = reviewCadence
         self.transitionNotes = transitionNotes
+        self.supersedesSeasonID = supersedesSeasonID
         self.primaryOverrideExplanation = primaryOverrideExplanation
     }
 }

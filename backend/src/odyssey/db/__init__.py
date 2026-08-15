@@ -11,6 +11,7 @@ from odyssey.decision import persistence as decision_persistence
 from odyssey.evidence import query_persistence as evidence_query_persistence
 from odyssey.exports import persistence as export_persistence
 from odyssey.intent import persistence as intent_persistence
+from odyssey.life import persistence as life_persistence
 from odyssey.sync import models as sync_models
 
 assert (
@@ -23,6 +24,7 @@ assert (
     and evidence_query_persistence
     and export_persistence
     and intent_persistence
+    and life_persistence
     and sync_models
 )
 
