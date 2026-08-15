@@ -114,3 +114,27 @@ AI generation, external side effects, and destructive compaction. The CLI is
 the write surface until production owner authentication and step-up controls are
 implemented; do not expose an unauthenticated administrative mutation route.
 Keep reasons operational and payload-free; they are retained in audit history.
+
+## Integrity checks
+
+Run the scheduled checker directly or alongside a known backup bundle:
+
+```bash
+uv run python ../tools/integrity/check_database.py \
+  --database-url "$ODYSSEY_DATABASE_URL" \
+  --backup /tmp/odyssey-pre-migration-backup \
+  --report /tmp/odyssey-integrity-report.json
+```
+
+The checker verifies database structure, active foreign-key enforcement,
+append-only triggers, every immutable source hash, provenance reachability,
+ledger/projection reconciliation, and optional backup age/integrity. Checks for
+attachments, object manifests, sync tombstones, and external deduplication are
+reported as `not_applicable` until those storage groups exist rather than being
+silently treated as passing.
+
+Every run is persisted in append-only `integrity_runs`. Any failed check exits
+with status `2` and enables the audited `destructive_compaction` kill switch.
+Successful later runs do not disable that switch automatically; an operator must
+inspect the incident, create a backup checkpoint, repair and re-run checks, then
+record an explicit audited disable reason.

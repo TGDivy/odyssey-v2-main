@@ -1,5 +1,7 @@
 import asyncio
+import json
 from datetime import UTC, datetime
+from hashlib import sha256
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -72,6 +74,15 @@ def test_capture_is_durable_and_idempotent(tmp_path: Path) -> None:
             return int(ledger_count or 0), int(source_count or 0), int(outbox_count or 0)
 
     assert asyncio.run(counts()) == (1, 1, 1)
+
+    async def source_hash_is_valid() -> bool:
+        async with database.sessions() as session:
+            source = await session.get(SourceRecord, capture_id)
+            assert source is not None
+            canonical = json.dumps(source.payload, separators=(",", ":"), sort_keys=True).encode()
+            return sha256(canonical).hexdigest() == source.content_hash
+
+    assert asyncio.run(source_hash_is_valid()) is True
 
 
 def test_capture_kill_switch_blocks_new_writes_but_not_committed_retries(

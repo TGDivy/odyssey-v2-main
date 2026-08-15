@@ -1,5 +1,6 @@
 """Durable capture API that never depends on a model provider."""
 
+import json
 from datetime import UTC, datetime
 from hashlib import sha256
 from typing import Annotated
@@ -67,7 +68,19 @@ async def create_capture(
     idempotency_key: Annotated[str, Header(alias="Idempotency-Key", min_length=1)],
 ) -> CaptureCreateResponse:
     recorded_at = datetime.now(UTC)
-    content_hash = sha256(body.content_or_object_ref.encode()).hexdigest()
+    source_payload = {
+        "kind": body.kind.value,
+        "content_or_object_ref": body.content_or_object_ref,
+        "initial_context": {
+            "device_id": str(body.device_id),
+            "timezone": body.timezone,
+            "broad_location": body.broad_location,
+            "invoking_surface": body.invoking_surface,
+        },
+        "interpretation_status": "pending",
+    }
+    canonical_source = json.dumps(source_payload, separators=(",", ":"), sort_keys=True).encode()
+    content_hash = sha256(canonical_source).hexdigest()
     provenance = Provenance(
         id=new_uuid7(),
         source_kind="user_capture",
@@ -102,17 +115,7 @@ async def create_capture(
         temporal_precision="exact",
         content_hash=content_hash,
         sensitivity=body.sensitivity.value,
-        payload={
-            "kind": body.kind.value,
-            "content_or_object_ref": body.content_or_object_ref,
-            "initial_context": {
-                "device_id": str(body.device_id),
-                "timezone": body.timezone,
-                "broad_location": body.broad_location,
-                "invoking_surface": body.invoking_surface,
-            },
-            "interpretation_status": "pending",
-        },
+        payload=source_payload,
         provenance_id=provenance.id,
         timezone_id=body.timezone,
     )

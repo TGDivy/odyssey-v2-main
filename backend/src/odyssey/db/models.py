@@ -50,6 +50,24 @@ class ProvenanceRecord(Base):
     details: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
 
 
+@event.listens_for(ProvenanceRecord, "before_update")
+def reject_provenance_update(
+    _mapper: Mapper[ProvenanceRecord] | None,
+    _connection: Connection | None,
+    _target: ProvenanceRecord,
+) -> None:
+    raise ImmutableLedgerMutationError("provenance records are append-only")
+
+
+@event.listens_for(ProvenanceRecord, "before_delete")
+def reject_provenance_delete(
+    _mapper: Mapper[ProvenanceRecord] | None,
+    _connection: Connection | None,
+    _target: ProvenanceRecord,
+) -> None:
+    raise ImmutableLedgerMutationError("provenance records are append-only")
+
+
 class LedgerEventRecord(Base):
     __tablename__ = "ledger_events"
     __table_args__ = (
@@ -114,6 +132,24 @@ class SourceRecord(Base):
     provenance_id: Mapped[UUID] = mapped_column(
         ForeignKey("provenance_records.id", ondelete="RESTRICT"), nullable=False
     )
+
+
+@event.listens_for(SourceRecord, "before_update")
+def reject_source_record_update(
+    _mapper: Mapper[SourceRecord] | None,
+    _connection: Connection | None,
+    _target: SourceRecord,
+) -> None:
+    raise ImmutableLedgerMutationError("source records are append-only")
+
+
+@event.listens_for(SourceRecord, "before_delete")
+def reject_source_record_delete(
+    _mapper: Mapper[SourceRecord] | None,
+    _connection: Connection | None,
+    _target: SourceRecord,
+) -> None:
+    raise ImmutableLedgerMutationError("source records are append-only")
 
 
 class AssertionRecord(Base):
@@ -233,3 +269,35 @@ def reject_kill_switch_audit_delete(
     _target: KillSwitchAuditRecord,
 ) -> None:
     raise ImmutableLedgerMutationError("kill-switch audit records are append-only")
+
+
+class IntegrityRunRecord(Base):
+    __tablename__ = "integrity_runs"
+    __table_args__ = (Index("ix_integrity_runs_completed", "completed_at"),)
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    completed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    status: Mapped[str] = mapped_column(String(30), nullable=False)
+    checker_version: Mapped[str] = mapped_column(String(100), nullable=False)
+    checks: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False)
+    failure_codes: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    report_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
+@event.listens_for(IntegrityRunRecord, "before_update")
+def reject_integrity_run_update(
+    _mapper: Mapper[IntegrityRunRecord] | None,
+    _connection: Connection | None,
+    _target: IntegrityRunRecord,
+) -> None:
+    raise ImmutableLedgerMutationError("integrity runs are append-only")
+
+
+@event.listens_for(IntegrityRunRecord, "before_delete")
+def reject_integrity_run_delete(
+    _mapper: Mapper[IntegrityRunRecord] | None,
+    _connection: Connection | None,
+    _target: IntegrityRunRecord,
+) -> None:
+    raise ImmutableLedgerMutationError("integrity runs are append-only")
