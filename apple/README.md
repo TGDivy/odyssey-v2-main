@@ -39,6 +39,13 @@ scopes, validates the returned state/token, and leaves the raw nonce only in
 memory for backend exchange. These platform branches still require Xcode and
 physical-device validation and are not yet composed into the app shell.
 
+`OdysseyApplication` begins the portable composition layer. Its manual-capture
+pipeline validates bounded capture context, preserves the original payload and
+content hash, and commits `capture.recorded.v1`, the current projection, and a
+sequenced sync operation in one SQLite transaction before returning. Capture
+does not wait for authentication, networking, or interpretation; operational
+secret material is rejected from this user-data path.
+
 On a Mac with Swift 6.1 or newer and Xcode installed:
 
 ```bash
