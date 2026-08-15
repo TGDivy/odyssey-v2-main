@@ -30,8 +30,8 @@ from odyssey.attachments.models import (
 from odyssey.attachments.storage import (
     AttachmentObjectChecksumError,
     AttachmentStorageError,
+    AttachmentStore,
     ChunkManifest,
-    LocalAttachmentStore,
 )
 from odyssey.db.models import OutboxRecord
 from odyssey.domain.common import new_uuid7
@@ -200,7 +200,7 @@ class AttachmentService:
         declared_content_sha256: str,
         content: bytes,
         signer: UploadTokenSigner,
-        store: LocalAttachmentStore,
+        store: AttachmentStore,
         now: datetime,
     ) -> AttachmentChunkResponse:
         upload = await session.get(AttachmentUploadRecord, upload_id)
@@ -265,7 +265,7 @@ class AttachmentService:
         *,
         owner_id: str,
         upload_id: UUID,
-        store: LocalAttachmentStore,
+        store: AttachmentStore,
         now: datetime,
     ) -> AttachmentCompleteResponse:
         upload = await session.scalar(
@@ -328,6 +328,9 @@ class AttachmentService:
                     content_sha256=stored_object.content_sha256,
                     byte_size=stored_object.byte_size,
                     storage_key=stored_object.storage_key,
+                    storage_backend=stored_object.storage_backend,
+                    bucket_name=stored_object.bucket_name,
+                    object_version_id=stored_object.version_id,
                     verified_at=now,
                 )
             )

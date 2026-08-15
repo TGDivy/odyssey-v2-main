@@ -31,6 +31,12 @@ class TelemetryExporter(StrEnum):
     OTLP_HTTP = "otlp_http"
 
 
+class AttachmentStoreBackend(StrEnum):
+    LOCAL = "local"
+    S3 = "s3"
+    GCS = "gcs"
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="ODYSSEY_",
@@ -42,10 +48,18 @@ class Settings(BaseSettings):
     env: Environment = Environment.LOCAL
     log_level: str = "INFO"
     database_url: str = "postgresql+asyncpg://odyssey:odyssey@localhost:5432/odyssey"
-    storage_endpoint: str = "http://localhost:9000"
+    attachment_store_backend: AttachmentStoreBackend = AttachmentStoreBackend.LOCAL
+    storage_endpoint: str = ""
     storage_bucket: str = "odyssey-local"
-    storage_access_key: str = "odyssey"
-    storage_secret_key: str = ""
+    storage_region: str = "us-east-1"
+    storage_access_key: SecretStr = SecretStr("")
+    storage_secret_key: SecretStr = SecretStr("")
+    storage_force_path_style: bool = False
+    storage_require_versioning: bool = True
+    storage_require_public_access_block: bool = True
+    storage_server_side_encryption: str = ""
+    storage_kms_key_id: str = ""
+    gcp_project_id: str = ""
     model_provider: str = "deterministic"
     auth_mode: AuthMode = AuthMode.DEVELOPMENT
     apple_client_id: str = ""
@@ -92,10 +106,34 @@ class Settings(BaseSettings):
             raise ValueError("maximum attachment size cannot be below the upload chunk size")
         if self.auth_max_pending_challenges_per_device > self.auth_max_pending_challenges:
             raise ValueError("per-device auth challenge capacity cannot exceed global capacity")
+        static_access_key = self.storage_access_key.get_secret_value()
+        static_secret_key = self.storage_secret_key.get_secret_value()
+        if bool(static_access_key) != bool(static_secret_key):
+            raise ValueError("object storage access key and secret must be configured together")
+        if self.storage_server_side_encryption not in {"", "AES256", "aws:kms"}:
+            raise ValueError("unsupported object storage server-side encryption mode")
+        if self.storage_kms_key_id and self.storage_server_side_encryption != "aws:kms":
+            raise ValueError("an object storage KMS key requires aws:kms encryption mode")
+        if self.attachment_store_backend is AttachmentStoreBackend.S3 and self.storage_endpoint:
+            storage_endpoint = urlsplit(self.storage_endpoint)
+            if storage_endpoint.scheme not in {"http", "https"} or not storage_endpoint.netloc:
+                raise ValueError("S3-compatible storage endpoint must use HTTP(S)")
         if self.env in {Environment.STAGING, Environment.PRODUCTION} and not (
             self.attachment_upload_signing_key.get_secret_value()
         ):
             raise ValueError("staging and production require an attachment upload signing key")
+        if self.env in {Environment.STAGING, Environment.PRODUCTION}:
+            if self.attachment_store_backend is AttachmentStoreBackend.LOCAL:
+                raise ValueError("staging and production require durable cloud attachment storage")
+            if not self.storage_bucket:
+                raise ValueError("cloud attachment storage requires a bucket")
+            if not self.storage_require_versioning:
+                raise ValueError("cloud attachment storage requires object versioning")
+            if (
+                self.attachment_store_backend is AttachmentStoreBackend.S3
+                and not self.storage_server_side_encryption
+            ):
+                raise ValueError("production S3 attachment storage requires server-side encryption")
         if (
             self.env in {Environment.STAGING, Environment.PRODUCTION}
             and self.auth_mode is AuthMode.SIGN_IN_WITH_APPLE
@@ -135,6 +173,7 @@ class Settings(BaseSettings):
         return headers
 
     def safe_diagnostics(self) -> dict[str, str | bool | int | float]:
+        static_access_key = self.storage_access_key.get_secret_value()
         return {
             "environment": self.env.value,
             "auth_mode": self.auth_mode.value,
@@ -159,7 +198,13 @@ class Settings(BaseSettings):
             "worker_backlog_alert_seconds": self.worker_backlog_alert_seconds,
             "attachment_chunk_bytes": self.attachment_chunk_bytes,
             "maximum_attachment_bytes": self.maximum_attachment_bytes,
-            "storage_configured": bool(self.storage_endpoint and self.storage_bucket),
+            "attachment_store_backend": self.attachment_store_backend.value,
+            "storage_configured": (
+                self.attachment_store_backend is AttachmentStoreBackend.LOCAL
+                or bool(self.storage_bucket)
+            ),
+            "storage_static_credentials_configured": bool(static_access_key),
+            "storage_versioning_required": self.storage_require_versioning,
         }
 
 

@@ -35,6 +35,7 @@ def test_diagnostics_excludes_secret_configuration() -> None:
     settings = Settings(
         env=Environment.TEST,
         database_url="postgresql://user:secret@private.example/odyssey",
+        storage_access_key="synthetic-access-key",
         storage_secret_key="must-not-leak",
         attachment_upload_signing_key="must-also-not-leak",
         apple_bootstrap_subject="private-apple-subject",

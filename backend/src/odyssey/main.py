@@ -25,7 +25,8 @@ from odyssey.api.errors import (
 )
 from odyssey.api.router import router
 from odyssey.attachments.service import UploadTokenSigner
-from odyssey.attachments.storage import LocalAttachmentStore
+from odyssey.attachments.storage import AttachmentStore
+from odyssey.attachments.storage_factory import create_attachment_store
 from odyssey.auth.apple import AppleIdentityVerifier
 from odyssey.auth.service import AuthService
 from odyssey.config import Environment, Settings, get_settings
@@ -39,7 +40,7 @@ SAFE_CORRELATION_ID = re.compile(r"^[A-Za-z0-9_.:-]{1,128}$")
 def create_app(
     settings: Settings | None = None,
     database: Database | None = None,
-    attachment_store: LocalAttachmentStore | None = None,
+    attachment_store: AttachmentStore | None = None,
     upload_token_signer: UploadTokenSigner | None = None,
     telemetry: TelemetryRuntime | None = None,
     apple_identity_verifier: AppleIdentityVerifier | None = None,
@@ -50,9 +51,7 @@ def create_app(
         if active_settings.env is Environment.TEST
         else active_settings.database_url
     )
-    active_attachment_store = attachment_store or LocalAttachmentStore(
-        active_settings.attachment_storage_path
-    )
+    active_attachment_store = attachment_store or create_attachment_store(active_settings)
     signing_secret = active_settings.attachment_upload_signing_key.get_secret_value().encode()
     active_upload_token_signer = upload_token_signer or UploadTokenSigner(signing_secret or None)
     active_auth_service = AuthService(
@@ -70,6 +69,7 @@ def create_app(
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+        await active_attachment_store.validate_configuration()
         logger.info(
             "service_started",
             service="odyssey-api",

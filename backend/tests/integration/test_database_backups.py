@@ -36,7 +36,7 @@ def test_sqlite_backup_is_online_private_and_verifiable(
         allow_plaintext=True,
     )
     assert report.artifact_verified is True
-    assert report.schema_revision == "20260815_0009"
+    assert report.schema_revision == "20260815_0010"
     assert report.artifact.sha256
     assert (destination / "database.sqlite3").stat().st_mode & 0o777 == 0o600
 

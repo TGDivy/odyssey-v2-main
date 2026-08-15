@@ -1,4 +1,4 @@
-"""Atomic local object storage used by tests and credential-free development."""
+"""Portable attachment storage contract and atomic local implementation."""
 
 import asyncio
 import os
@@ -6,6 +6,7 @@ import shutil
 from dataclasses import dataclass
 from hashlib import sha256
 from pathlib import Path
+from typing import Protocol
 from uuid import UUID, uuid4
 
 
@@ -37,11 +38,48 @@ class StoredObject:
     storage_key: str
     content_sha256: str
     byte_size: int
+    storage_backend: str
+    bucket_name: str | None = None
+    version_id: str | None = None
+
+
+class AttachmentStore(Protocol):
+    @property
+    def storage_backend(self) -> str: ...
+
+    @property
+    def bucket_name(self) -> str | None: ...
+
+    async def validate_configuration(self) -> None: ...
+
+    async def write_chunk(
+        self,
+        upload_id: UUID,
+        chunk_index: int,
+        content: bytes,
+    ) -> StoredChunk: ...
+
+    async def assemble(
+        self,
+        upload_id: UUID,
+        chunks: tuple[ChunkManifest, ...],
+        *,
+        expected_content_sha256: str,
+        expected_byte_size: int,
+    ) -> StoredObject: ...
+
+    async def read_object(self, content_sha256: str) -> bytes: ...
 
 
 class LocalAttachmentStore:
+    storage_backend = "local"
+    bucket_name = None
+
     def __init__(self, root: Path) -> None:
         self.root = root
+
+    async def validate_configuration(self) -> None:
+        await asyncio.to_thread(self.root.mkdir, parents=True, exist_ok=True)
 
     async def write_chunk(self, upload_id: UUID, chunk_index: int, content: bytes) -> StoredChunk:
         return await asyncio.to_thread(self._write_chunk, upload_id, chunk_index, content)
@@ -103,7 +141,12 @@ class LocalAttachmentStore:
             ):
                 raise AttachmentObjectChecksumError("existing content-addressed object is invalid")
             self._remove_upload(upload_id)
-            return StoredObject(storage_key, expected_content_sha256, expected_byte_size)
+            return StoredObject(
+                storage_key,
+                expected_content_sha256,
+                expected_byte_size,
+                self.storage_backend,
+            )
 
         temporary = destination.with_name(f".{destination.name}.{upload_id}.assembling")
         digest = sha256()
@@ -133,7 +176,12 @@ class LocalAttachmentStore:
         finally:
             temporary.unlink(missing_ok=True)
         self._remove_upload(upload_id)
-        return StoredObject(storage_key, expected_content_sha256, expected_byte_size)
+        return StoredObject(
+            storage_key,
+            expected_content_sha256,
+            expected_byte_size,
+            self.storage_backend,
+        )
 
     def _remove_upload(self, upload_id: UUID) -> None:
         shutil.rmtree(self.root / "uploads" / str(upload_id), ignore_errors=True)

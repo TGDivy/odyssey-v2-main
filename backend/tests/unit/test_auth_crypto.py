@@ -20,7 +20,7 @@ from odyssey.auth.tokens import (
     AccessTokenError,
     AccessTokenService,
 )
-from odyssey.config import AuthMode, Environment, Settings
+from odyssey.config import AttachmentStoreBackend, AuthMode, Environment, Settings
 from odyssey.domain.common import new_uuid7
 
 
@@ -181,12 +181,14 @@ def test_auth_configuration_fails_closed() -> None:
         Settings(
             env=Environment.PRODUCTION,
             auth_mode=AuthMode.SIGN_IN_WITH_APPLE,
+            attachment_store_backend=AttachmentStoreBackend.GCS,
             attachment_upload_signing_key="synthetic-attachment-signing-key",
         )
 
     settings = Settings(
         env=Environment.PRODUCTION,
         auth_mode=AuthMode.SIGN_IN_WITH_APPLE,
+        attachment_store_backend=AttachmentStoreBackend.GCS,
         apple_client_id="com.example.odyssey",
         auth_access_token_signing_key="synthetic-signing-key-at-least-32-bytes-long",
         attachment_upload_signing_key="synthetic-attachment-signing-key",
