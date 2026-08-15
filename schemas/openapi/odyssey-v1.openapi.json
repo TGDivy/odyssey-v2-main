@@ -175,6 +175,72 @@
         "title": "AppleExchangeRequest",
         "type": "object"
       },
+      "AssembledContextSnapshot": {
+        "additionalProperties": false,
+        "properties": {
+          "as_of": {
+            "format": "date-time",
+            "title": "As Of",
+            "type": "string"
+          },
+          "builder_version": {
+            "title": "Builder Version",
+            "type": "string"
+          },
+          "built_at": {
+            "format": "date-time",
+            "title": "Built At",
+            "type": "string"
+          },
+          "content_hash": {
+            "maxLength": 64,
+            "minLength": 64,
+            "title": "Content Hash",
+            "type": "string"
+          },
+          "domains": {
+            "items": {
+              "$ref": "#/components/schemas/ContextDomainSnapshot"
+            },
+            "title": "Domains",
+            "type": "array"
+          },
+          "horizon": {
+            "title": "Horizon",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "purpose": {
+            "title": "Purpose",
+            "type": "string"
+          },
+          "source_fact_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Source Fact Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "as_of",
+          "built_at",
+          "horizon",
+          "purpose",
+          "domains",
+          "source_fact_ids",
+          "builder_version",
+          "content_hash"
+        ],
+        "title": "AssembledContextSnapshot",
+        "type": "object"
+      },
       "AttachmentChunkResponse": {
         "additionalProperties": false,
         "properties": {
@@ -618,6 +684,220 @@
           "merge"
         ],
         "title": "ConflictResolutionStrategy",
+        "type": "string"
+      },
+      "ContextAssemblyRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "as_of": {
+            "format": "date-time",
+            "title": "As Of",
+            "type": "string"
+          },
+          "client_known_freshness": {
+            "additionalProperties": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "propertyNames": {
+              "$ref": "#/components/schemas/ContextDomain"
+            },
+            "title": "Client Known Freshness",
+            "type": "object"
+          },
+          "horizon": {
+            "maxLength": 30,
+            "minLength": 2,
+            "title": "Horizon",
+            "type": "string"
+          },
+          "purpose": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Purpose",
+            "type": "string"
+          },
+          "requested_domains": {
+            "items": {
+              "$ref": "#/components/schemas/ContextDomain"
+            },
+            "maxItems": 10,
+            "minItems": 1,
+            "title": "Requested Domains",
+            "type": "array"
+          }
+        },
+        "required": [
+          "as_of",
+          "horizon",
+          "purpose",
+          "requested_domains"
+        ],
+        "title": "ContextAssemblyRequest",
+        "type": "object"
+      },
+      "ContextAssemblyResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "denied_domains": {
+            "items": {
+              "$ref": "#/components/schemas/ContextDomain"
+            },
+            "title": "Denied Domains",
+            "type": "array"
+          },
+          "missing_domains": {
+            "items": {
+              "$ref": "#/components/schemas/ContextDomain"
+            },
+            "title": "Missing Domains",
+            "type": "array"
+          },
+          "snapshot": {
+            "$ref": "#/components/schemas/AssembledContextSnapshot"
+          },
+          "stale_domains": {
+            "items": {
+              "$ref": "#/components/schemas/ContextDomain"
+            },
+            "title": "Stale Domains",
+            "type": "array"
+          }
+        },
+        "required": [
+          "snapshot",
+          "missing_domains",
+          "denied_domains",
+          "stale_domains"
+        ],
+        "title": "ContextAssemblyResponse",
+        "type": "object"
+      },
+      "ContextDomain": {
+        "enum": [
+          "calendar",
+          "sleep",
+          "training",
+          "season",
+          "location",
+          "intents",
+          "decisions",
+          "relationships",
+          "travel",
+          "weather"
+        ],
+        "title": "ContextDomain",
+        "type": "string"
+      },
+      "ContextDomainSnapshot": {
+        "additionalProperties": false,
+        "properties": {
+          "domain": {
+            "$ref": "#/components/schemas/ContextDomain"
+          },
+          "facts": {
+            "items": {
+              "$ref": "#/components/schemas/ContextFact"
+            },
+            "title": "Facts",
+            "type": "array"
+          },
+          "freshest_source_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Freshest Source At"
+          },
+          "reason_codes": {
+            "items": {
+              "$ref": "#/components/schemas/ContextReason"
+            },
+            "title": "Reason Codes",
+            "type": "array"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ContextDomainStatus"
+          }
+        },
+        "required": [
+          "domain",
+          "status",
+          "facts",
+          "reason_codes"
+        ],
+        "title": "ContextDomainSnapshot",
+        "type": "object"
+      },
+      "ContextDomainStatus": {
+        "enum": [
+          "fresh",
+          "stale",
+          "missing",
+          "denied"
+        ],
+        "title": "ContextDomainStatus",
+        "type": "string"
+      },
+      "ContextFact": {
+        "additionalProperties": false,
+        "properties": {
+          "canonical_revision": {
+            "minimum": 1.0,
+            "title": "Canonical Revision",
+            "type": "integer"
+          },
+          "content_hash": {
+            "maxLength": 64,
+            "minLength": 64,
+            "title": "Content Hash",
+            "type": "string"
+          },
+          "document": {
+            "additionalProperties": true,
+            "title": "Document",
+            "type": "object"
+          },
+          "entity_id": {
+            "format": "uuid",
+            "title": "Entity Id",
+            "type": "string"
+          },
+          "entity_type": {
+            "title": "Entity Type",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "entity_type",
+          "entity_id",
+          "canonical_revision",
+          "updated_at",
+          "content_hash",
+          "document"
+        ],
+        "title": "ContextFact",
+        "type": "object"
+      },
+      "ContextReason": {
+        "enum": [
+          "SOURCE_AVAILABLE",
+          "SOURCE_MISSING",
+          "PERMISSION_DENIED",
+          "SOURCE_STALE",
+          "SERVER_OLDER_THAN_CLIENT"
+        ],
+        "title": "ContextReason",
         "type": "string"
       },
       "DataClass": {
@@ -2595,6 +2875,52 @@
         "summary": "Create Capture",
         "tags": [
           "captures"
+        ]
+      }
+    },
+    "/v1/context/assemble": {
+      "post": {
+        "operationId": "assemble_context_v1_context_assemble_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContextAssemblyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContextAssemblyResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Assemble Context",
+        "tags": [
+          "context"
         ]
       }
     },

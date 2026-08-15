@@ -1,0 +1,1 @@
+"""Deterministic immutable context assembly."""
