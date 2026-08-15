@@ -22,8 +22,9 @@ reproducible.
 `URLSessionSyncTransport`. It obtains a bearer token per request, refuses plain
 HTTP and redirects by default, bounds request/response bodies, sends stable
 idempotency/device/correlation headers, and decodes only the redacted API error
-envelope. This is a transport boundary, not an enrolled client: no production
-token provider or app sync coordinator is wired yet.
+envelope. `OdysseyApplication` composes this boundary with durable persistence,
+but the production app has not yet instantiated it with an enrolled token
+session.
 
 `OdysseyAuth` defines the closed challenge, exchange, refresh, recovery, and
 device lifecycle values. Its actor-isolated access-token session keeps access
@@ -44,7 +45,13 @@ pipeline validates bounded capture context, preserves the original payload and
 content hash, and commits `capture.recorded.v1`, the current projection, and a
 sequenced sync operation in one SQLite transaction before returning. Capture
 does not wait for authentication, networking, or interpretation; operational
-secret material is rejected from this user-data path.
+secret material is rejected from this user-data path. Its actor-isolated sync
+coordinator coalesces concurrent runs, pushes a sequence-ordered idempotent
+batch, validates every operation result before mutation, schedules bounded
+retries without retaining private server messages, then applies all pull pages
+transactionally until the durable device cursor catches up. Offline diagnostics
+report exact queue age/count, conflicts, cursors, schema compatibility, and the
+attachment backlog without requiring a server call.
 
 On a Mac with Swift 6.1 or newer and Xcode installed:
 

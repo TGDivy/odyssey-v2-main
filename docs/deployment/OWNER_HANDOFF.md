@@ -22,7 +22,7 @@ it does not prove an owner deployment:
   environment.
 - No Apple package build, Xcode archive, signing operation, TestFlight upload,
   or physical-device test has been performed. The portable Swift package has
-  been compiled and its 31 deterministic tests have run under a temporary
+  been compiled and its 40 deterministic tests have run under a temporary
   Linux Swift 6.1 toolchain; that is not Apple-platform validation.
 - The cloud model remains `deterministic`. Adding a model-provider key alone
   enables nothing; no evaluated cloud-model adapter is implemented.
@@ -36,7 +36,10 @@ it does not prove an owner deployment:
   GRDB ledger, migration-v2 preflight backup, immutable remote receipts,
   atomic push/pull persistence, projection rebuild, verified backup, and owner
   export. An authenticated HTTPS-only `URLSession` sync transport is also
-  implemented and contract-tested, but it has no enrolled token provider.
+  implemented and contract-tested. A portable application coordinator now
+  connects that transport to durable push-result and resumable pull-page
+  persistence, including exact local diagnostics and bounded retries, but the
+  app shell has not instantiated it with an enrolled token provider.
   The device/refresh Keychain vault, in-memory access-token refresh session,
   native Apple ceremony, and auth HTTP exchange are implemented as package
   boundaries. App composition, background execution, and recovery UI are still
