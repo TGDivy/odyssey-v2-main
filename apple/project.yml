@@ -65,6 +65,7 @@ targets:
         NSMicrophoneUsageDescription: Odyssey records audio only when you start a voice capture.
         NSSpeechRecognitionUsageDescription: Odyssey transcribes voice captures when you request transcription.
         ODYSSEY_API_BASE_URL: $(ODYSSEY_API_BASE_URL)
+        ODYSSEY_APPLE_CLIENT_ID: $(ODYSSEY_APPLE_CLIENT_ID)
         ODYSSEY_ENVIRONMENT: $(ODYSSEY_ENVIRONMENT)
     dependencies:
       - package: OdysseyPackages
@@ -247,4 +248,3 @@ schemes:
       config: Development
     archive:
       config: Production
-

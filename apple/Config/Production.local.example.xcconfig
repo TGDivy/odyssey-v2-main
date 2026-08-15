@@ -1,0 +1,2 @@
+ODYSSEY_BUNDLE_PREFIX = com.replace.odyssey
+ODYSSEY_API_BASE_URL = https:/$()/replace-with-production-cloud-run-url

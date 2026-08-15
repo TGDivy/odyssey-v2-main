@@ -7,6 +7,7 @@ permission to use the corresponding data or perform an external action.
 | Capability | Targets | Owner setup | Runtime rule | Degraded behavior |
 | --- | --- | --- | --- | --- |
 | App Groups | iOS, Watch, widgets, intents, share, Mac | Register one group per environment | Store only extension-safe caches and queued captures | Extensions open the main app without shared mutation |
+| Sign in with Apple | iOS | Enable on the main App ID; use that bundle ID as the backend audience | Exchange nonce-bound Apple identity tokens only | No cloud sync; local capture remains available |
 | HealthKit | iOS, Watch | Enable HealthKit on both identifiers | Ask by data type at the moment of value | Manual/synthetic health context; no blocked capture |
 | EventKit | iOS | Add calendar usage descriptions | Read and write permissions are separate | User-entered commitments and imported files |
 | Notifications/APNs | iOS | Enable push and upload APNs signing key to backend secret store | Visible delivery remains budgeted and optional | In-app, widget, and local pre-scheduled surfaces |
@@ -22,4 +23,3 @@ permission to use the corresponding data or perform an external action.
 `apple/Config/*.xcconfig` intentionally contains placeholder bundle IDs and
 domains. Exact account registration and replacement steps belong in
 `docs/deployment/OWNER_HANDOFF.md`.
-

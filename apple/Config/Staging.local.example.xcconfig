@@ -1,0 +1,2 @@
+ODYSSEY_BUNDLE_PREFIX = com.replace.odyssey.staging
+ODYSSEY_API_BASE_URL = https:/$()/replace-with-staging-cloud-run-url
