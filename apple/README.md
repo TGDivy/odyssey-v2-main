@@ -18,6 +18,13 @@ history. Export format v2 includes those receipts and structured operation
 results. The checked-in `Package.resolved` makes dependency resolution
 reproducible.
 
+`OdysseySync` now includes backend-shaped wire contracts and an actor-isolated
+`URLSessionSyncTransport`. It obtains a bearer token per request, refuses plain
+HTTP and redirects by default, bounds request/response bodies, sends stable
+idempotency/device/correlation headers, and decodes only the redacted API error
+envelope. This is a transport boundary, not an enrolled client: no production
+token provider or app sync coordinator is wired yet.
+
 On a Mac with Swift 6.1 or newer and Xcode installed:
 
 ```bash
