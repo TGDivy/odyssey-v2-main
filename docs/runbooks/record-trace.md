@@ -1,66 +1,74 @@
 # Durable record trace
 
-Use this procedure to trace a synthetic or explicitly owner-approved record
-without exporting unrelated payloads.
+Use this procedure only for a synthetic record or a record the owner explicitly
+approved for investigation. The executable report contains identifiers, hashes,
+timestamps, states, and trace metadata; it structurally omits record payloads,
+projection documents, provenance details, and raw actor identifiers.
 
-## Inputs
+## Prerequisites
 
-Start with one of: `source_record_id`, `event_id`, aggregate ID, correlation ID,
-or ledger sequence. Record the environment, schema revision, and release SHA.
+Record the environment, schema revision, release SHA, and incident or drill ID.
+Rebuild projections if the investigation expects the latest ledger state:
 
-## Relational trace
-
-The following read-only SQL uses IDs and metadata only. Bind values through the
-database client; do not interpolate untrusted input.
-
-```sql
-SELECT id, source_kind, occurred_at, recorded_at, content_hash, provenance_id
-FROM source_records
-WHERE id = :source_record_id;
-
-SELECT id, source_kind, source_id, actor_type, actor_id,
-       recorded_at, transformation_chain, content_hash
-FROM provenance_records
-WHERE id = :provenance_id;
-
-SELECT sequence, event_id, event_type, event_schema_version,
-       aggregate_type, aggregate_id, occurred_at, recorded_at,
-       correlation_id, causation_id, provenance_id
-FROM ledger_events
-WHERE event_id = :event_id OR correlation_id = :correlation_id
-ORDER BY sequence;
-
-SELECT id, topic, aggregate_id, idempotency_key, status, attempts,
-       available_at, completed_at, last_error_code
-FROM outbox_records
-WHERE idempotency_key = :ledger_idempotency_key;
-
-SELECT projection_name, projection_key, source_sequence,
-       projection_version, updated_at
-FROM projection_records
-WHERE projection_key = :projection_key;
-
-SELECT projection_name, last_sequence, projection_version, updated_at
-FROM projection_checkpoints
-WHERE projection_name = 'current_entities';
+```bash
+make rebuild-projections
 ```
 
-For captures, the outbox key is `ledger:<event_id>` and the current projection
-key is `<aggregate_type>:<aggregate_id>`. The ledger sequence referenced by the
-projection must not exceed the checkpoint, and the checkpoint must reconcile
-with the ledger maximum in a healthy current rebuild.
+Choose exactly one selector: source-record ID, event ID, aggregate ID,
+correlation UUID, or ledger sequence.
 
-## Verification
+## Generate the report
 
-Run the integrity checker and retain its run ID/report hash. Confirm:
+Run from `backend/`. The optional HTTP trace value is a comma-separated
+`PHASE,CORRELATION_ID,TRACE_ID,SPAN_ID` tuple copied from the response headers.
+Repeat `--http-trace` for capture, sync, or other phases.
 
-- source payload canonical hash equals `source_records.content_hash`;
-- source and event provenance IDs resolve;
-- event type/version exists in the immutable registry;
-- outbox retry uses the same idempotency key;
-- projection source sequence and version are current;
-- no logs or reports contain the source payload.
+```bash
+uv run python ../tools/diagnostics/trace_record.py \
+  --source-record-id 0198... \
+  --http-trace 'capture_commit,record-trace-drill,4bf92f3577b34da6a3ce929d0e0e4736,00f067aa0ba902b7' \
+  --http-trace 'sync_push,record-trace-sync,4bf92f3577b34da6a3ce929d0e0e4737,00f067aa0ba902b8' \
+  --report ../local-data/record-traces/trace-0198.json
+```
 
-If any link fails, enable `destructive_compaction`, preserve a checkpoint, and
-follow the incident-response runbook. Do not edit source, provenance, ledger,
-audit, or integrity-run rows in place.
+Use `--database-url` only when the configured `ODYSSEY_DATABASE_URL` is not the
+target. Report files are mode `0600`, and the command refuses to overwrite an
+existing report.
+
+Exit codes:
+
+- `0`: every required source-to-sync link is present and content hashes match;
+- `2`: the selected record exists, but one or more links are missing;
+- `3`: the selected durable record does not exist.
+
+## Interpret the links
+
+The report verifies and names each hop:
+
+1. source record to immutable provenance, including source content-hash check;
+2. provenance to ledger event and ledger correlation ID;
+3. ledger event to transactional outbox record;
+4. ledger aggregate to projection and projection checkpoint;
+5. aggregate to immutable device sync operation;
+6. accepted sync operation to global server change and sync outbox record;
+7. latest server change to canonical entity, including canonical hash check;
+8. ledger correlation UUID to a supplied HTTP trace reference.
+
+`report_sha256` covers the canonical payload-free report. Retain that hash with
+the incident evidence and compare it before sharing or archiving the file.
+
+## Missing links
+
+Read `missing_links` and investigate the named boundary. Run the integrity
+checker and retain its run ID/report hash:
+
+```bash
+uv run python ../tools/integrity/check_database.py \
+  --report ../local-data/integrity/record-trace-check.json
+```
+
+If a link or content hash fails, enable the appropriate write freeze, preserve
+a backup and checkpoint, and follow the incident-response runbook. Never edit
+source, provenance, ledger, sync operation, server change, audit, or integrity
+rows in place. Never add payload fields to the trace report to simplify an
+investigation.
