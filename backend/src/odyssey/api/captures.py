@@ -7,8 +7,11 @@ from uuid import NAMESPACE_URL, UUID, uuid5
 
 from fastapi import APIRouter, Header, Request
 from pydantic import AwareDatetime, Field
+from sqlalchemy import select
 
 from odyssey.api.dependencies import SessionDependency
+from odyssey.api.errors import OdysseyError
+from odyssey.db.models import LedgerEventRecord
 from odyssey.db.repositories import LedgerRepository, SourceRecordWrite
 from odyssey.domain.capture import CapturePayloadKind
 from odyssey.domain.common import (
@@ -21,9 +24,11 @@ from odyssey.domain.common import (
     new_uuid7,
 )
 from odyssey.domain.events import DomainEvent
+from odyssey.operations.kill_switches import KillSwitchKey, KillSwitchService
 
 router = APIRouter(prefix="/v1/captures", tags=["captures"])
 repository = LedgerRepository()
+kill_switches = KillSwitchService()
 
 
 class CaptureCreateRequest(StrictModel):
@@ -112,6 +117,19 @@ async def create_capture(
         timezone_id=body.timezone,
     )
     async with session.begin():
+        existing_event = await session.scalar(
+            select(LedgerEventRecord.sequence).where(LedgerEventRecord.event_id == body.event_id)
+        )
+        if existing_event is None and await kill_switches.is_enabled(
+            session, KillSwitchKey.CAPTURE_WRITES
+        ):
+            raise OdysseyError(
+                code="CAPTURE_WRITES_DISABLED",
+                message="New capture writes are temporarily disabled by an operational control.",
+                status_code=503,
+                retryable=True,
+                details={"capability": KillSwitchKey.CAPTURE_WRITES.value},
+            )
         result = await repository.append_source_event(session, source=source, event=event)
     return CaptureCreateResponse(
         capture_id=body.capture_id,

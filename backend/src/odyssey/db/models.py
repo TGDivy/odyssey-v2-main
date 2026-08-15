@@ -193,3 +193,43 @@ class KillSwitch(Base):
         DateTime(timezone=True), nullable=False, server_default=text("CURRENT_TIMESTAMP")
     )
     updated_by: Mapped[str] = mapped_column(String(255), nullable=False)
+
+
+class KillSwitchAuditRecord(Base):
+    __tablename__ = "kill_switch_audit"
+    __table_args__ = (
+        UniqueConstraint("id", name="uq_kill_switch_audit_id"),
+        Index("ix_kill_switch_audit_key_changed", "key", "changed_at"),
+    )
+
+    sequence: Mapped[int] = mapped_column(
+        BigInteger().with_variant(Integer, "sqlite"), primary_key=True, autoincrement=True
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    key: Mapped[str] = mapped_column(
+        ForeignKey("kill_switches.key", ondelete="RESTRICT"), nullable=False
+    )
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    changed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    changed_by: Mapped[str] = mapped_column(String(255), nullable=False)
+    change_source: Mapped[str] = mapped_column(String(100), nullable=False)
+    correlation_id: Mapped[str | None] = mapped_column(String(255))
+
+
+@event.listens_for(KillSwitchAuditRecord, "before_update")
+def reject_kill_switch_audit_update(
+    _mapper: Mapper[KillSwitchAuditRecord] | None,
+    _connection: Connection | None,
+    _target: KillSwitchAuditRecord,
+) -> None:
+    raise ImmutableLedgerMutationError("kill-switch audit records are append-only")
+
+
+@event.listens_for(KillSwitchAuditRecord, "before_delete")
+def reject_kill_switch_audit_delete(
+    _mapper: Mapper[KillSwitchAuditRecord] | None,
+    _connection: Connection | None,
+    _target: KillSwitchAuditRecord,
+) -> None:
+    raise ImmutableLedgerMutationError("kill-switch audit records are append-only")

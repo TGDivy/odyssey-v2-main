@@ -88,3 +88,29 @@ as not applicable; once Odyssey owns attachments, their manifest is a mandatory
 input rather than a silent skip. Secret rotation, fresh-client enrollment,
 unsynced-operation reconciliation, and isolated-environment destruction remain
 explicit report steps because they require operator or device context.
+
+## Operational kill switches
+
+Kill switches default to disabled when absent and every change appends an
+immutable audit record. List or change them with direct database access:
+
+```bash
+uv run python ../tools/admin/kill_switch.py \
+  --database-url "$ODYSSEY_DATABASE_URL" list
+uv run python ../tools/admin/kill_switch.py \
+  --database-url "$ODYSSEY_DATABASE_URL" enable capture_writes \
+  --reason 'incident response drill' \
+  --changed-by 'owner'
+uv run python ../tools/admin/kill_switch.py \
+  --database-url "$ODYSSEY_DATABASE_URL" disable capture_writes \
+  --reason 'integrity confirmed after drill' \
+  --changed-by 'owner'
+```
+
+`capture_writes` blocks new server-side captures with a stable retryable error,
+but an idempotent retry of an already committed event still confirms the prior
+write. Additional reserved controls cover sync push/pull, proactive delivery,
+AI generation, external side effects, and destructive compaction. The CLI is
+the write surface until production owner authentication and step-up controls are
+implemented; do not expose an unauthenticated administrative mutation route.
+Keep reasons operational and payload-free; they are retained in audit history.
