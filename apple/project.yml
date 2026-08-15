@@ -25,6 +25,8 @@ settings:
   base:
     SWIFT_VERSION: "6.0"
     SWIFT_STRICT_CONCURRENCY: complete
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
     ENABLE_USER_SCRIPT_SANDBOXING: true
     CLANG_ENABLE_MODULE_VERIFIER: true
     CODE_SIGN_STYLE: Automatic
@@ -67,6 +69,7 @@ targets:
         ODYSSEY_API_BASE_URL: $(ODYSSEY_API_BASE_URL)
         ODYSSEY_APPLE_CLIENT_ID: $(ODYSSEY_APPLE_CLIENT_ID)
         ODYSSEY_ENVIRONMENT: $(ODYSSEY_ENVIRONMENT)
+        ODYSSEY_BACKGROUND_REFRESH_IDENTIFIER: $(ODYSSEY_BUNDLE_PREFIX).refresh
     dependencies:
       - package: OdysseyPackages
         product: OdysseyDomain
@@ -74,6 +77,10 @@ targets:
         product: OdysseyData
       - package: OdysseyPackages
         product: OdysseySync
+      - package: OdysseyPackages
+        product: OdysseyAuth
+      - package: OdysseyPackages
+        product: OdysseyApplication
       - package: OdysseyPackages
         product: OdysseyIntelligence
       - package: OdysseyPackages
