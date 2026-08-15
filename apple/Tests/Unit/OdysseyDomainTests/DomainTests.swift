@@ -9,6 +9,7 @@ func uuidV7RoundTrips() throws {
     let decoded = try JSONDecoder().decode(UUIDv7.self, from: encoded)
 
     #expect(decoded == identifier)
+    #expect(String(decoding: encoded, as: UTF8.self) == "\"\(identifier.description)\"")
     #expect(identifier.description.split(separator: "-")[2].first == "7")
 }
 
@@ -60,4 +61,3 @@ func localDateIntervalsRejectReverseOrder() {
         )
     }
 }
-

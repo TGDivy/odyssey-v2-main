@@ -101,5 +101,10 @@ let package = Package(
             dependencies: ["OdysseyData", "OdysseyDomain"],
             path: "Tests/Unit/OdysseyDataTests"
         ),
+        .testTarget(
+            name: "OdysseySyncTests",
+            dependencies: ["OdysseySync", "OdysseyData", "OdysseyDomain"],
+            path: "Tests/Unit/OdysseySyncTests"
+        ),
     ]
 )

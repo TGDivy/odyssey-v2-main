@@ -41,7 +41,7 @@ public struct UUIDv7: Codable, Hashable, Sendable, CustomStringConvertible {
 
     public func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
-        try container.encode(rawValue)
+        try container.encode(description)
     }
 
     private static func version(of identifier: UUID) -> Int? {
@@ -346,4 +346,3 @@ public struct Season: Codable, Hashable, Sendable {
         self.primaryOverrideExplanation = primaryOverrideExplanation
     }
 }
-
