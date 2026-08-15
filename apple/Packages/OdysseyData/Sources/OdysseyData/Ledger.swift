@@ -238,6 +238,8 @@ public struct LedgerCommitReceipt: Codable, Hashable, Sendable {
 public struct LocalSyncState: Codable, Hashable, Sendable {
     public let deviceID: UUIDv7
     public let cursor: String
+    public let serverCursor: String
+    public let receiptFloor: Int64
     public let nextDeviceSequence: Int64
     public let lastSuccessfulPushAt: Date?
     public let lastSuccessfulPullAt: Date?
@@ -246,6 +248,8 @@ public struct LocalSyncState: Codable, Hashable, Sendable {
     public init(
         deviceID: UUIDv7,
         cursor: String,
+        serverCursor: String,
+        receiptFloor: Int64,
         nextDeviceSequence: Int64,
         lastSuccessfulPushAt: Date?,
         lastSuccessfulPullAt: Date?,
@@ -253,6 +257,8 @@ public struct LocalSyncState: Codable, Hashable, Sendable {
     ) {
         self.deviceID = deviceID
         self.cursor = cursor
+        self.serverCursor = serverCursor
+        self.receiptFloor = receiptFloor
         self.nextDeviceSequence = nextDeviceSequence
         self.lastSuccessfulPushAt = lastSuccessfulPushAt
         self.lastSuccessfulPullAt = lastSuccessfulPullAt
@@ -266,6 +272,7 @@ public struct LedgerIntegrityReport: Codable, Hashable, Sendable {
     public let projectionEventCount: Int
     public let projectedEntityCount: Int
     public let syncOperationCount: Int
+    public let remoteChangeReceiptCount: Int
     public let checkedAt: Date
 
     public init(
@@ -274,6 +281,7 @@ public struct LedgerIntegrityReport: Codable, Hashable, Sendable {
         projectionEventCount: Int,
         projectedEntityCount: Int,
         syncOperationCount: Int,
+        remoteChangeReceiptCount: Int,
         checkedAt: Date
     ) {
         self.schemaVersion = schemaVersion
@@ -281,6 +289,7 @@ public struct LedgerIntegrityReport: Codable, Hashable, Sendable {
         self.projectionEventCount = projectionEventCount
         self.projectedEntityCount = projectedEntityCount
         self.syncOperationCount = syncOperationCount
+        self.remoteChangeReceiptCount = remoteChangeReceiptCount
         self.checkedAt = checkedAt
     }
 }

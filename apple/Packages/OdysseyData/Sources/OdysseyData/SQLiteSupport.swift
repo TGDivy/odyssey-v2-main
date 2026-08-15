@@ -8,6 +8,8 @@ public enum SQLiteLedgerError: Error, Equatable, Sendable {
     case invalidLedgerEntry(String)
     case invalidProjection(String)
     case invalidSyncMutation(String)
+    case invalidSyncResult(String)
+    case invalidRemoteChange(String)
     case unknownLedgerEvent(String)
     case unsupportedSchemaVersion(found: Int, supported: Int)
     case deviceIdentityMismatch(expected: String, found: String)
@@ -22,6 +24,8 @@ extension SQLiteLedgerError: LocalizedError {
              let .invalidLedgerEntry(message),
              let .invalidProjection(message),
              let .invalidSyncMutation(message),
+             let .invalidSyncResult(message),
+             let .invalidRemoteChange(message),
              let .integrityFailure(message):
             message
         case let .unknownLedgerEvent(eventID):

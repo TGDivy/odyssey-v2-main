@@ -98,7 +98,11 @@ let package = Package(
         ),
         .testTarget(
             name: "OdysseyDataTests",
-            dependencies: ["OdysseyData", "OdysseyDomain"],
+            dependencies: [
+                "OdysseyData",
+                "OdysseyDomain",
+                .product(name: "GRDB", package: "GRDB.swift"),
+            ],
             path: "Tests/Unit/OdysseyDataTests"
         ),
         .testTarget(

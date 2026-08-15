@@ -24,8 +24,8 @@ public struct SQLiteLedgerConfiguration: Sendable {
     }
 }
 
-public final class SQLiteLedgerStore: @unchecked Sendable, LedgerStore, SyncOutboxStore, ProjectionRebuilder, OwnerExporter, LocalBackupProvider {
-    public static let currentSchemaVersion = 1
+public final class SQLiteLedgerStore: @unchecked Sendable, LedgerStore, SyncOutboxStore, SyncPersistenceStore, ProjectionRebuilder, OwnerExporter, LocalBackupProvider {
+    public static let currentSchemaVersion = 2
     public static let maximumSyncPayloadBytes = 256 * 1_024
 
     let databasePool: DatabasePool
@@ -259,7 +259,7 @@ public final class SQLiteLedgerStore: @unchecked Sendable, LedgerStore, SyncOutb
         }
     }
 
-    public func markOperationAccepted(
+    func markOperationAccepted(
         operationID: UUIDv7,
         canonicalRevision: Int,
         serverChangeID: Int64,
@@ -294,7 +294,7 @@ public final class SQLiteLedgerStore: @unchecked Sendable, LedgerStore, SyncOutb
         }
     }
 
-    public func markOperationForRetry(
+    func markOperationForRetry(
         operationID: UUIDv7,
         error: String,
         nextAttemptAt: Date
@@ -325,7 +325,7 @@ public final class SQLiteLedgerStore: @unchecked Sendable, LedgerStore, SyncOutb
         }
     }
 
-    public func markOperationTerminal(
+    func markOperationTerminal(
         operationID: UUIDv7,
         status: SyncOperationStatus,
         message: String,
@@ -363,14 +363,15 @@ public final class SQLiteLedgerStore: @unchecked Sendable, LedgerStore, SyncOutb
         }
     }
 
-    public func recordSuccessfulPush(
+    func recordSuccessfulPush(
         cursor: String,
         serverSchemaVersion: Int,
         at date: Date
     ) throws {
         try withWrite {
             try updateSyncState(
-                cursor: cursor,
+                deviceCursor: nil,
+                serverCursor: cursor,
                 serverSchemaVersion: serverSchemaVersion,
                 pushAt: date,
                 pullAt: nil
@@ -378,14 +379,15 @@ public final class SQLiteLedgerStore: @unchecked Sendable, LedgerStore, SyncOutb
         }
     }
 
-    public func recordSuccessfulPull(
+    func recordSuccessfulPull(
         cursor: String,
         serverSchemaVersion: Int,
         at date: Date
     ) throws {
         try withWrite {
             try updateSyncState(
-                cursor: cursor,
+                deviceCursor: cursor,
+                serverCursor: cursor,
                 serverSchemaVersion: serverSchemaVersion,
                 pushAt: nil,
                 pullAt: date
@@ -393,7 +395,7 @@ public final class SQLiteLedgerStore: @unchecked Sendable, LedgerStore, SyncOutb
         }
     }
 
-    private func insertLedgerEntry(_ entry: LedgerEntry) throws -> Int64 {
+    func insertLedgerEntry(_ entry: LedgerEntry) throws -> Int64 {
         let statement = try connection.statement(
             """
             INSERT INTO ledger_entries (
@@ -584,7 +586,7 @@ public final class SQLiteLedgerStore: @unchecked Sendable, LedgerStore, SyncOutb
     func readSyncState() throws -> LocalSyncState {
         let statement = try connection.statement(
             """
-            SELECT device_id, cursor, next_device_sequence,
+            SELECT device_id, cursor, server_cursor, receipt_floor, next_device_sequence,
                    last_successful_push_at, last_successful_pull_at, server_schema_version
             FROM sync_state
             WHERE singleton = 1
@@ -593,24 +595,29 @@ public final class SQLiteLedgerStore: @unchecked Sendable, LedgerStore, SyncOutb
         guard try statement.step() else {
             throw SQLiteLedgerError.integrityFailure("The singleton sync state is missing.")
         }
-        let serverSchemaVersion = statement.optionalText(at: 5).flatMap(Int.init)
+        let serverSchemaVersion = statement.optionalText(at: 7).flatMap(Int.init)
         return LocalSyncState(
             deviceID: try SQLiteValueCodec.uuidV7(statement.text(at: 0)),
             cursor: try statement.text(at: 1),
-            nextDeviceSequence: statement.int64(at: 2),
-            lastSuccessfulPushAt: try statement.optionalText(at: 3).map(SQLiteValueCodec.date),
-            lastSuccessfulPullAt: try statement.optionalText(at: 4).map(SQLiteValueCodec.date),
+            serverCursor: try statement.text(at: 2),
+            receiptFloor: statement.int64(at: 3),
+            nextDeviceSequence: statement.int64(at: 4),
+            lastSuccessfulPushAt: try statement.optionalText(at: 5).map(SQLiteValueCodec.date),
+            lastSuccessfulPullAt: try statement.optionalText(at: 6).map(SQLiteValueCodec.date),
             serverSchemaVersion: serverSchemaVersion
         )
     }
 
-    private func updateSyncState(
-        cursor: String,
+    func updateSyncState(
+        deviceCursor: String?,
+        serverCursor: String,
         serverSchemaVersion: Int,
         pushAt: Date?,
         pullAt: Date?
     ) throws {
-        guard Self.isValidCursor(cursor) else {
+        guard deviceCursor.map(Self.isValidCursor) ?? true,
+              Self.isValidCursor(serverCursor)
+        else {
             throw SQLiteLedgerError.invalidSyncMutation(
                 "Sync cursor must use c_<nonnegative integer>."
             )
@@ -618,17 +625,36 @@ public final class SQLiteLedgerStore: @unchecked Sendable, LedgerStore, SyncOutb
         guard serverSchemaVersion >= 1 else {
             throw SQLiteLedgerError.invalidSyncMutation("Server schema version must be positive.")
         }
+        let current = try readSyncState()
+        guard let currentServerValue = Self.cursorValue(current.serverCursor),
+              let serverValue = Self.cursorValue(serverCursor),
+              serverValue >= currentServerValue
+        else {
+            throw SQLiteLedgerError.invalidSyncMutation("Server sync cursor cannot move backward.")
+        }
+        if let deviceCursor {
+            guard let currentDeviceValue = Self.cursorValue(current.cursor),
+                  let deviceValue = Self.cursorValue(deviceCursor),
+                  deviceValue >= currentDeviceValue,
+                  deviceValue <= serverValue
+            else {
+                throw SQLiteLedgerError.invalidSyncMutation(
+                    "Applied sync cursor must advance monotonically and cannot exceed the server cursor."
+                )
+            }
+        }
         let statement = try connection.statement(
             """
             UPDATE sync_state
-            SET cursor = ?, server_schema_version = ?,
+            SET cursor = COALESCE(?, cursor), server_cursor = ?, server_schema_version = ?,
                 last_successful_push_at = COALESCE(?, last_successful_push_at),
                 last_successful_pull_at = COALESCE(?, last_successful_pull_at)
             WHERE singleton = 1
             """
         )
         try statement.bind([
-            .text(cursor),
+            deviceCursor.map(SQLiteValue.text) ?? .null,
+            .text(serverCursor),
             .integer(Int64(serverSchemaVersion)),
             pushAt.map { .text(SQLiteValueCodec.dateString($0)) } ?? .null,
             pullAt.map { .text(SQLiteValueCodec.dateString($0)) } ?? .null,
@@ -800,7 +826,7 @@ extension SQLiteLedgerStore {
         }
     }
 
-    private static func isValidTypeName(_ value: String) -> Bool {
+    static func isValidTypeName(_ value: String) -> Bool {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
         return !trimmed.isEmpty && trimmed.count <= 100
     }
@@ -814,6 +840,13 @@ extension SQLiteLedgerStore {
             return false
         }
         return suffix == "0" || suffix.first != "0"
+    }
+
+    static func cursorValue(_ cursor: String) -> Int64? {
+        guard isValidCursor(cursor) else {
+            return nil
+        }
+        return Int64(cursor.dropFirst(2))
     }
 
     static func decodeLedgerEntry(_ statement: SQLiteRowStatement) throws -> StoredLedgerEntry {

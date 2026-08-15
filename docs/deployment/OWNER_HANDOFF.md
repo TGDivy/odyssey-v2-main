@@ -21,14 +21,19 @@ it does not prove an owner deployment:
   build step ran. No Odyssey image has been built or pushed from this
   environment.
 - No Apple package build, Xcode archive, signing operation, TestFlight upload,
-  or physical-device test has been performed.
+  or physical-device test has been performed. The portable Swift package has
+  been compiled and its 21 deterministic tests have run under a temporary
+  Linux Swift 6.1 toolchain; that is not Apple-platform validation.
 - The cloud model remains `deterministic`. Adding a model-provider key alone
   enables nothing; no evaluated cloud-model adapter is implemented.
 - External OAuth connectors and webhook handlers are not implemented. Their
   applications, redirect URIs, and secret versions must remain unconfigured.
 - The backend Sign in with Apple verifier exists, but the native nonce-bound
-  client enrollment flow is not implemented. The complete Apple local SQLite
-  ledger, durable sync client, and recovery UI are also not implemented.
+  client enrollment flow is not implemented. The Apple data package now has a
+  GRDB ledger, migration-v2 preflight backup, immutable remote receipts,
+  atomic push/pull persistence, projection rebuild, verified backup, and owner
+  export. Authenticated transport, app capture wiring, Keychain enrollment,
+  background execution, and recovery UI are still not implemented.
 - Edition 0 remains incomplete until a real cloud restore and physical-device
   evidence exist. Steps marked **BLOCKED** are release blockers, not optional
   paperwork.

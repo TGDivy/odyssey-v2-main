@@ -1,5 +1,5 @@
 import Foundation
-import OdysseyData
+@testable import OdysseyData
 import OdysseyDomain
 import Testing
 
@@ -255,7 +255,7 @@ func onlineBackupAndOwnerExportAreReadable() async throws {
     let attributes = try FileManager.default.attributesOfItem(atPath: backupURL.path)
     #expect((attributes[.size] as? NSNumber)?.intValue ?? 0 > 0)
     let archive = try fixture.decodeExport(at: exportURL)
-    #expect(archive.exportFormatVersion == 1)
+    #expect(archive.exportFormatVersion == 2)
     #expect(archive.schemaVersion == SQLiteLedgerStore.currentSchemaVersion)
     #expect(archive.binaryEncoding == "base64")
     #expect(archive.ledgerEntries.count == 1)

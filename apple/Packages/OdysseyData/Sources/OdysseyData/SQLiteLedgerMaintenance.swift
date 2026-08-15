@@ -1,5 +1,6 @@
 import Foundation
 import GRDB
+import OdysseyDomain
 
 extension SQLiteLedgerStore {
     public func verifyIntegrity() async throws {
@@ -26,8 +27,9 @@ extension SQLiteLedgerStore {
         try verifyRequiredPragmas()
         try verifyImmutableTriggers()
         try verifyLedgerHashes()
-        let projectionEvents = try readProjectionEvents()
+        let projectionEvents = try readStoredProjectionEvents()
         try verifyProjectionHistory(projectionEvents)
+        try verifyRemoteChanges(projectionEvents)
         try verifyProjectionMaterialization(projectionEvents)
         try verifySearchIndex()
         try verifySyncOperations()
@@ -40,17 +42,27 @@ extension SQLiteLedgerStore {
                 try connection.scalarInt("SELECT COUNT(*) FROM entity_projections")
             ),
             syncOperationCount: Int(try connection.scalarInt("SELECT COUNT(*) FROM sync_operations")),
+            remoteChangeReceiptCount: Int(
+                try connection.scalarInt("SELECT COUNT(*) FROM remote_change_receipts")
+            ),
             checkedAt: configuration.clock()
         )
     }
 
     public func rebuildAll() async throws {
         try withWrite {
-            let projectionEvents = try readProjectionEvents()
+            let projectionEvents = try readStoredProjectionEvents()
             try verifyProjectionHistory(projectionEvents)
+            try verifyRemoteChanges(projectionEvents)
             try connection.execute("DELETE FROM entity_projections")
-            for event in projectionEvents {
-                try materializeProjectionEvent(event)
+            let identities = Set(projectionEvents.map {
+                ProjectionIdentity(
+                    entityType: $0.mutation.entityType,
+                    entityID: $0.mutation.entityID
+                )
+            })
+            for identity in identities {
+                try rebuildMaterializedProjection(for: identity)
             }
             try verifyProjectionMaterialization(projectionEvents)
         }
@@ -166,6 +178,8 @@ extension SQLiteLedgerStore {
             "projection_events_no_delete",
             "sync_operations_no_update",
             "sync_operations_no_delete",
+            "remote_change_receipts_no_update",
+            "remote_change_receipts_no_delete",
             "entity_projections_search_insert",
             "entity_projections_search_update",
             "entity_projections_search_delete",
@@ -201,54 +215,36 @@ extension SQLiteLedgerStore {
         }
     }
 
-    private func verifyProjectionHistory(_ events: [ProjectionEventExport]) throws {
-        var state: [ProjectionKey: (revision: Int, tombstone: Bool)] = [:]
+    private func verifyProjectionHistory(_ events: [StoredProjectionEvent]) throws {
         for event in events {
             guard SHA256Digest.hexDigest(of: event.mutation.document) == event.documentSHA256 else {
                 throw SQLiteLedgerError.integrityFailure(
-                    "Projection document hash mismatch at sequence \(event.localSequence)."
+                    "Projection document hash mismatch at sequence \(event.projectionSequence)."
                 )
             }
-            let key = ProjectionKey(
-                entityType: event.mutation.entityType,
-                entityID: event.mutation.entityID.description
-            )
-            let current = state[key]
-            switch event.mutation.mutationType {
-            case .create:
-                guard current == nil, event.mutation.revision == 1 else {
-                    throw SQLiteLedgerError.integrityFailure(
-                        "Projection create history is invalid for \(key.description)."
-                    )
-                }
-            case .update, .delete:
-                guard let current,
-                      !current.tombstone,
-                      event.mutation.revision == current.revision + 1
-                else {
-                    throw SQLiteLedgerError.integrityFailure(
-                        "Projection revision history is invalid for \(key.description)."
-                    )
-                }
+            let remoteMetadataIsValid = event.sourceKind == .remote
+                ? event.serverChangeID != nil && event.originOperationID != nil
+                : event.serverChangeID == nil && event.originOperationID == nil
+            guard remoteMetadataIsValid else {
+                throw SQLiteLedgerError.integrityFailure(
+                    "Projection source metadata is inconsistent at sequence \(event.projectionSequence)."
+                )
             }
-            state[key] = (
-                revision: event.mutation.revision,
-                tombstone: event.mutation.mutationType == .delete
-            )
         }
     }
 
     private func verifyProjectionMaterialization(
-        _ events: [ProjectionEventExport]
+        _ events: [StoredProjectionEvent]
     ) throws {
-        var expected: [ProjectionKey: ProjectionEventExport] = [:]
-        for event in events {
-            expected[
-                ProjectionKey(
-                    entityType: event.mutation.entityType,
-                    entityID: event.mutation.entityID.description
-                )
-            ] = event
+        let grouped = Dictionary(grouping: events) {
+            ProjectionKey(
+                entityType: $0.mutation.entityType,
+                entityID: $0.mutation.entityID.description
+            )
+        }
+        var expected: [ProjectionKey: StoredProjectionEvent] = [:]
+        for (key, history) in grouped {
+            expected[key] = Self.selectMaterializedProjection(from: history)
         }
         guard Int(try connection.scalarInt("SELECT COUNT(*) FROM entity_projections")) == expected.count else {
             throw SQLiteLedgerError.integrityFailure(
@@ -325,6 +321,82 @@ extension SQLiteLedgerStore {
         guard Self.isValidCursor(state.cursor) else {
             throw SQLiteLedgerError.integrityFailure("Stored sync cursor is invalid.")
         }
+        guard Self.isValidCursor(state.serverCursor),
+              let cursor = Self.cursorValue(state.cursor),
+              let serverCursor = Self.cursorValue(state.serverCursor),
+              state.receiptFloor >= 0,
+              state.receiptFloor <= cursor,
+              cursor <= serverCursor
+        else {
+            throw SQLiteLedgerError.integrityFailure(
+                "Stored applied/server cursors or the receipt floor are inconsistent."
+            )
+        }
+    }
+
+    private func verifyRemoteChanges(_ events: [StoredProjectionEvent]) throws {
+        let receipts = try readAllRemoteChangeReceipts()
+        let state = try readSyncState()
+        guard let cursor = Self.cursorValue(state.cursor) else {
+            throw SQLiteLedgerError.integrityFailure("Stored sync cursor is invalid.")
+        }
+        let expectedReceiptCount = cursor - state.receiptFloor
+        guard expectedReceiptCount >= 0, Int64(receipts.count) == expectedReceiptCount else {
+            throw SQLiteLedgerError.integrityFailure(
+                "Remote receipt continuity does not match the applied cursor."
+            )
+        }
+        for (offset, receipt) in receipts.enumerated() {
+            guard receipt.change.changeID == state.receiptFloor + Int64(offset) + 1,
+                  receipt.payloadSHA256 == SHA256Digest.hexDigest(of: receipt.change.payload)
+            else {
+                throw SQLiteLedgerError.integrityFailure(
+                    "Remote receipt change identifiers or payload hashes are discontinuous."
+                )
+            }
+            if receipt.applicationKind == .localReconciliation,
+               receipt.change.originDeviceID != state.deviceID
+            {
+                throw SQLiteLedgerError.integrityFailure(
+                    "A local reconciliation receipt belongs to another device."
+                )
+            }
+        }
+
+        let remoteEvents = events.filter { $0.sourceKind == .remote }
+        guard remoteEvents.count == receipts.count else {
+            throw SQLiteLedgerError.integrityFailure(
+                "Remote projection events and immutable receipts diverge."
+            )
+        }
+        let eventsByChangeID = Dictionary(
+            uniqueKeysWithValues: remoteEvents.compactMap { event in
+                event.serverChangeID.map { ($0, event) }
+            }
+        )
+        guard eventsByChangeID.count == remoteEvents.count else {
+            throw SQLiteLedgerError.integrityFailure(
+                "Remote projection events contain duplicate or missing change identifiers."
+            )
+        }
+        for receipt in receipts {
+            guard let event = eventsByChangeID[receipt.change.changeID],
+                  event.projectionSequence == receipt.projectionEventSequence,
+                  event.sourceEventID == receipt.ledgerEventID,
+                  event.mutation.entityType == receipt.change.entityType,
+                  event.mutation.entityID == receipt.change.entityID,
+                  event.mutation.revision == receipt.change.canonicalRevision,
+                  event.mutation.mutationType == receipt.change.mutationType,
+                  event.mutation.document == receipt.change.payload,
+                  event.documentSHA256 == receipt.payloadSHA256,
+                  event.recordedAt == receipt.appliedAt,
+                  event.originOperationID == receipt.change.originOperationID
+            else {
+                throw SQLiteLedgerError.integrityFailure(
+                    "A remote projection event does not match its immutable receipt."
+                )
+            }
+        }
     }
 
     private func verifySearchIndex() throws {
@@ -358,77 +430,24 @@ extension SQLiteLedgerStore {
     }
 
     private func readProjectionEvents() throws -> [ProjectionEventExport] {
-        let statement = try connection.statement(
-            """
-            SELECT projection.local_sequence, ledger.event_id,
-                   projection.entity_type, projection.entity_id, projection.revision,
-                   projection.mutation_type, projection.document,
-                   projection.document_sha256, projection.recorded_at
-            FROM projection_events AS projection
-            JOIN ledger_entries AS ledger
-              ON ledger.local_sequence = projection.ledger_local_sequence
-            ORDER BY projection.local_sequence
-            """
-        )
-        var events: [ProjectionEventExport] = []
-        while try statement.step() {
-            let mutationValue = try statement.text(at: 5)
-            guard let mutationType = LedgerMutationType(rawValue: mutationValue) else {
-                throw SQLiteLedgerError.integrityFailure(
-                    "Invalid projection mutation type: \(mutationValue)"
-                )
-            }
-            events.append(
-                ProjectionEventExport(
-                    localSequence: statement.int64(at: 0),
-                    sourceEventID: try SQLiteValueCodec.uuidV7(statement.text(at: 1)),
-                    mutation: ProjectionMutation(
-                        entityType: try statement.text(at: 2),
-                        entityID: try SQLiteValueCodec.uuidV7(statement.text(at: 3)),
-                        revision: Int(statement.int64(at: 4)),
-                        mutationType: mutationType,
-                        document: try statement.data(at: 6)
-                    ),
-                    documentSHA256: try statement.text(at: 7),
-                    recordedAt: try SQLiteValueCodec.date(statement.text(at: 8))
-                )
+        try readStoredProjectionEvents().map { event in
+            ProjectionEventExport(
+                localSequence: event.projectionSequence,
+                ledgerLocalSequence: event.ledgerLocalSequence,
+                sourceEventID: event.sourceEventID,
+                mutation: event.mutation,
+                documentSHA256: event.documentSHA256,
+                recordedAt: event.recordedAt,
+                sourceKind: event.sourceKind,
+                serverChangeID: event.serverChangeID,
+                originOperationID: event.originOperationID
             )
         }
-        return events
-    }
-
-    private func materializeProjectionEvent(_ event: ProjectionEventExport) throws {
-        let statement = try connection.statement(
-            """
-            INSERT INTO entity_projections (
-                entity_type, entity_id, revision, document, document_sha256,
-                tombstone, source_event_id, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT (entity_type, entity_id) DO UPDATE SET
-                revision = excluded.revision,
-                document = excluded.document,
-                document_sha256 = excluded.document_sha256,
-                tombstone = excluded.tombstone,
-                source_event_id = excluded.source_event_id,
-                updated_at = excluded.updated_at
-            """
-        )
-        try statement.bind([
-            .text(event.mutation.entityType),
-            .text(event.mutation.entityID.description),
-            .integer(Int64(event.mutation.revision)),
-            .blob(event.mutation.document),
-            .text(event.documentSHA256),
-            .integer(event.mutation.mutationType == .delete ? 1 : 0),
-            .text(event.sourceEventID.description),
-            .text(SQLiteValueCodec.dateString(event.recordedAt)),
-        ])
-        _ = try statement.step()
     }
 
     private func readExportArchive(exportedAt: Date) throws -> LedgerExportArchive {
         LedgerExportArchive(
-            exportFormatVersion: 1,
+            exportFormatVersion: 2,
             schemaVersion: Self.currentSchemaVersion,
             exportedAt: exportedAt,
             binaryEncoding: "base64",
@@ -437,7 +456,8 @@ extension SQLiteLedgerStore {
             ledgerEntries: try readAllLedgerEntries(),
             projectionEvents: try readProjectionEvents(),
             currentProjections: try readCurrentProjections(),
-            syncOperations: try readSyncOperationExports()
+            syncOperations: try readSyncOperationExports(),
+            remoteChangeReceipts: try readAllRemoteChangeReceipts()
         )
     }
 
@@ -499,7 +519,9 @@ extension SQLiteLedgerStore {
                    operation.created_at, operation.idempotency_key,
                    operation.sensitivity_class, ledger.event_id,
                    state.status, state.attempt_count, state.next_attempt_at, state.last_error,
-                   state.canonical_revision, state.server_change_id, state.completed_at
+                   state.canonical_revision, state.server_change_id, state.completed_at,
+                   state.result_code, state.result_message, state.result_retryable,
+                   state.merge_result, state.conflict_id
             FROM sync_operations AS operation
             JOIN sync_operation_state AS state USING (operation_id)
             JOIN ledger_entries AS ledger
@@ -509,16 +531,53 @@ extension SQLiteLedgerStore {
         )
         var operations: [SyncOperationExport] = []
         while try statement.step() {
+            let conflictID: UUIDv7?
+            if let conflictValue = statement.optionalText(at: 23) {
+                conflictID = try SQLiteValueCodec.uuidV7(conflictValue)
+            } else {
+                conflictID = nil
+            }
             operations.append(
                 SyncOperationExport(
                     operation: try Self.decodeSyncOperation(statement),
                     canonicalRevision: statement.optionalText(at: 16).flatMap(Int.init),
                     serverChangeID: statement.optionalText(at: 17).flatMap(Int64.init),
-                    completedAt: try statement.optionalText(at: 18).map(SQLiteValueCodec.date)
+                    completedAt: try statement.optionalText(at: 18).map(SQLiteValueCodec.date),
+                    resultCode: statement.optionalText(at: 19),
+                    resultMessage: statement.optionalText(at: 20),
+                    resultRetryable: statement.optionalText(at: 21).map { $0 == "1" },
+                    mergeResult: statement.optionalText(at: 22),
+                    conflictID: conflictID
                 )
             )
         }
         return operations
+    }
+
+    private func readAllRemoteChangeReceipts() throws -> [RemoteChangeReceipt] {
+        let statement = try connection.statement(
+            """
+            SELECT receipt.change_id, receipt.canonical_revision,
+                   receipt.entity_type, receipt.entity_id, receipt.mutation_type,
+                   receipt.payload, receipt.payload_sha256, receipt.tombstone,
+                   receipt.deletion_epoch, receipt.merge_result,
+                   receipt.origin_device_id, receipt.origin_operation_id,
+                   receipt.server_received_at, receipt.applied_at,
+                   receipt.application_kind, receipt.projection_event_sequence,
+                   ledger.event_id
+            FROM remote_change_receipts AS receipt
+            JOIN projection_events AS projection
+              ON projection.local_sequence = receipt.projection_event_sequence
+            JOIN ledger_entries AS ledger
+              ON ledger.local_sequence = projection.ledger_local_sequence
+            ORDER BY receipt.change_id
+            """
+        )
+        var receipts: [RemoteChangeReceipt] = []
+        while try statement.step() {
+            receipts.append(try Self.decodeRemoteChangeReceipt(statement))
+        }
+        return receipts
     }
 
     private static func exportTimestamp(_ date: Date) -> String {
