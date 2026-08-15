@@ -15,6 +15,7 @@ from odyssey.decision.models import (
 from odyssey.domain.capture import Capture, Observation
 from odyssey.domain.common import EntityMetadata, EpistemicState, Provenance, TemporalInterval
 from odyssey.domain.context import ContextSnapshot
+from odyssey.domain.events import DomainEvent
 from odyssey.domain.life import (
     Action,
     CharterVersion,
@@ -43,6 +44,7 @@ SCHEMA_MODELS: dict[str, type[BaseModel]] = {
     "decision": Decision,
     "decision-option": DecisionOption,
     "direction": Direction,
+    "domain-event": DomainEvent,
     "entity-metadata": EntityMetadata,
     "epistemic-state": EpistemicState,
     "episode": Episode,

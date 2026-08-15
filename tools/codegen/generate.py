@@ -9,12 +9,15 @@ from pathlib import Path
 from typing import Any
 
 from odyssey.config import Environment, Settings
+from odyssey.domain.events import EVENT_DEFINITIONS, event_json_schema
 from odyssey.domain.schema_registry import SCHEMA_MODELS
 from odyssey.main import create_app
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 JSON_SCHEMA_ROOT = REPOSITORY_ROOT / "schemas" / "jsonschema" / "v1"
 OPENAPI_PATH = REPOSITORY_ROOT / "schemas" / "openapi" / "odyssey-v1.openapi.json"
+EVENT_SCHEMA_ROOT = REPOSITORY_ROOT / "schemas" / "events" / "v1"
+EVENT_REGISTRY_PATH = REPOSITORY_ROOT / "schemas" / "events" / "registry.v1.json"
 MANIFEST_PATH = REPOSITORY_ROOT / "schemas" / "generated" / "schema-manifest.json"
 
 
@@ -39,6 +42,22 @@ def generated_artifacts() -> dict[Path, bytes]:
         )
     )
     artifacts[OPENAPI_PATH] = serialize(app.openapi())
+
+    registry_entries: list[dict[str, Any]] = []
+    for definition in EVENT_DEFINITIONS:
+        event_path = EVENT_SCHEMA_ROOT / f"{definition.event_type}.schema.json"
+        artifacts[event_path] = serialize(event_json_schema(definition))
+        registry_entries.append(
+            {
+                "event_type": definition.event_type,
+                "aggregate_type": definition.aggregate_type,
+                "purpose": definition.purpose,
+                "schema": str(event_path.relative_to(REPOSITORY_ROOT)),
+            }
+        )
+    artifacts[EVENT_REGISTRY_PATH] = serialize(
+        {"event_registry_version": 1, "events": registry_entries}
+    )
 
     manifest_entries = []
     for path, content in sorted(artifacts.items(), key=lambda item: str(item[0])):

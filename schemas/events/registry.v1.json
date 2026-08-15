@@ -1,0 +1,149 @@
+{
+  "event_registry_version": 1,
+  "events": [
+    {
+      "aggregate_type": "capture",
+      "event_type": "capture.recorded.v1",
+      "purpose": "Durable raw capture",
+      "schema": "schemas/events/v1/capture.recorded.v1.schema.json"
+    },
+    {
+      "aggregate_type": "observation",
+      "event_type": "observation.normalized.v1",
+      "purpose": "Normalized source-linked observation",
+      "schema": "schemas/events/v1/observation.normalized.v1.schema.json"
+    },
+    {
+      "aggregate_type": "assertion",
+      "event_type": "assertion.created.v1",
+      "purpose": "Typed temporal assertion",
+      "schema": "schemas/events/v1/assertion.created.v1.schema.json"
+    },
+    {
+      "aggregate_type": "assertion",
+      "event_type": "assertion.superseded.v1",
+      "purpose": "Non-destructive assertion correction",
+      "schema": "schemas/events/v1/assertion.superseded.v1.schema.json"
+    },
+    {
+      "aggregate_type": "charter",
+      "event_type": "charter.revised.v1",
+      "purpose": "Accepted Charter revision",
+      "schema": "schemas/events/v1/charter.revised.v1.schema.json"
+    },
+    {
+      "aggregate_type": "season",
+      "event_type": "season.activated.v1",
+      "purpose": "Season activation",
+      "schema": "schemas/events/v1/season.activated.v1.schema.json"
+    },
+    {
+      "aggregate_type": "season",
+      "event_type": "season.transitioned.v1",
+      "purpose": "Explicit season transition",
+      "schema": "schemas/events/v1/season.transitioned.v1.schema.json"
+    },
+    {
+      "aggregate_type": "decision",
+      "event_type": "decision.detected.v1",
+      "purpose": "Decision candidate creation",
+      "schema": "schemas/events/v1/decision.detected.v1.schema.json"
+    },
+    {
+      "aggregate_type": "decision",
+      "event_type": "decision.recommendation_prepared.v1",
+      "purpose": "Structured recommendation preparation",
+      "schema": "schemas/events/v1/decision.recommendation_prepared.v1.schema.json"
+    },
+    {
+      "aggregate_type": "decision",
+      "event_type": "decision.choice_recorded.v1",
+      "purpose": "Explicit or authorized choice",
+      "schema": "schemas/events/v1/decision.choice_recorded.v1.schema.json"
+    },
+    {
+      "aggregate_type": "action",
+      "event_type": "action.status_changed.v1",
+      "purpose": "Action lifecycle transition",
+      "schema": "schemas/events/v1/action.status_changed.v1.schema.json"
+    },
+    {
+      "aggregate_type": "outcome",
+      "event_type": "outcome.observed.v1",
+      "purpose": "Source-linked outcome observation",
+      "schema": "schemas/events/v1/outcome.observed.v1.schema.json"
+    },
+    {
+      "aggregate_type": "intent",
+      "event_type": "intent.opportunity_detected.v1",
+      "purpose": "Bounded intervention opportunity",
+      "schema": "schemas/events/v1/intent.opportunity_detected.v1.schema.json"
+    },
+    {
+      "aggregate_type": "intervention",
+      "event_type": "intervention.suppressed.v1",
+      "purpose": "Auditable silence decision",
+      "schema": "schemas/events/v1/intervention.suppressed.v1.schema.json"
+    },
+    {
+      "aggregate_type": "intervention",
+      "event_type": "intervention.delivered.v1",
+      "purpose": "Intervention delivery receipt",
+      "schema": "schemas/events/v1/intervention.delivered.v1.schema.json"
+    },
+    {
+      "aggregate_type": "intervention",
+      "event_type": "intervention.responded.v1",
+      "purpose": "User response or correction",
+      "schema": "schemas/events/v1/intervention.responded.v1.schema.json"
+    },
+    {
+      "aggregate_type": "evidence_claim",
+      "event_type": "evidence.claim_appraised.v1",
+      "purpose": "Evidence quality appraisal",
+      "schema": "schemas/events/v1/evidence.claim_appraised.v1.schema.json"
+    },
+    {
+      "aggregate_type": "hypothesis",
+      "event_type": "hypothesis.proposed.v1",
+      "purpose": "Exploratory personal hypothesis",
+      "schema": "schemas/events/v1/hypothesis.proposed.v1.schema.json"
+    },
+    {
+      "aggregate_type": "experiment",
+      "event_type": "experiment.assignment_created.v1",
+      "purpose": "Preregistered N-of-1 assignment",
+      "schema": "schemas/events/v1/experiment.assignment_created.v1.schema.json"
+    },
+    {
+      "aggregate_type": "learning",
+      "event_type": "learning.accepted.v1",
+      "purpose": "Owner-accepted personal learning",
+      "schema": "schemas/events/v1/learning.accepted.v1.schema.json"
+    },
+    {
+      "aggregate_type": "episode",
+      "event_type": "episode.proposed.v1",
+      "purpose": "Source-linked archive proposal",
+      "schema": "schemas/events/v1/episode.proposed.v1.schema.json"
+    },
+    {
+      "aggregate_type": "chapter",
+      "event_type": "chapter.accepted.v1",
+      "purpose": "Owner-accepted archive chapter",
+      "schema": "schemas/events/v1/chapter.accepted.v1.schema.json"
+    },
+    {
+      "aggregate_type": "standing_authorization",
+      "event_type": "permission.revoked.v1",
+      "purpose": "Immediate authority revocation",
+      "schema": "schemas/events/v1/permission.revoked.v1.schema.json"
+    },
+    {
+      "aggregate_type": "product_change",
+      "event_type": "product_change.proposed.v1",
+      "purpose": "Governed product adaptation proposal",
+      "schema": "schemas/events/v1/product_change.proposed.v1.schema.json"
+    }
+  ]
+}
