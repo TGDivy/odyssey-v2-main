@@ -29,6 +29,15 @@ envelope. `OdysseyApplication` composes this boundary with durable persistence,
 and the iPhone shell instantiates it only after local storage is available and
 a non-placeholder remote configuration passes validation.
 
+The same application layer now has a dedicated life-model transport and
+coalescing acceptance coordinator. It validates queued request JSON against the
+immutable command before network use, submits Charter/life-stage/season commands
+in local order, caches matching event/ledger-backed receipts, schedules bounded
+retryable failures, and records semantic `409` responses as terminal owner-review
+conflicts. It refreshes current orientation after conflicts and bounded history
+after each run without persisting server message text. This path is deliberately
+separate from generic sync.
+
 `OdysseyAuth` defines the closed challenge, exchange, refresh, recovery, and
 device lifecycle values. Its actor-isolated access-token session keeps access
 tokens in memory, refreshes through a device-bound credential, and persists
@@ -62,8 +71,9 @@ Application Support database, migration-backup directory, and capture service
 before any remote configuration is parsed. `NativeRemoteServices` is a separate
 optional layer that accepts HTTPS endpoints (or development loopback HTTP only)
 and composes auth, the memory-only token session, transport, and coordinator.
-Placeholder or unsafe endpoints therefore disable remote work without disabling
-offline capture.
+It also composes the life-model transport and acceptance coordinator over the
+same token session and local ledger. Placeholder or unsafe endpoints therefore
+disable remote work without disabling offline capture or acceptance queueing.
 
 The iPhone shell now uses the tested application reducer for bootstrap,
 capture, enrollment, sync, diagnostics, and repair state. Its global text

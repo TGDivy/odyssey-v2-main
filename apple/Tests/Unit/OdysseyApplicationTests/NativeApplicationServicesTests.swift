@@ -102,10 +102,13 @@ func remoteServicesComposeAuthTokenTransportAndOfflineDiagnostics() async throws
     )
 
     let diagnostics = try await remote.syncCoordinator.localDiagnostics()
+    let lifeModelDiagnostics = try local.ledgerStore.lifeModelQueueDiagnostics()
+    await remote.lifeModelAcceptanceCoordinator.cancelSynchronization()
 
     #expect(diagnostics.deviceID == local.deviceID)
     #expect(diagnostics.operationsQueued == 0)
     #expect(diagnostics.schemaCompatibility == .unknown)
+    #expect(lifeModelDiagnostics.queuedCount == 0)
 }
 
 private actor ServicesMemoryVault: CredentialVault {

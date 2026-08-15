@@ -2,8 +2,9 @@
 
 Odyssey treats the Charter, life stage, and season as owner-accepted normative
 state, not as mutable model memory. This implementation covers the server-side
-acceptance and history boundary for §§6–7. It does not yet provide the native
-Workshop editor or offline acceptance queue.
+acceptance/history boundary and the portable native offline command,
+delivery-state, authenticated transport, and immutable history cache for §§6–7.
+It does not yet provide the native Workshop editor or review ceremony.
 
 ## Authority boundary
 
@@ -56,6 +57,34 @@ All routes require Odyssey owner authentication:
 The generated OpenAPI document is the field-level request/response contract.
 Commands include a device ID for authenticated-device matching and audit, but
 development auth has no bound device.
+
+Every version envelope includes its immutable `event_id` and `ledger_sequence`.
+Native clients therefore cache auditable server history rather than inferring
+event identity from the most recent POST receipt.
+
+## Native offline delivery
+
+SQLite schema v3 stores the immutable acceptance request and document separately
+from mutable delivery state. Reusing an event or version ID for different
+content fails locally. Accepted server versions are append-only cached records;
+integrity verification and owner export include both command attempts and the
+remote history cache. Normative commands never enter generic sync.
+
+`URLSessionLifeModelTransport` obtains a bearer token per call, allows only the
+validated HTTPS/development-loopback origin, refuses redirects, cookies and
+caches, bounds response bodies, and validates that queued JSON exactly matches
+its immutable event, version, logical identity, predecessor, method, acceptance
+time and document before transmission.
+
+`LifeModelAcceptanceCoordinator` coalesces concurrent runs and submits ready
+commands in local sequence order. Successful receipts must exactly match the
+queued command before transactionally becoming accepted and cached. Network and
+retryable API failures use bounded exponential delays. HTTP `409` is terminal:
+the command becomes a reviewable conflict, current orientation is fetched and
+cached when available, and no last-write-wins merge occurs. Persisted failures
+use fixed local copy and never retain the server message. Each run also refreshes
+bounded history for all three kinds; history failures do not reverse an already
+durable acceptance outcome.
 
 ## Charter rules
 
@@ -114,9 +143,9 @@ requested scenario time and emits them as `charter_version`, `life_stage`, and
 with life-model names. This prevents a raw sync write or unresolved multi-device
 edit from changing recommendation context.
 
-Current resolution uses the accepted supersession timeline. A future local
-editor must apply the same rules before queueing an acceptance command and must
-show semantic conflicts rather than applying last-write-wins.
+Current resolution uses the accepted supersession timeline. The pending native
+Workshop must construct this dedicated queue command, show the semantic diff,
+and surface terminal conflicts rather than applying last-write-wins.
 
 ## Deployment and operations
 
@@ -143,8 +172,7 @@ source control.
 
 - Native Workshop editor, review diff, semantic conflict UI, and acceptance
   ceremony.
-- Atomic local SQLite history and offline queue using the same command rules.
-- Sync projection/receipt integration across multiple owner devices.
+- Multi-device Workshop refresh proof against the server history cache.
 - Frozen outgoing-season summary and optional retrospective draft.
 - Recommendation and UI citations that expose which accepted versions were
   used.

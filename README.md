@@ -88,9 +88,12 @@ supersession, provenance, ledger events, and transactional outbox records.
 Only deliberately accepted versions enter server context assembly; a generic
 synced `season` document cannot silently become normative owner state.
 
-The API exposes current orientation and version history, but the native
-Charter/Season editor and offline acceptance queue are not implemented yet.
-Do not seed real orientation data through SQL or treat model output as accepted.
+The native portable layer now persists a separate immutable offline acceptance
+queue, validates authenticated route bodies against queued metadata, delivers
+commands sequentially with bounded retries, records `409` as an owner-review
+conflict, and caches auditable server history. The native Charter/Season editor,
+semantic review ceremony, and conflict UI are still pending. Do not seed real
+orientation data through SQL or treat model output as accepted.
 See [`docs/architecture/life-model-acceptance.md`](docs/architecture/life-model-acceptance.md).
 
 ## Safety invariants

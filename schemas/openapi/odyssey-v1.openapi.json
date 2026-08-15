@@ -2815,8 +2815,18 @@
             "title": "Document",
             "type": "object"
           },
+          "event_id": {
+            "format": "uuid",
+            "title": "Event Id",
+            "type": "string"
+          },
           "kind": {
             "$ref": "#/components/schemas/LifeModelKind"
+          },
+          "ledger_sequence": {
+            "minimum": 1.0,
+            "title": "Ledger Sequence",
+            "type": "integer"
           },
           "logical_id": {
             "format": "uuid",
@@ -2863,6 +2873,8 @@
           "logical_id",
           "version_number",
           "acceptance_sequence",
+          "event_id",
+          "ledger_sequence",
           "supersedes_version_id",
           "status",
           "acceptance_method",

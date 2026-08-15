@@ -245,6 +245,8 @@ def test_charter_revisions_are_idempotent_versioned_and_inspectable(tmp_path: Pa
         assert first.status_code == 200
         assert first.json()["created"] is True
         assert first.json()["version"]["acceptance_sequence"] == 1
+        assert first.json()["version"]["event_id"] == str(first_event_id)
+        assert first.json()["version"]["ledger_sequence"] == first.json()["ledger_sequence"]
         assert retry.status_code == 200
         assert retry.json()["created"] is False
         assert retry.json()["ledger_sequence"] == first.json()["ledger_sequence"]
@@ -275,6 +277,7 @@ def test_charter_revisions_are_idempotent_versioned_and_inspectable(tmp_path: Pa
     assert orientation.json()["charter"]["acceptance_sequence"] == 2
     assert [item["version_number"] for item in history.json()["versions"]] == [2, 1]
     assert [item["acceptance_sequence"] for item in history.json()["versions"]] == [2, 1]
+    assert all(item["ledger_sequence"] >= 1 for item in history.json()["versions"])
 
 
 def test_charter_revision_rejects_stale_current_and_event_reuse(tmp_path: Path) -> None:

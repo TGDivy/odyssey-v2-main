@@ -138,14 +138,26 @@ public struct CachedLifeModelVersion: Codable, Hashable, Sendable {
         policyVersion: String,
         cachedAt: Date
     ) throws {
+        let normalizedPolicyVersion = policyVersion.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        )
+        let validStatus = status.map {
+            (1 ... 100).contains($0.count)
+                && $0 == $0.trimmingCharacters(in: .whitespacesAndNewlines)
+        } ?? true
         guard versionNumber >= 1,
               acceptanceSequence >= 1,
               ledgerSequence >= 1,
+              acceptedAt.timeIntervalSinceReferenceDate.isFinite,
+              cachedAt.timeIntervalSinceReferenceDate.isFinite,
               contentHash.count == 64,
               contentHash.utf8.allSatisfy({ (48 ... 57).contains($0) || (97 ... 102).contains($0) }),
               !document.isEmpty,
               document.count <= 768 * 1_024,
-              !policyVersion.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+              (try? JSONSerialization.jsonObject(with: document)) is [String: Any],
+              validStatus,
+              (1 ... 200).contains(policyVersion.count),
+              normalizedPolicyVersion == policyVersion
         else {
             throw SQLiteLedgerError.invalidLifeModelCommand(
                 "Cached life-model versions require valid sequences, hashes, documents, and policy provenance."
@@ -186,6 +198,51 @@ public struct LifeModelQueueDiagnostics: Codable, Hashable, Sendable {
         self.rejectedCount = rejectedCount
         self.oldestQueuedAt = oldestQueuedAt
     }
+}
+
+public protocol LifeModelAcceptanceStore: Sendable {
+    func enqueueLifeModelAcceptance(
+        _ command: LifeModelAcceptanceCommand
+    ) throws -> StoredLifeModelAcceptance
+    func pendingLifeModelAcceptances(
+        limit: Int,
+        readyAt: Date
+    ) throws -> [StoredLifeModelAcceptance]
+    func lifeModelAcceptances(
+        kind: LifeModelKind?,
+        limit: Int
+    ) throws -> [StoredLifeModelAcceptance]
+    func recordLifeModelRetry(
+        eventID: UUIDv7,
+        errorCode: String,
+        message: String,
+        nextAttemptAt: Date,
+        updatedAt: Date
+    ) throws
+    func recordLifeModelConflict(
+        eventID: UUIDv7,
+        errorCode: String,
+        message: String,
+        actualCurrentVersionID: UUIDv7?,
+        completedAt: Date
+    ) throws
+    func recordLifeModelRejected(
+        eventID: UUIDv7,
+        errorCode: String,
+        message: String,
+        completedAt: Date
+    ) throws
+    func recordLifeModelAccepted(
+        eventID: UUIDv7,
+        version: CachedLifeModelVersion,
+        completedAt: Date
+    ) throws
+    func cacheLifeModelVersion(_ version: CachedLifeModelVersion) throws
+    func cachedLifeModelVersions(
+        kind: LifeModelKind,
+        limit: Int
+    ) throws -> [CachedLifeModelVersion]
+    func lifeModelQueueDiagnostics() throws -> LifeModelQueueDiagnostics
 }
 
 extension SQLiteLedgerStore {
@@ -743,3 +800,5 @@ extension SQLiteLedgerStore {
         )
     }
 }
+
+extension SQLiteLedgerStore: LifeModelAcceptanceStore {}

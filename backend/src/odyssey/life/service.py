@@ -683,6 +683,8 @@ class LifeModelService:
             logical_id=_UUID7_ADAPTER.validate_python(record.logical_id),
             version_number=record.version_number,
             acceptance_sequence=record.acceptance_sequence,
+            event_id=_UUID7_ADAPTER.validate_python(record.event_id),
+            ledger_sequence=record.ledger_sequence,
             supersedes_version_id=(
                 _UUID7_ADAPTER.validate_python(record.supersedes_version_id)
                 if record.supersedes_version_id is not None

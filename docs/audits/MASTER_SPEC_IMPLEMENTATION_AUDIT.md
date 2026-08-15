@@ -85,7 +85,7 @@ deployment, external account configuration, or physical-device behavior.
 | 0.2 local ledger/projections | `partial` | Durable ledger/rebuild/export exist; 10-year performance and every-version migration matrix are not yet proven. |
 | 0.3 cloud core/sync | `verified` | Auth, sync, attachments, conflicts and convergence/fault tests exist; live cloud proof is owner-only. |
 | 0.4 durability/observability | `implemented` | Tools/runbooks/IaC exist; isolated live restore and external alert evidence are owner-only. |
-| 1.1 Charter/Season Workshop | `partial` | Server acceptance/history/context loop, immutable transition policy and strengthened portable domain contract exist; current Workshop remains a repair surface. |
+| 1.1 Charter/Season Workshop | `partial` | Server acceptance/history/context loop, immutable transition policy, offline native acceptance queue, authenticated delivery coordinator and remote history cache exist; current Workshop remains a repair surface. |
 | 1.2 capture/personal library | `partial` | Offline durable text capture and local Archive exist; media/import/search/annotation breadth remains. |
 | 1.3 Apple context adapters | `missing` | Targets/seams exist without real incremental HealthKit/calendar/location adapters. |
 | 1.4 Now/Tomorrow Map v1 | `partial` | Quiet Now, C.7 re-entry policy and immutable deterministic model-free server context assembly exist; Tomorrow Map and rendered re-entry do not. |
@@ -110,7 +110,7 @@ personal state or complete the longitudinal protocol.
 
 | Requirement | Gate | Status | Evidence or blocker |
 | --- | --- | --- | --- |
-| Accepted Charter, life stage and season | `lived` | `partial` | Authenticated immutable server acceptance/history exists and generic sync cannot become normative; native editor/offline ceremony and actual owner acceptance remain. |
+| Accepted Charter, life stage and season | `lived` | `partial` | Authenticated immutable server acceptance/history and a separate native offline queue/delivery/cache exist; native editor/review ceremony and actual owner acceptance remain. |
 | Now can intentionally show silence | `repo` | `implemented` | Quiet iPhone Now state exists; deterministic silence policy remains to connect. |
 | No universal Life Score or people ranking | `repo` | `verified` | Constitution and implementation omit both. |
 | Guilt-free re-entry | `repo` | `partial` | C.7 guarantees at most three current changes, one question, stale expiry, clean options, backlog suppression and no absence penalty; native rendering remains. |

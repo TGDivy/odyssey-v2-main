@@ -64,6 +64,8 @@ class LifeModelVersionEnvelope(StrictModel):
     logical_id: UUID7
     version_number: int = Field(ge=1)
     acceptance_sequence: int = Field(ge=1)
+    event_id: UUID7
+    ledger_sequence: int = Field(ge=1)
     supersedes_version_id: UUID7 | None
     status: str | None
     acceptance_method: AcceptanceMethod

@@ -257,6 +257,8 @@ public struct NativeRemoteServices: Sendable {
     public let tokenSession: AccessTokenSession
     public let syncTransport: URLSessionSyncTransport
     public let syncCoordinator: DurableSyncCoordinator
+    public let lifeModelTransport: URLSessionLifeModelTransport
+    public let lifeModelAcceptanceCoordinator: LifeModelAcceptanceCoordinator
     private let credentialVault: any CredentialVault
 
     public init(
@@ -288,11 +290,21 @@ public struct NativeRemoteServices: Sendable {
             store: localServices.ledgerStore,
             transport: syncTransport
         )
+        let lifeModelTransport = try URLSessionLifeModelTransport(
+            configuration: configuration,
+            tokenProvider: tokenSession
+        )
+        let lifeModelAcceptanceCoordinator = try LifeModelAcceptanceCoordinator(
+            store: localServices.ledgerStore,
+            transport: lifeModelTransport
+        )
         self.configuration = configuration
         self.authClient = authClient
         self.tokenSession = tokenSession
         self.syncTransport = syncTransport
         self.syncCoordinator = syncCoordinator
+        self.lifeModelTransport = lifeModelTransport
+        self.lifeModelAcceptanceCoordinator = lifeModelAcceptanceCoordinator
         credentialVault = localServices.credentialVault
     }
 
