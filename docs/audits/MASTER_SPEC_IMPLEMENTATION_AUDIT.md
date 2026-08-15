@@ -33,7 +33,7 @@ deployment, external account configuration, or physical-device behavior.
 | §7 life-stage and season model | `contract-only` | `domain/life.py`; event schemas | Immutable revision service, transition state machine, Workshop UI, replay tests. |
 | §8 ontology and knowledge model | `partial` | provenance, temporal, assertion, event, person, relationship contracts; durable ledger | Admission, supersession, graph derivation, contradiction, redaction, and retrieval services. |
 | §9 decision architecture | `partial` | decision contracts/events plus deterministic evidence-strength cap and observational-language guard | Lifecycle service, preparation API, replay, UI and durable recommendation audit. |
-| §10 temporal consequence engine | `contract-only` | `ConsequenceCandidate` schema | Bounded propagation, causal-status preservation, deduplication, calibration, replay suite. |
+| §10 temporal consequence engine | `partial` | versioned bounded graph traversal with time/depth/path limits, cycle/accumulation controls, uncertainty propagation, causal-status preservation, correlated-path collapse and deterministic ranking | Domain rule registry, direct-effect services, calibration reports, persistence, APIs, narrative/UI and historical replay suite. |
 | §11 intent/intervention engine | `partial` | `intent/models.py`; deterministic versioned silence/delivery policy with expiry, pause, cooldown, budget, context-recheck and channel tests | Durable opportunity service, synced pause state, scheduling, outcome loop and platform surfaces. |
 | §12 memory architecture | `partial` | immutable ledger, projections, capture/archive contracts, rebuild and export tools | Admission, retrieval plans, contradiction, condensation, forgetting/redaction, source annotations. |
 | §13 personal learning | `contract-only` | `evidence/experiments.py` | Pattern-assessment policy, preregistration workflow, analysis, replication, and owner review. |
@@ -73,7 +73,7 @@ deployment, external account configuration, or physical-device behavior.
 | §48 scenario stress tests | `missing` | isolated sync/recovery tests only | Encode every scenario as deterministic fixtures/replays plus owner-only Apple scenarios. |
 | Appendix A domain contracts | `verified` | Pydantic contracts and generated JSON Schemas | Behavioral validation still belongs to each owning section above. |
 | Appendix B API/events | `partial` | error envelope, auth/capture/sync/attachment/system routes; immutable event registry | Context, decision, intervention, feedback, evidence and encrypted asynchronous export APIs. |
-| Appendix C policies | `partial` | C.1 silence gate, C.3 recommendation-strength cap/copy guard and C.4 standing-authority engine with focused tests | Implement C.2 and C.5–C.7 plus the cross-policy golden replay suite. |
+| Appendix C policies | `partial` | C.1–C.4 deterministic engines exist with focused boundary/replay-style tests | Implement C.5–C.7 plus the cross-policy golden replay suite. |
 | Appendix D sources | `documented` | cited research and official-source register | Record source-version/update policy in evidence implementation. |
 | Appendix E traceability/definition of done | `partial` | this audit plus master traceability table | Close every unchecked E.2 row with automated or owner evidence. |
 
@@ -91,7 +91,7 @@ deployment, external account configuration, or physical-device behavior.
 | 1.4 Now/Tomorrow Map v1 | `partial` | Quiet Now exists; deterministic context and Tomorrow Map do not. |
 | 1.5 telemetry/review | `contract-only` | Schemas exist; declared questions and product review loop do not. |
 | 2.1 decision journal | `contract-only` | Decision schemas/events exist without a usable loop. |
-| 2.2 consequence engine v1 | `missing` | No propagation engine or replay calibration at snapshot. |
+| 2.2 consequence engine v1 | `partial` | C.2 bounded propagation core is tested; domain rules, durable inputs/outputs, calibration, replay API and product surface remain. |
 | 2.3 intent engine v1 | `partial` | C.1 silence gate, budgets, cooldown and channel policy are tested; opportunity generation/durability/delivery are absent. |
 | 2.4 AI synthesis/evaluations | `deferred` | Correctly gated until deterministic context, evidence and evaluations exist. |
 | 2.5 one-month dogfood | `missing` | Requires owner use and prior Edition 2 gates. |
