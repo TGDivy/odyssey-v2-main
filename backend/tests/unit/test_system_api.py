@@ -1,9 +1,11 @@
+import asyncio
+
 from fastapi.testclient import TestClient
 
 from odyssey.api.errors import OdysseyError
 from odyssey.config import Environment, Settings
 from odyssey.main import create_app
-from odyssey.worker import main as run_worker
+from odyssey.worker import run as run_worker
 
 
 def test_live_health_check() -> None:
@@ -102,4 +104,4 @@ def test_unhandled_error_is_redacted() -> None:
 
 
 def test_worker_starts_without_credentials() -> None:
-    run_worker()
+    asyncio.run(run_worker(once=True))

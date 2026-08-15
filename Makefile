@@ -16,7 +16,7 @@ diagnostics: ## Report local tool and platform capabilities
 	@bash tools/diagnostics/environment.sh
 
 bootstrap: ## Install local development dependencies
-	@if [[ -f backend/pyproject.toml ]]; then cd backend && uv sync --all-groups; else echo "Backend scaffold not added yet."; fi
+	@if [[ -f backend/pyproject.toml ]]; then cd backend && uv sync --frozen --all-groups; else echo "Backend scaffold not added yet."; fi
 
 dev: ## Start local dependencies and backend
 	@if [[ -f infra/compose.yaml ]]; then docker compose -f infra/compose.yaml up --build; else echo "Local stack scaffold not added yet."; fi
