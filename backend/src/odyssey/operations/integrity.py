@@ -31,13 +31,13 @@ from odyssey.db.session import Database
 from odyssey.domain.common import new_uuid7
 from odyssey.operations.kill_switches import KillSwitchKey, KillSwitchService
 from odyssey.sync.models import (
-    CanonicalEntityRecord,
     ServerChangeRecord,
     SyncConflictRecord,
     SyncConflictResolutionRecord,
     SyncOperationRecord,
     SyncStateRecord,
 )
+from odyssey.sync.rebuild import SyncProjectionRebuilder, SyncProjectionRebuildError
 from odyssey.sync.service import SYNC_STATE_KEY
 
 INTEGRITY_CHECKER_VERSION = "integrity.v2"
@@ -385,26 +385,13 @@ async def sync_consistency_check(session: AsyncSession) -> IntegrityCheckResult:
     )
     state_cursor = state.last_change_id if state is not None else 0
     continuity_failures = int(last_change_id != change_count or state_cursor != last_change_id)
-
-    latest_changes: dict[tuple[str, UUID], ServerChangeRecord] = {}
-    changes = tuple(
-        (
-            await session.scalars(select(ServerChangeRecord).order_by(ServerChangeRecord.change_id))
-        ).all()
-    )
-    for change in changes:
-        latest_changes[(change.entity_type, change.entity_id)] = change
-    canonical_mismatches = 0
-    entities = tuple((await session.scalars(select(CanonicalEntityRecord))).all())
-    for entity in entities:
-        latest = latest_changes.get((entity.entity_type, entity.entity_id))
-        if latest is None or (
-            entity.canonical_revision != latest.canonical_revision
-            or entity.content_hash != latest.content_hash
-            or entity.tombstoned != latest.tombstone
-            or entity.deletion_epoch != latest.deletion_epoch
-        ):
-            canonical_mismatches += 1
+    try:
+        projection_report = await SyncProjectionRebuilder().verify(session)
+        reconstruction_failures = 0
+        canonical_mismatches = projection_report.mismatched_entities
+    except SyncProjectionRebuildError:
+        reconstruction_failures = 1
+        canonical_mismatches = 0
 
     missing_operation_changes = int(
         await session.scalar(
@@ -451,6 +438,7 @@ async def sync_consistency_check(session: AsyncSession) -> IntegrityCheckResult:
     )
     failures = (
         continuity_failures
+        + reconstruction_failures
         + canonical_mismatches
         + missing_operation_changes
         + resolved_without_receipt
@@ -464,6 +452,7 @@ async def sync_consistency_check(session: AsyncSession) -> IntegrityCheckResult:
             "server_changes": change_count,
             "state_cursor": state_cursor,
             "last_change_id": last_change_id,
+            "reconstruction_failures": reconstruction_failures,
             "canonical_mismatches": canonical_mismatches,
             "missing_operation_changes": missing_operation_changes,
             "resolved_without_receipt": resolved_without_receipt,
