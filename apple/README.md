@@ -25,6 +25,15 @@ idempotency/device/correlation headers, and decodes only the redacted API error
 envelope. This is a transport boundary, not an enrolled client: no production
 token provider or app sync coordinator is wired yet.
 
+`OdysseyAuth` defines the closed challenge, exchange, refresh, recovery, and
+device lifecycle values. Its actor-isolated access-token session keeps access
+tokens in memory, refreshes through a device-bound credential, and persists
+only the stable UUIDv7 device identity and refresh credential in a
+non-synchronizing, this-device-only Keychain item. The Security-backed vault
+fails closed on platforms without Keychain support. The system Apple
+authorization UI and auth HTTP client are the next wiring layer and are not in
+this slice.
+
 On a Mac with Swift 6.1 or newer and Xcode installed:
 
 ```bash

@@ -22,7 +22,7 @@ it does not prove an owner deployment:
   environment.
 - No Apple package build, Xcode archive, signing operation, TestFlight upload,
   or physical-device test has been performed. The portable Swift package has
-  been compiled and its 24 deterministic tests have run under a temporary
+  been compiled and its 27 deterministic tests have run under a temporary
   Linux Swift 6.1 toolchain; that is not Apple-platform validation.
 - The cloud model remains `deterministic`. Adding a model-provider key alone
   enables nothing; no evaluated cloud-model adapter is implemented.
@@ -34,8 +34,10 @@ it does not prove an owner deployment:
   atomic push/pull persistence, projection rebuild, verified backup, and owner
   export. An authenticated HTTPS-only `URLSession` sync transport is also
   implemented and contract-tested, but it has no enrolled token provider.
-  App capture wiring, Keychain enrollment, background execution, and recovery
-  UI are still not implemented.
+  The device/refresh Keychain vault and in-memory access-token refresh session
+  are implemented, but the native Apple authorization ceremony and auth HTTP
+  exchange are not wired yet. App capture wiring, background execution, and
+  recovery UI are still not implemented.
 - Edition 0 remains incomplete until a real cloud restore and physical-device
   evidence exist. Steps marked **BLOCKED** are release blockers, not optional
   paperwork.
