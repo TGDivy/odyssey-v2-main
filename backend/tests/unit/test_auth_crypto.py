@@ -20,7 +20,13 @@ from odyssey.auth.tokens import (
     AccessTokenError,
     AccessTokenService,
 )
-from odyssey.config import AttachmentStoreBackend, AuthMode, Environment, Settings
+from odyssey.config import (
+    AttachmentStoreBackend,
+    AuthMode,
+    Environment,
+    ProcessRole,
+    Settings,
+)
 from odyssey.domain.common import new_uuid7
 
 
@@ -195,6 +201,24 @@ def test_auth_configuration_fails_closed() -> None:
     )
     assert settings.safe_diagnostics()["apple_client_configured"] is True
     assert "synthetic-signing-key" not in repr(settings.safe_diagnostics())
+
+
+def test_non_api_processes_do_not_require_api_secrets() -> None:
+    worker = Settings(env=Environment.PRODUCTION, process_role=ProcessRole.WORKER)
+    migration = Settings(env=Environment.PRODUCTION, process_role=ProcessRole.MIGRATION)
+    backup = Settings(
+        env=Environment.PRODUCTION,
+        process_role=ProcessRole.BACKUP,
+        attachment_store_backend=AttachmentStoreBackend.GCS,
+        storage_kms_key_id="projects/synthetic/locations/eu/keyRings/test/cryptoKeys/objects",
+    )
+
+    assert worker.safe_diagnostics()["process_role"] == "worker"
+    assert migration.safe_diagnostics()["process_role"] == "migration"
+    assert backup.safe_diagnostics()["process_role"] == "backup"
+
+    with pytest.raises(ValidationError, match="durable cloud attachment storage"):
+        Settings(env=Environment.PRODUCTION, process_role=ProcessRole.BACKUP)
 
 
 def test_recovery_material_is_authenticated_and_passphrase_encrypted() -> None:

@@ -26,6 +26,7 @@ dependencies = [
 [project.scripts]
 odyssey-api = "odyssey.main:run"
 odyssey-worker = "odyssey.worker:main"
+odyssey-worker-once = "odyssey.worker:main_once"
 
 [dependency-groups]
 dev = [

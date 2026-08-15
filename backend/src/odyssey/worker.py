@@ -117,3 +117,7 @@ async def run(
 
 def main() -> None:
     asyncio.run(run())
+
+
+def main_once() -> None:
+    asyncio.run(run(once=True))

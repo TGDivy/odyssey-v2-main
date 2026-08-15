@@ -37,6 +37,13 @@ class AttachmentStoreBackend(StrEnum):
     GCS = "gcs"
 
 
+class ProcessRole(StrEnum):
+    API = "api"
+    WORKER = "worker"
+    MIGRATION = "migration"
+    BACKUP = "backup"
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="ODYSSEY_",
@@ -46,6 +53,7 @@ class Settings(BaseSettings):
     )
 
     env: Environment = Environment.LOCAL
+    process_role: ProcessRole = ProcessRole.API
     log_level: str = "INFO"
     database_url: str = "postgresql+asyncpg://odyssey:odyssey@localhost:5432/odyssey"
     attachment_store_backend: AttachmentStoreBackend = AttachmentStoreBackend.LOCAL
@@ -112,17 +120,24 @@ class Settings(BaseSettings):
             raise ValueError("object storage access key and secret must be configured together")
         if self.storage_server_side_encryption not in {"", "AES256", "aws:kms"}:
             raise ValueError("unsupported object storage server-side encryption mode")
-        if self.storage_kms_key_id and self.storage_server_side_encryption != "aws:kms":
+        if (
+            self.attachment_store_backend is AttachmentStoreBackend.S3
+            and self.storage_kms_key_id
+            and self.storage_server_side_encryption != "aws:kms"
+        ):
             raise ValueError("an object storage KMS key requires aws:kms encryption mode")
         if self.attachment_store_backend is AttachmentStoreBackend.S3 and self.storage_endpoint:
             storage_endpoint = urlsplit(self.storage_endpoint)
             if storage_endpoint.scheme not in {"http", "https"} or not storage_endpoint.netloc:
                 raise ValueError("S3-compatible storage endpoint must use HTTP(S)")
-        if self.env in {Environment.STAGING, Environment.PRODUCTION} and not (
-            self.attachment_upload_signing_key.get_secret_value()
+        protected_environment = self.env in {Environment.STAGING, Environment.PRODUCTION}
+        if (
+            protected_environment
+            and self.process_role is ProcessRole.API
+            and not (self.attachment_upload_signing_key.get_secret_value())
         ):
             raise ValueError("staging and production require an attachment upload signing key")
-        if self.env in {Environment.STAGING, Environment.PRODUCTION}:
+        if protected_environment and self.process_role in {ProcessRole.API, ProcessRole.BACKUP}:
             if self.attachment_store_backend is AttachmentStoreBackend.LOCAL:
                 raise ValueError("staging and production require durable cloud attachment storage")
             if not self.storage_bucket:
@@ -135,7 +150,8 @@ class Settings(BaseSettings):
             ):
                 raise ValueError("production S3 attachment storage requires server-side encryption")
         if (
-            self.env in {Environment.STAGING, Environment.PRODUCTION}
+            protected_environment
+            and self.process_role is ProcessRole.API
             and self.auth_mode is AuthMode.SIGN_IN_WITH_APPLE
         ):
             if not self.apple_client_id:
@@ -176,6 +192,7 @@ class Settings(BaseSettings):
         static_access_key = self.storage_access_key.get_secret_value()
         return {
             "environment": self.env.value,
+            "process_role": self.process_role.value,
             "auth_mode": self.auth_mode.value,
             "apple_client_configured": bool(self.apple_client_id),
             "apple_bootstrap_subject_configured": bool(
