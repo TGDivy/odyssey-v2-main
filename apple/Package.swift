@@ -1,4 +1,4 @@
-// swift-tools-version: 6.0
+// swift-tools-version: 6.1
 
 import PackageDescription
 
@@ -22,14 +22,33 @@ let package = Package(
         .library(name: "OdysseyTelemetry", targets: ["OdysseyTelemetry"]),
         .library(name: "OdysseyTesting", targets: ["OdysseyTesting"]),
     ],
+    dependencies: [
+        .package(
+            url: "https://github.com/groue/GRDB.swift.git",
+            exact: "7.11.1"
+        ),
+    ],
     targets: [
+        .systemLibrary(
+            name: "CSQLite",
+            path: "Packages/CSQLite",
+            pkgConfig: "sqlite3",
+            providers: [
+                .apt(["libsqlite3-dev"]),
+                .brew(["sqlite3"]),
+            ]
+        ),
         .target(
             name: "OdysseyDomain",
             path: "Packages/OdysseyDomain/Sources/OdysseyDomain"
         ),
         .target(
             name: "OdysseyData",
-            dependencies: ["OdysseyDomain"],
+            dependencies: [
+                "OdysseyDomain",
+                "CSQLite",
+                .product(name: "GRDB", package: "GRDB.swift"),
+            ],
             path: "Packages/OdysseyData/Sources/OdysseyData"
         ),
         .target(
@@ -77,6 +96,10 @@ let package = Package(
             dependencies: ["OdysseyDomain"],
             path: "Tests/Unit/OdysseyDomainTests"
         ),
+        .testTarget(
+            name: "OdysseyDataTests",
+            dependencies: ["OdysseyData", "OdysseyDomain"],
+            path: "Tests/Unit/OdysseyDataTests"
+        ),
     ]
 )
-

@@ -28,7 +28,7 @@ development. Synthetic fixtures and deterministic fakes are the default.
 - Python 3.13 or newer
 - [uv](https://docs.astral.sh/uv/)
 - Docker with Compose v2
-- Xcode with Swift 6 for Apple targets (Mac-only)
+- Xcode with Swift 6.1 or newer for Apple targets (Mac-only)
 - OpenTofu 1.8 or Terraform 1.9 for cloud provisioning
 
 Run `make diagnostics` to see which capabilities are available on the current

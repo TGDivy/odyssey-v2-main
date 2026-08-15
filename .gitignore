@@ -25,7 +25,6 @@ xcuserdata/
 *.ipa
 *.dSYM.zip
 apple/.swiftpm/
-apple/Package.resolved
 apple/Odyssey.xcodeproj/
 apple/Config/Secrets.xcconfig
 apple/Config/*.local.xcconfig

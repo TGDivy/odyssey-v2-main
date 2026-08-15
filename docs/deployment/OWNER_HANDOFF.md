@@ -92,7 +92,8 @@ security find-identity -v -p codesigning
 **Expected output**
 
 - Membership is active and agreements show no pending action.
-- Xcode reports an installed version with Swift 6 support.
+- Xcode reports an installed version with Swift 6.1 or newer support, as
+  required by the pinned GRDB package manifest.
 - `security find-identity` reports an Apple Development identity after Xcode
   manages certificates. Distribution identities may appear only after release
   setup.
@@ -1039,9 +1040,11 @@ xcodebuild -workspace apple/Odyssey.xcworkspace \
 
 ## 14. Install the staging app and enroll a device
 
-**Gate: OWNER REQUIRED AND CURRENTLY BLOCKED.** A signed shell may install, but
-native owner enrollment, durable local ledger, Keychain credential storage, and
-real sync are not implemented.
+**Gate: OWNER REQUIRED AND CURRENTLY BLOCKED.** A signed shell may install and
+the GRDB-backed durable ledger package is implemented and Linux-tested, but it
+has not been built with Xcode or wired to the app container. Native owner
+enrollment, Keychain credential storage, real sync, and physical-device
+reinstall recovery remain unimplemented.
 
 **Action**
 
