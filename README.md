@@ -61,6 +61,25 @@ make verify
 `make verify` runs every check available in the current environment and lists
 Mac-only checks separately rather than silently pretending they ran.
 
+## Evaluation corpus
+
+Odyssey keeps provider-neutral evaluation artifacts under `evals/`. The first
+version includes all twenty Appendix 48 stress scenarios, eight anchored
+quality/safety rubrics, and golden replays through six production deterministic
+policies. Validate the strict contracts, file digests, expected outputs, and
+cross-policy safety invariants with:
+
+```bash
+cd backend
+uv run python ../tools/evals/run.py --check
+```
+
+This command is part of `make verify`. It does not grade open-ended model
+prose, prove Apple UI behavior, or replace historical, shadow, security, or
+longitudinal evaluation. The scoring workflow, privacy rules, model-change
+gate, and current evidence boundaries are documented in
+[`docs/evaluation-protocols.md`](docs/evaluation-protocols.md).
+
 ## Safety invariants
 
 - Local capture and core state never depend on network or model availability.

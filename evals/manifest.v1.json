@@ -1,0 +1,20 @@
+{
+  "corpus_version": "odyssey-evaluation-corpus-1.0.0",
+  "scenario_case_count": 20,
+  "golden_replay_count": 6,
+  "rubric_count": 8,
+  "files": [
+    {
+      "path": "evals/cases/scenario-stress.v1.json",
+      "sha256": "64c3a976cb65366fa1d998c45eab7985fb2e69c3ad39386b3f4c90c982c8bf53"
+    },
+    {
+      "path": "evals/rubrics/core.v1.json",
+      "sha256": "e392fb0e3404d0b2e96b1abd07c0f18d611598ebfc7374533c959387eabc6ae7"
+    },
+    {
+      "path": "evals/golden/deterministic-policies.v1.json",
+      "sha256": "b2a0329cb4c01486fb5161c4c1a98ccf939270a511c0de331d2288c5d139e8eb"
+    }
+  ]
+}

@@ -1,0 +1,284 @@
+{
+  "replay_version": "deterministic-policies-1.0.0",
+  "cases": [
+    {
+      "case_id": "golden-authority-external-confirmation-v1",
+      "adapter": "authority_policy",
+      "description": "An external calendar change affecting another person retains contemporaneous owner confirmation.",
+      "input": {
+        "decision_id": "01915b44-7c00-7000-8000-000000000001",
+        "action": {
+          "requested_action": "Move an accepted interview preparation meeting.",
+          "capability": "calendar",
+          "action_class": "move_accepted_meeting",
+          "resource": "calendar/team",
+          "base_authority": 4,
+          "reversibility": "reversible",
+          "externality": "affects_known_people",
+          "sensitivity": "private",
+          "recommendation_confidence": "high",
+          "affects_other_person": true
+        },
+        "context": {
+          "context_snapshot_id": "01915b44-7c00-7000-8000-000000000002",
+          "now": "2026-08-15T12:00:00Z"
+        },
+        "authorizations": [],
+        "limit_assessments": []
+      },
+      "expected_output": {
+        "id": "01915b44-7c00-7000-8000-000000000001",
+        "requested_action": "Move an accepted interview preparation meeting.",
+        "context_snapshot_id": "01915b44-7c00-7000-8000-000000000002",
+        "authority_required": 5,
+        "authorization_refs": [],
+        "risk_factors": [
+          "EXTERNAL_CONSEQUENCE",
+          "OTHER_PERSON_AFFECTED",
+          "EXPLICIT_CONFIRMATION_REQUIRED"
+        ],
+        "decision": "require_confirmation",
+        "explanation": "This action requires explicit contemporaneous confirmation.",
+        "policy_version": "authority-policy-1.0"
+      },
+      "expected_invariants": [
+        "authority_not_exceeded",
+        "external_confirmation_required"
+      ],
+      "spec_refs": [
+        "12.4",
+        "48.20"
+      ]
+    },
+    {
+      "case_id": "golden-day-alignment-disabled-v1",
+      "adapter": "day_alignment",
+      "description": "The optional qualitative day-alignment experiment stays disabled by default.",
+      "input": {
+        "day": {
+          "day": "2026-08-15",
+          "signals": [],
+          "observation_coverage": 0.9
+        }
+      },
+      "expected_output": {
+        "status": "experiment_disabled",
+        "band": null,
+        "dimensions": [],
+        "explanation": [
+          "The optional day-alignment experiment is disabled."
+        ],
+        "uncertainty": "high",
+        "reason_codes": [
+          "EXPERIMENT_DISABLED"
+        ],
+        "comparison_permitted": false,
+        "people_comparison_permitted": false,
+        "canonical_history_affected": false,
+        "policy_version": "day-alignment-policy-1.0"
+      },
+      "expected_invariants": [
+        "experiment_disabled"
+      ],
+      "spec_refs": [
+        "17.8",
+        "48.5"
+      ]
+    },
+    {
+      "case_id": "golden-intent-global-pause-v1",
+      "adapter": "intent_policy",
+      "description": "A global proactive pause suppresses guidance before channel selection.",
+      "input": {
+        "evaluation": {
+          "now": "2026-08-15T12:00:00Z",
+          "expires_at": "2026-08-15T14:00:00Z",
+          "intent_status": "active",
+          "global_proactive_pause": true,
+          "context_confidence": 0.9,
+          "expected_benefit": 0.8,
+          "expected_interruption_cost": 0.1,
+          "urgency": "normal",
+          "channels": []
+        }
+      },
+      "expected_output": {
+        "policy": "suppress",
+        "reason_codes": [
+          "GLOBAL_PAUSE"
+        ],
+        "surface": null,
+        "expires_at": "2026-08-15T14:00:00Z",
+        "policy_version": "intent-policy-1.0",
+        "explanation": [
+          "Proactive guidance is paused."
+        ],
+        "retry_after": null
+      },
+      "expected_invariants": [
+        "policy_suppresses",
+        "global_pause_reason"
+      ],
+      "spec_refs": [
+        "20.4",
+        "48.17"
+      ]
+    },
+    {
+      "case_id": "golden-pattern-small-sample-v1",
+      "adapter": "pattern_promotion",
+      "description": "A small personal sample remains insufficient even when its raw association looks interesting.",
+      "input": {
+        "candidate": {
+          "sample_size": 4,
+          "minimum_exploratory_n": 10,
+          "tested_hypotheses": 1,
+          "raw_p_value": 0.03,
+          "missing_fraction": 0,
+          "missingness_mechanism": "complete",
+          "exposure_precedes_outcome": true,
+          "primary_effect": -0.2,
+          "leave_one_out_effects": [
+            -0.2,
+            -0.18,
+            -0.21
+          ],
+          "context_effects": {
+            "workday": -0.2,
+            "weekend": -0.17
+          },
+          "data_quality": "moderate",
+          "evidence_kind": "association_only",
+          "safe_repeatable": true,
+          "decision_relevant": true
+        }
+      },
+      "expected_output": {
+        "promotion": "insufficient_data",
+        "reason_codes": [
+          "SAMPLE_TOO_SMALL"
+        ],
+        "adjusted_p_value": null,
+        "unadjusted_confounders": [],
+        "leave_one_out_stable": null,
+        "across_contexts_stable": null,
+        "policy_version": "pattern-promotion-policy-1.0"
+      },
+      "expected_invariants": [
+        "pattern_not_surfaced"
+      ],
+      "spec_refs": [
+        "18.3",
+        "48.18"
+      ]
+    },
+    {
+      "case_id": "golden-recommendation-conflict-v1",
+      "adapter": "recommendation_strength",
+      "description": "Conflicting observational personal evidence cannot support strong individualized claims.",
+      "input": {
+        "profile": {
+          "population_confidence": "moderate",
+          "applicability": "indirect",
+          "personal_causal_evidence": "observational",
+          "evidence_freshness": "acceptable",
+          "personal_data_freshness": "fresh",
+          "personal_data_is_observational_only": true,
+          "has_material_conflict": true,
+          "stakes": "high"
+        }
+      },
+      "expected_output": {
+        "maximum_strength": "insufficient",
+        "presentation": "insufficient_evidence",
+        "reason_codes": [
+          "POPULATION_SUPPORT",
+          "FRESH_SUPPORT",
+          "MATERIAL_EVIDENCE_CONFLICT",
+          "OBSERVATIONAL_LANGUAGE_RESTRICTED",
+          "SUPPORT_INSUFFICIENT"
+        ],
+        "prohibited_phrases": [
+          "works for you",
+          "causes for you",
+          "will work for you"
+        ],
+        "policy_version": "recommendation-strength-policy-1.0"
+      },
+      "expected_invariants": [
+        "strength_not_above_weak",
+        "observational_language_restricted"
+      ],
+      "spec_refs": [
+        "18.4",
+        "48.18"
+      ]
+    },
+    {
+      "case_id": "golden-reentry-clean-v1",
+      "adapter": "reentry",
+      "description": "A five-day absence produces a bounded summary, one question, and stale-opportunity expiry without backlog or guilt.",
+      "input": {
+        "last_seen": "2026-08-10T12:00:00Z",
+        "now": "2026-08-15T12:00:00Z",
+        "changes": [
+          {
+            "id": "01915b44-7c00-7000-8000-000000000003",
+            "occurred_at": "2026-08-14T09:00:00Z",
+            "summary": "Travel dates changed.",
+            "relevance": 0.9,
+            "unresolved": true,
+            "clarification_question": "Are the revised travel dates correct?",
+            "clarification_value": 0.8,
+            "source_refs": [
+              "01915b44-7c00-7000-8000-000000000004"
+            ]
+          }
+        ],
+        "opportunities": [
+          {
+            "id": "01915b44-7c00-7000-8000-000000000005",
+            "expires_at": "2026-08-12T12:00:00Z"
+          }
+        ]
+      },
+      "expected_output": {
+        "summary": [
+          {
+            "change_id": "01915b44-7c00-7000-8000-000000000003",
+            "summary": "Travel dates changed.",
+            "source_refs": [
+              "01915b44-7c00-7000-8000-000000000004"
+            ]
+          }
+        ],
+        "one_question": "Are the revised travel dates correct?",
+        "options": [
+          "continue",
+          "revise season",
+          "stay quiet"
+        ],
+        "expired_opportunity_ids": [
+          "01915b44-7c00-7000-8000-000000000005"
+        ],
+        "suppress_backlog": true,
+        "no_absence_penalty": true,
+        "reason_codes": [
+          "ABSENCE_THRESHOLD_MET",
+          "MATERIAL_CHANGES_SUMMARIZED",
+          "STALE_OPPORTUNITIES_EXPIRED",
+          "ONE_CLARIFICATION_SELECTED"
+        ],
+        "policy_version": "reentry-policy-1.0"
+      },
+      "expected_invariants": [
+        "backlog_suppressed",
+        "no_absence_penalty"
+      ],
+      "spec_refs": [
+        "20.7",
+        "48.14"
+      ]
+    }
+  ]
+}

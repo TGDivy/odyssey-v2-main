@@ -1,0 +1,102 @@
+{
+  "$defs": {
+    "GoldenReplayAdapter": {
+      "enum": [
+        "authority_policy",
+        "day_alignment",
+        "intent_policy",
+        "pattern_promotion",
+        "recommendation_strength",
+        "reentry"
+      ],
+      "title": "GoldenReplayAdapter",
+      "type": "string"
+    },
+    "GoldenReplayCase": {
+      "additionalProperties": false,
+      "properties": {
+        "adapter": {
+          "$ref": "#/$defs/GoldenReplayAdapter"
+        },
+        "case_id": {
+          "pattern": "^[a-z0-9][a-z0-9._-]{2,119}$",
+          "title": "Case Id",
+          "type": "string"
+        },
+        "description": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "expected_invariants": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Expected Invariants",
+          "type": "array"
+        },
+        "expected_output": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Expected Output",
+          "type": "object"
+        },
+        "input": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Input",
+          "type": "object"
+        },
+        "spec_refs": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Spec Refs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "case_id",
+        "adapter",
+        "description",
+        "input",
+        "expected_output",
+        "expected_invariants",
+        "spec_refs"
+      ],
+      "title": "GoldenReplayCase",
+      "type": "object"
+    },
+    "JsonValue": {}
+  },
+  "$id": "https://schemas.odyssey.local/v1/golden-replay-set.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "cases": {
+      "items": {
+        "$ref": "#/$defs/GoldenReplayCase"
+      },
+      "minItems": 1,
+      "title": "Cases",
+      "type": "array"
+    },
+    "replay_version": {
+      "maxLength": 100,
+      "minLength": 1,
+      "title": "Replay Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "replay_version",
+    "cases"
+  ],
+  "title": "GoldenReplaySet",
+  "type": "object"
+}

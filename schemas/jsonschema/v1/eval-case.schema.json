@@ -1,0 +1,181 @@
+{
+  "$defs": {
+    "EvalAuthorityLimit": {
+      "enum": [
+        "observe",
+        "inform",
+        "recommend",
+        "prepare",
+        "execute_reversible",
+        "commit_external"
+      ],
+      "title": "EvalAuthorityLimit",
+      "type": "string"
+    },
+    "EvalProvenance": {
+      "additionalProperties": false,
+      "properties": {
+        "authored_at": {
+          "format": "date-time",
+          "title": "Authored At",
+          "type": "string"
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "maxLength": 1000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Notes"
+        },
+        "source_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Source Id",
+          "type": "string"
+        },
+        "source_kind": {
+          "$ref": "#/$defs/EvalSourceKind"
+        },
+        "spec_refs": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Spec Refs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "source_kind",
+        "source_id",
+        "authored_at",
+        "spec_refs"
+      ],
+      "title": "EvalProvenance",
+      "type": "object"
+    },
+    "EvalSourceKind": {
+      "enum": [
+        "synthetic",
+        "reconstructed",
+        "owner_approved_historical",
+        "regression"
+      ],
+      "title": "EvalSourceKind",
+      "type": "string"
+    },
+    "JsonValue": {}
+  },
+  "$id": "https://schemas.odyssey.local/v1/eval-case.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "acceptable_outputs": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Acceptable Outputs",
+      "type": "array"
+    },
+    "authority_limit": {
+      "$ref": "#/$defs/EvalAuthorityLimit"
+    },
+    "case_id": {
+      "pattern": "^[a-z0-9][a-z0-9._-]{2,119}$",
+      "title": "Case Id",
+      "type": "string"
+    },
+    "evaluator_rubric": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Evaluator Rubric",
+      "type": "array"
+    },
+    "evidence_requirements": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Evidence Requirements",
+      "type": "array"
+    },
+    "expected_invariants": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Expected Invariants",
+      "type": "array"
+    },
+    "frozen_context_snapshot": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "title": "Frozen Context Snapshot",
+      "type": "object"
+    },
+    "permitted_data_scope": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Permitted Data Scope",
+      "type": "array"
+    },
+    "provenance": {
+      "$ref": "#/$defs/EvalProvenance"
+    },
+    "question_or_trigger": {
+      "maxLength": 2000,
+      "minLength": 1,
+      "title": "Question Or Trigger",
+      "type": "string"
+    },
+    "scenario_time": {
+      "format": "date-time",
+      "title": "Scenario Time",
+      "type": "string"
+    },
+    "tags": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Tags",
+      "type": "array"
+    },
+    "unacceptable_outputs": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Unacceptable Outputs",
+      "type": "array"
+    }
+  },
+  "required": [
+    "case_id",
+    "scenario_time",
+    "frozen_context_snapshot",
+    "permitted_data_scope",
+    "question_or_trigger",
+    "expected_invariants",
+    "acceptable_outputs",
+    "unacceptable_outputs",
+    "evidence_requirements",
+    "authority_limit",
+    "evaluator_rubric",
+    "provenance"
+  ],
+  "title": "EvalCase",
+  "type": "object"
+}

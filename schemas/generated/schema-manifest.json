@@ -165,6 +165,22 @@
       "sha256": "966c7c76a56dc3158e9395f563b2b992f48d26d1096108d033c6b22d61c7ac4a"
     },
     {
+      "path": "schemas/jsonschema/v1/eval-case-set.schema.json",
+      "sha256": "bc019b34870611babcc33ea75a22cfc9a8835f98a5ef1c68a6583d803e9ae59e"
+    },
+    {
+      "path": "schemas/jsonschema/v1/eval-case.schema.json",
+      "sha256": "58a88d81976f2a2a4fb5266d3989f2c508a37d2d076734dd077aad46f4851c4d"
+    },
+    {
+      "path": "schemas/jsonschema/v1/eval-corpus-manifest.schema.json",
+      "sha256": "5db329635489cb8f72e8225fad0115833c9a76c7f59a6ae11df5d582e9b4d2ce"
+    },
+    {
+      "path": "schemas/jsonschema/v1/eval-rubric-set.schema.json",
+      "sha256": "2a1a802f37f524bb755e9cb21e5bc24b6d04f92ec172c058389f1796f4586bed"
+    },
+    {
       "path": "schemas/jsonschema/v1/evidence-claim.schema.json",
       "sha256": "eccbc17b5f7ee879af0c2260639cb83f1b3b675bfeaccd09b5a201b3d9ac5f20"
     },
@@ -179,6 +195,10 @@
     {
       "path": "schemas/jsonschema/v1/experiment-result.schema.json",
       "sha256": "be76c0f4b758e1058754562730aac31140af3ece3d77c342de33c1d51b22e16d"
+    },
+    {
+      "path": "schemas/jsonschema/v1/golden-replay-set.schema.json",
+      "sha256": "2e3ae0cad589dcda2b6ce803717846aae837cc490ad00d1f5b01fd1c42742c1c"
     },
     {
       "path": "schemas/jsonschema/v1/hypothesis.schema.json",

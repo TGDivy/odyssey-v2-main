@@ -1,0 +1,133 @@
+{
+  "$defs": {
+    "EvalRubric": {
+      "additionalProperties": false,
+      "properties": {
+        "dimensions": {
+          "items": {
+            "$ref": "#/$defs/RubricDimension"
+          },
+          "minItems": 1,
+          "title": "Dimensions",
+          "type": "array"
+        },
+        "minimum_weighted_score": {
+          "maximum": 4,
+          "minimum": 0,
+          "title": "Minimum Weighted Score",
+          "type": "number"
+        },
+        "purpose": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Purpose",
+          "type": "string"
+        },
+        "required_for_high_stakes": {
+          "default": false,
+          "title": "Required For High Stakes",
+          "type": "boolean"
+        },
+        "rubric_id": {
+          "pattern": "^[a-z0-9][a-z0-9._-]{2,79}$",
+          "title": "Rubric Id",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "rubric_id",
+        "title",
+        "purpose",
+        "dimensions",
+        "minimum_weighted_score"
+      ],
+      "title": "EvalRubric",
+      "type": "object"
+    },
+    "RubricDimension": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "dimension_id": {
+          "pattern": "^[a-z0-9][a-z0-9._-]{2,79}$",
+          "title": "Dimension Id",
+          "type": "string"
+        },
+        "hard_fail_if": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Hard Fail If",
+          "type": "array"
+        },
+        "score_anchors": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "propertyNames": {
+            "enum": [
+              "0",
+              "1",
+              "2",
+              "3",
+              "4"
+            ]
+          },
+          "title": "Score Anchors",
+          "type": "object"
+        },
+        "weight": {
+          "exclusiveMinimum": 0,
+          "maximum": 10,
+          "title": "Weight",
+          "type": "number"
+        }
+      },
+      "required": [
+        "dimension_id",
+        "description",
+        "weight",
+        "score_anchors"
+      ],
+      "title": "RubricDimension",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.odyssey.local/v1/eval-rubric-set.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "rubric_version": {
+      "maxLength": 100,
+      "minLength": 1,
+      "title": "Rubric Version",
+      "type": "string"
+    },
+    "rubrics": {
+      "items": {
+        "$ref": "#/$defs/EvalRubric"
+      },
+      "minItems": 1,
+      "title": "Rubrics",
+      "type": "array"
+    }
+  },
+  "required": [
+    "rubric_version",
+    "rubrics"
+  ],
+  "title": "EvalRubricSet",
+  "type": "object"
+}

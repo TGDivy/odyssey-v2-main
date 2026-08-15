@@ -24,6 +24,12 @@ printf '\n[backend] tests and coverage\n'
   uv run pytest --cov=odyssey --cov-report=term-missing
 )
 
+printf '\n[evaluations] contracts, manifest, and deterministic replays\n'
+(
+  cd "${repository_root}/backend"
+  uv run python ../tools/evals/run.py --check
+)
+
 printf '\n[schemas] deterministic generation\n'
 (
   cd "${repository_root}/backend"

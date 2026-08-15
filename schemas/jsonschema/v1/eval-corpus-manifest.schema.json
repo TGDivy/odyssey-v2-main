@@ -1,0 +1,68 @@
+{
+  "$defs": {
+    "EvalCorpusFile": {
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "pattern": "^evals/[a-z0-9_./-]+\\.json$",
+          "title": "Path",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "sha256"
+      ],
+      "title": "EvalCorpusFile",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.odyssey.local/v1/eval-corpus-manifest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "corpus_version": {
+      "maxLength": 100,
+      "minLength": 1,
+      "title": "Corpus Version",
+      "type": "string"
+    },
+    "files": {
+      "items": {
+        "$ref": "#/$defs/EvalCorpusFile"
+      },
+      "minItems": 1,
+      "title": "Files",
+      "type": "array"
+    },
+    "golden_replay_count": {
+      "minimum": 1,
+      "title": "Golden Replay Count",
+      "type": "integer"
+    },
+    "rubric_count": {
+      "minimum": 1,
+      "title": "Rubric Count",
+      "type": "integer"
+    },
+    "scenario_case_count": {
+      "minimum": 1,
+      "title": "Scenario Case Count",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "corpus_version",
+    "scenario_case_count",
+    "golden_replay_count",
+    "rubric_count",
+    "files"
+  ],
+  "title": "EvalCorpusManifest",
+  "type": "object"
+}

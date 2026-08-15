@@ -26,6 +26,13 @@ from odyssey.domain.life import (
     Season,
 )
 from odyssey.domain.relationships import MeaningfulContact, Person, RelationshipAssertion
+from odyssey.evaluation.contracts import (
+    EvalCase,
+    EvalCaseSet,
+    EvalCorpusManifest,
+    EvalRubricSet,
+    GoldenReplaySet,
+)
 from odyssey.evidence.experiments import ExperimentResult, Hypothesis, PersonalExperiment
 from odyssey.evidence.models import ClaimAppraisal, EvidenceClaim, EvidencePack, EvidenceSource
 from odyssey.intent.models import Intent, Intervention, InterventionOpportunity
@@ -51,8 +58,13 @@ SCHEMA_MODELS: dict[str, type[BaseModel]] = {
     "evidence-claim": EvidenceClaim,
     "evidence-pack": EvidencePack,
     "evidence-source": EvidenceSource,
+    "eval-case": EvalCase,
+    "eval-case-set": EvalCaseSet,
+    "eval-corpus-manifest": EvalCorpusManifest,
+    "eval-rubric-set": EvalRubricSet,
     "experiment-result": ExperimentResult,
     "hypothesis": Hypothesis,
+    "golden-replay-set": GoldenReplaySet,
     "intent": Intent,
     "intervention": Intervention,
     "intervention-opportunity": InterventionOpportunity,

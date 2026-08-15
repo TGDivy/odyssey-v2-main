@@ -52,13 +52,13 @@ deployment, external account configuration, or physical-device behavior.
 | §26 notification/background | `partial` | background refresh/widget/intent targets plus deterministic C.1/B.6 expiry, pause, burden and delivery-state policy | Local scheduling, rendered redaction, receipts/outcomes and physical-device tests. |
 | §27 observability | `partial` | structured payload-safe logging, OpenTelemetry runtime, alerts/IaC, record trace | Deploy collectors/dashboards and prove external alert delivery. |
 | §28 product telemetry/self-improvement | `contract-only` | product-event/change-proposal contracts and runtime redaction | Declared-question registry, approved metrics, proposal review, counterexamples, rollback experiments. |
-| §29 evaluation framework | `partial` | backend/Swift tests, synthetic fixtures, CI/verify command | Golden scenarios, rubrics, model/security/replay/performance/UI evaluation artifacts. |
+| §29 evaluation framework | `partial` | strict provider-neutral contracts/schemas, SHA-256 manifest, 20 synthetic stress cases, eight anchored hard-fail rubrics, six real-policy golden adapters, focused tests and `make verify` gate | Private historical replay, open-ended model grading, retrieval/scientific/security/performance/UI datasets, shadow evaluation and longitudinal reports. |
 | §30 security model | `partial` | owner auth, Keychain use, envelope encryption, secrets/IAM/KMS IaC, runbooks | Current threat model, penetration review, live least-privilege audit, lost-device/revocation drill. |
 | §31 durability/migrations | `partial` | append-only history, Alembic/GRDB migrations, backups, restore/integrity tools | Fixture migration matrix, deployed PITR/retention proof, clean-room restore evidence. |
 | §32 failure modes/pre-mortem | `partial` | kill switches, retry/conflict diagnostics, incident/recovery runbooks | Regression scenarios for each severe failure and owner drills. |
 | §33 technology choices | `documented` | master specification, ADR 0001, lockfiles, OpenTofu and XcodeGen manifests | Add ADRs whenever implementation departs from selected architecture. |
 | §34 repository architecture | `verified` | monorepo layout, portable paths, package/infra/docs/tool boundaries | Keep directory contract synchronized as editions are added. |
-| §35 testing strategy | `partial` | 195 backend tests, 45 portable Swift tests at snapshot, schema/fixture/IaC checks | Missing replay, golden, UI, performance, fault, Apple integration and live recovery suites. |
+| §35 testing strategy | `partial` | 199 backend tests, 45 portable Swift tests at snapshot, deterministic policy golden replay, schema/fixture/IaC checks | Missing historical/model, UI, performance, broader fault, Apple integration and live recovery suites. |
 | §36 deployment architecture | `implemented` | GCP OpenTofu, deployment workflow examples, migration/canary/rollback and handoff docs | Owner provisions accounts, imports secrets, deploys, validates alerts/backups/restore and signs apps. |
 | §37 development environments | `verified` | lockfiles, Compose, environment diagnostics, `make verify`, Mac-only skip reporting | Fresh personal Mac proof is owner-only. |
 | §38 roadmap | `partial` | Edition 0 substrate and iPhone capture/auth/sync slice | Edition 1–4 product loops and milestone acceptance artifacts remain. |
@@ -70,7 +70,7 @@ deployment, external account configuration, or physical-device behavior.
 | §45 one-month protocol | `missing` | prose in master specification only | Runnable protocol, milestone rubric, incident/regression intake, decision record. |
 | §46 next iteration | `partial` | Edition 0 and native local-first slices follow sequence | Complete remaining named outputs and acceptance evidence. |
 | §47 implementation-agent handoff | `partial` | README, assumptions, architecture docs, runbooks, detailed owner handoff | Maintain final requirement ledger and unresolved credential/manual-step register. |
-| §48 scenario stress tests | `missing` | isolated sync/recovery tests only | Encode every scenario as deterministic fixtures/replays plus owner-only Apple scenarios. |
+| §48 scenario stress tests | `partial` | all 20 scenarios encoded as strict synthetic §29.2 cases with frozen context, data scope, acceptable/unacceptable outputs, evidence, authority, rubrics and provenance | Execute and grade applicable model/product/Apple surfaces; retain owner-only historical regressions privately. |
 | Appendix A domain contracts | `verified` | Pydantic contracts and generated JSON Schemas | Behavioral validation still belongs to each owning section above. |
 | Appendix B API/events | `verified` | error/auth/capture/sync/attachment/system routes, B.4–B.8 behavioral APIs, B.9 encrypted asynchronous signed/resumable owner exports, and immutable event registry | Preserve contract compatibility as product surfaces consume the APIs. |
 | Appendix C policies | `verified` | C.1–C.7 are versioned deterministic pure policies with focused boundary/replay-style automated tests; C.5 is disabled by default | Cross-policy golden scenarios remain tracked under §29 rather than policy implementation. |
@@ -162,8 +162,8 @@ personal state or complete the longitudinal protocol.
 
 At this snapshot:
 
-- The current full backend run reports 195 tests and 86.81% coverage. Schema
-  generation verifies 67 deterministic artifacts; OpenTofu 1.10.6 validates
+- The current full backend run reports 199 tests and 86.86% coverage. Schema
+  generation verifies 72 deterministic artifacts; OpenTofu 1.10.6 validates
   the deployment and all five mocked plans, including encrypted-export secret,
   storage, IAM and worker wiring across sixteen migrations.
 - The portable Swift 6.1 release suite reported 45 tests passing.
