@@ -10,6 +10,8 @@ public enum DomainValidationError: Error, Equatable, Sendable {
     case duplicateDirection
     case duplicateSeasonPolicyEntry
     case missingRequiredSeasonPolicy
+    case invalidCharter
+    case invalidLifeStage
 }
 
 public struct UUIDv7: Codable, Hashable, Sendable, CustomStringConvertible {
@@ -243,6 +245,149 @@ public struct EpistemicState: Codable, Hashable, Sendable {
         self.applicability = applicability
         self.lastEvaluatedAt = lastEvaluatedAt
         self.expiresAt = expiresAt
+    }
+}
+
+public enum LifeModelKind: String, Codable, CaseIterable, Hashable, Sendable {
+    case charter
+    case lifeStage = "life_stage"
+    case season
+}
+
+public enum LifeModelAcceptanceMethod: String, Codable, CaseIterable, Hashable, Sendable {
+    case ownerAuthored = "owner_authored"
+    case ownerReviewedAssisted = "owner_reviewed_assisted"
+    case ownerApprovedImport = "owner_approved_import"
+}
+
+public struct CharterValue: Codable, Hashable, Sendable {
+    public let id: UUIDv7
+    public let title: String
+    public let description: String
+    public let positiveExpression: String
+    public let antiValueOrFailureMode: String?
+
+    public init(
+        id: UUIDv7 = UUIDv7(),
+        title: String,
+        description: String,
+        positiveExpression: String,
+        antiValueOrFailureMode: String? = nil
+    ) throws {
+        guard !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              !description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              !positiveExpression.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        else {
+            throw DomainValidationError.invalidCharter
+        }
+        self.id = id
+        self.title = title
+        self.description = description
+        self.positiveExpression = positiveExpression
+        self.antiValueOrFailureMode = antiValueOrFailureMode
+    }
+}
+
+public struct CharterVersion: Codable, Hashable, Sendable {
+    public let metadata: EntityMetadata
+    public let charterID: UUIDv7
+    public let versionNumber: Int
+    public let effectiveInterval: TemporalInterval
+    public let values: [CharterValue]
+    public let responsibilities: [String]
+    public let desiredWaysOfBeing: [String]
+    public let nonNegotiableBoundaries: [String]
+    public let antiOptimizationStatements: [String]
+    public let interpretationNotes: String
+    public let supersedesVersionID: UUIDv7?
+    public let acceptedAt: Date
+
+    public init(
+        metadata: EntityMetadata,
+        charterID: UUIDv7,
+        versionNumber: Int,
+        effectiveInterval: TemporalInterval,
+        values: [CharterValue],
+        responsibilities: [String],
+        desiredWaysOfBeing: [String],
+        nonNegotiableBoundaries: [String],
+        antiOptimizationStatements: [String],
+        interpretationNotes: String = "",
+        supersedesVersionID: UUIDv7? = nil,
+        acceptedAt: Date
+    ) throws {
+        guard versionNumber >= 1,
+              versionNumber == metadata.revision,
+              !values.isEmpty,
+              Set(values.map(\.id)).count == values.count,
+              !antiOptimizationStatements.isEmpty,
+              acceptedAt >= metadata.lastRevisedAt
+        else {
+            throw DomainValidationError.invalidCharter
+        }
+        self.metadata = metadata
+        self.charterID = charterID
+        self.versionNumber = versionNumber
+        self.effectiveInterval = effectiveInterval
+        self.values = values
+        self.responsibilities = responsibilities
+        self.desiredWaysOfBeing = desiredWaysOfBeing
+        self.nonNegotiableBoundaries = nonNegotiableBoundaries
+        self.antiOptimizationStatements = antiOptimizationStatements
+        self.interpretationNotes = interpretationNotes
+        self.supersedesVersionID = supersedesVersionID
+        self.acceptedAt = acceptedAt
+    }
+}
+
+public struct LifeStageVersion: Codable, Hashable, Sendable {
+    public let metadata: EntityMetadata
+    public let stageID: UUIDv7
+    public let effectiveInterval: TemporalInterval
+    public let title: String
+    public let careerContext: String
+    public let partnershipFamilyContext: String
+    public let healthCapabilityContext: String
+    public let geographyContext: String
+    public let financialContext: String
+    public let careResponsibilities: [String]
+    public let identityTransitions: [String]
+    public let horizons: [String]
+    public let uncertainties: [String]
+
+    public init(
+        metadata: EntityMetadata,
+        stageID: UUIDv7,
+        effectiveInterval: TemporalInterval,
+        title: String,
+        careerContext: String = "",
+        partnershipFamilyContext: String = "",
+        healthCapabilityContext: String = "",
+        geographyContext: String = "",
+        financialContext: String = "",
+        careResponsibilities: [String] = [],
+        identityTransitions: [String] = [],
+        horizons: [String] = [],
+        uncertainties: [String] = []
+    ) throws {
+        guard metadata.revision >= 1,
+              !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        else {
+            throw DomainValidationError.invalidLifeStage
+        }
+        self.metadata = metadata
+        self.stageID = stageID
+        self.effectiveInterval = effectiveInterval
+        self.title = title
+        self.careerContext = careerContext
+        self.partnershipFamilyContext = partnershipFamilyContext
+        self.healthCapabilityContext = healthCapabilityContext
+        self.geographyContext = geographyContext
+        self.financialContext = financialContext
+        self.careResponsibilities = careResponsibilities
+        self.identityTransitions = identityTransitions
+        self.horizons = horizons
+        self.uncertainties = uncertainties
     }
 }
 

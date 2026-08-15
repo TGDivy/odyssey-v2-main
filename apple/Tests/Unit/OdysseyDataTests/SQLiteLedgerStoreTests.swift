@@ -290,12 +290,14 @@ func onlineBackupAndOwnerExportAreReadable() async throws {
     let attributes = try FileManager.default.attributesOfItem(atPath: backupURL.path)
     #expect((attributes[.size] as? NSNumber)?.intValue ?? 0 > 0)
     let archive = try fixture.decodeExport(at: exportURL)
-    #expect(archive.exportFormatVersion == 2)
+    #expect(archive.exportFormatVersion == 3)
     #expect(archive.schemaVersion == SQLiteLedgerStore.currentSchemaVersion)
     #expect(archive.binaryEncoding == "base64")
     #expect(archive.ledgerEntries.count == 1)
     #expect(archive.currentProjections.count == 1)
     #expect(archive.syncOperations.count == 1)
+    #expect(archive.lifeModelAcceptances.isEmpty)
+    #expect(archive.cachedLifeModelVersions.isEmpty)
 
     let restoredStore = try SQLiteLedgerStore(
         configuration: SQLiteLedgerConfiguration(

@@ -44,6 +44,12 @@ extension SQLiteLedgerStore {
                 appliedAt: clock()
             )
         }
+        migrator.registerMigration("v3-life-model-acceptance", foreignKeyChecks: .immediate) { database in
+            try applyVersionThree(
+                SQLiteSession(database: database),
+                appliedAt: clock()
+            )
+        }
         return migrator
     }
 
@@ -524,6 +530,127 @@ extension SQLiteLedgerStore {
         try migration.bind([.text(SQLiteValueCodec.dateString(appliedAt))])
         _ = try migration.step()
         try connection.execute("PRAGMA user_version = 2")
+    }
+
+    private static func applyVersionThree(
+        _ connection: SQLiteSession,
+        appliedAt: Date
+    ) throws {
+        try connection.execute(
+            """
+            CREATE TABLE life_model_acceptance_commands (
+                local_sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+                event_id TEXT NOT NULL UNIQUE CHECK (length(event_id) = 36),
+                kind TEXT NOT NULL CHECK (kind IN ('charter', 'life_stage', 'season')),
+                version_id TEXT NOT NULL UNIQUE CHECK (length(version_id) = 36),
+                logical_id TEXT NOT NULL CHECK (length(logical_id) = 36),
+                version_number INTEGER NOT NULL CHECK (version_number >= 1),
+                expected_current_version_id TEXT CHECK (
+                    expected_current_version_id IS NULL OR length(expected_current_version_id) = 36
+                ),
+                acceptance_method TEXT NOT NULL CHECK (
+                    acceptance_method IN (
+                        'owner_authored', 'owner_reviewed_assisted', 'owner_approved_import'
+                    )
+                ),
+                accepted_at TEXT NOT NULL,
+                request_body BLOB NOT NULL CHECK (length(request_body) BETWEEN 1 AND 1048576),
+                request_sha256 TEXT NOT NULL CHECK (length(request_sha256) = 64),
+                document BLOB NOT NULL CHECK (length(document) BETWEEN 1 AND 786432),
+                document_sha256 TEXT NOT NULL CHECK (length(document_sha256) = 64),
+                created_at TEXT NOT NULL
+            ) STRICT;
+
+            CREATE TABLE life_model_acceptance_state (
+                event_id TEXT PRIMARY KEY
+                    REFERENCES life_model_acceptance_commands(event_id) ON DELETE RESTRICT,
+                delivery_status TEXT NOT NULL CHECK (
+                    delivery_status IN ('pending', 'retry', 'accepted', 'conflict', 'rejected')
+                ),
+                attempt_count INTEGER NOT NULL DEFAULT 0 CHECK (attempt_count >= 0),
+                next_attempt_at TEXT,
+                last_error_code TEXT,
+                last_error_message TEXT,
+                actual_current_version_id TEXT CHECK (
+                    actual_current_version_id IS NULL OR length(actual_current_version_id) = 36
+                ),
+                completed_at TEXT,
+                updated_at TEXT NOT NULL,
+                CHECK (
+                    (delivery_status IN ('pending', 'retry') AND completed_at IS NULL)
+                    OR (delivery_status IN ('accepted', 'conflict', 'rejected') AND completed_at IS NOT NULL)
+                )
+            ) STRICT, WITHOUT ROWID;
+
+            CREATE INDEX life_model_acceptance_ready_index
+                ON life_model_acceptance_state (delivery_status, next_attempt_at);
+            CREATE INDEX life_model_acceptance_kind_index
+                ON life_model_acceptance_commands (kind, local_sequence DESC);
+
+            CREATE TABLE life_model_remote_versions (
+                version_id TEXT PRIMARY KEY CHECK (length(version_id) = 36),
+                kind TEXT NOT NULL CHECK (kind IN ('charter', 'life_stage', 'season')),
+                logical_id TEXT NOT NULL CHECK (length(logical_id) = 36),
+                version_number INTEGER NOT NULL CHECK (version_number >= 1),
+                acceptance_sequence INTEGER NOT NULL CHECK (acceptance_sequence >= 1),
+                supersedes_version_id TEXT CHECK (
+                    supersedes_version_id IS NULL OR length(supersedes_version_id) = 36
+                ),
+                status TEXT,
+                acceptance_method TEXT NOT NULL CHECK (
+                    acceptance_method IN (
+                        'owner_authored', 'owner_reviewed_assisted', 'owner_approved_import'
+                    )
+                ),
+                accepted_at TEXT NOT NULL,
+                content_hash TEXT NOT NULL CHECK (length(content_hash) = 64),
+                document BLOB NOT NULL CHECK (length(document) BETWEEN 1 AND 786432),
+                document_sha256 TEXT NOT NULL CHECK (length(document_sha256) = 64),
+                event_id TEXT NOT NULL UNIQUE CHECK (length(event_id) = 36),
+                ledger_sequence INTEGER NOT NULL UNIQUE CHECK (ledger_sequence >= 1),
+                policy_version TEXT NOT NULL CHECK (length(policy_version) BETWEEN 1 AND 200),
+                cached_at TEXT NOT NULL,
+                UNIQUE (kind, acceptance_sequence),
+                UNIQUE (kind, logical_id, version_number)
+            ) STRICT, WITHOUT ROWID;
+
+            CREATE INDEX life_model_remote_history_index
+                ON life_model_remote_versions (kind, acceptance_sequence DESC);
+
+            CREATE TRIGGER life_model_acceptance_commands_no_update
+            BEFORE UPDATE ON life_model_acceptance_commands
+            BEGIN
+                SELECT RAISE(ABORT, 'life-model acceptance commands are immutable');
+            END;
+
+            CREATE TRIGGER life_model_acceptance_commands_no_delete
+            BEFORE DELETE ON life_model_acceptance_commands
+            BEGIN
+                SELECT RAISE(ABORT, 'life-model acceptance commands are immutable');
+            END;
+
+            CREATE TRIGGER life_model_remote_versions_no_update
+            BEFORE UPDATE ON life_model_remote_versions
+            BEGIN
+                SELECT RAISE(ABORT, 'cached life-model versions are immutable');
+            END;
+
+            CREATE TRIGGER life_model_remote_versions_no_delete
+            BEFORE DELETE ON life_model_remote_versions
+            BEGIN
+                SELECT RAISE(ABORT, 'cached life-model versions are immutable');
+            END;
+            """
+        )
+        let migration = try connection.statement(
+            """
+            INSERT INTO schema_migrations (version, name, applied_at)
+            VALUES (3, 'local life-model acceptance queue and immutable history', ?)
+            """
+        )
+        try migration.bind([.text(SQLiteValueCodec.dateString(appliedAt))])
+        _ = try migration.step()
+        try connection.execute("PRAGMA user_version = 3")
     }
 
     private static func backupTimestamp(_ date: Date) -> String {

@@ -33,6 +33,7 @@ extension SQLiteLedgerStore {
         try verifyProjectionMaterialization(projectionEvents)
         try verifySearchIndex()
         try verifySyncOperations()
+        try verifyLifeModelStorage()
 
         return LedgerIntegrityReport(
             schemaVersion: Self.currentSchemaVersion,
@@ -44,6 +45,12 @@ extension SQLiteLedgerStore {
             syncOperationCount: Int(try connection.scalarInt("SELECT COUNT(*) FROM sync_operations")),
             remoteChangeReceiptCount: Int(
                 try connection.scalarInt("SELECT COUNT(*) FROM remote_change_receipts")
+            ),
+            lifeModelCommandCount: Int(
+                try connection.scalarInt("SELECT COUNT(*) FROM life_model_acceptance_commands")
+            ),
+            cachedLifeModelVersionCount: Int(
+                try connection.scalarInt("SELECT COUNT(*) FROM life_model_remote_versions")
             ),
             checkedAt: configuration.clock()
         )
@@ -180,6 +187,10 @@ extension SQLiteLedgerStore {
             "sync_operations_no_delete",
             "remote_change_receipts_no_update",
             "remote_change_receipts_no_delete",
+            "life_model_acceptance_commands_no_update",
+            "life_model_acceptance_commands_no_delete",
+            "life_model_remote_versions_no_update",
+            "life_model_remote_versions_no_delete",
             "entity_projections_search_insert",
             "entity_projections_search_update",
             "entity_projections_search_delete",
@@ -212,6 +223,60 @@ extension SQLiteLedgerStore {
                     "Ledger payload hash mismatch for event \(eventID)."
                 )
             }
+        }
+    }
+
+    private func verifyLifeModelStorage() throws {
+        let commands = try connection.statement(
+            """
+            SELECT event_id, request_body, request_sha256, document, document_sha256
+            FROM life_model_acceptance_commands
+            ORDER BY local_sequence
+            """
+        )
+        while try commands.step() {
+            let eventID = try commands.text(at: 0)
+            let request = try commands.data(at: 1)
+            let requestHash = try commands.text(at: 2)
+            let document = try commands.data(at: 3)
+            let documentHash = try commands.text(at: 4)
+            guard SHA256Digest.hexDigest(of: request) == requestHash,
+                  SHA256Digest.hexDigest(of: document) == documentHash
+            else {
+                throw SQLiteLedgerError.integrityFailure(
+                    "Stored life-model command hash mismatch for event \(eventID)."
+                )
+            }
+        }
+        let versions = try connection.statement(
+            """
+            SELECT version_id, document, document_sha256
+            FROM life_model_remote_versions
+            ORDER BY kind, acceptance_sequence
+            """
+        )
+        while try versions.step() {
+            let versionID = try versions.text(at: 0)
+            let document = try versions.data(at: 1)
+            let expectedHash = try versions.text(at: 2)
+            guard SHA256Digest.hexDigest(of: document) == expectedHash else {
+                throw SQLiteLedgerError.integrityFailure(
+                    "Cached life-model document hash mismatch for version \(versionID)."
+                )
+            }
+        }
+        let missingReceipts = try connection.scalarInt(
+            """
+            SELECT COUNT(*)
+            FROM life_model_acceptance_state AS state
+            LEFT JOIN life_model_remote_versions AS version ON version.event_id = state.event_id
+            WHERE state.delivery_status = 'accepted' AND version.version_id IS NULL
+            """
+        )
+        guard missingReceipts == 0 else {
+            throw SQLiteLedgerError.integrityFailure(
+                "Accepted local life-model commands are missing immutable server receipts."
+            )
         }
     }
 
@@ -447,7 +512,7 @@ extension SQLiteLedgerStore {
 
     private func readExportArchive(exportedAt: Date) throws -> LedgerExportArchive {
         LedgerExportArchive(
-            exportFormatVersion: 2,
+            exportFormatVersion: 3,
             schemaVersion: Self.currentSchemaVersion,
             exportedAt: exportedAt,
             binaryEncoding: "base64",
@@ -457,7 +522,9 @@ extension SQLiteLedgerStore {
             projectionEvents: try readProjectionEvents(),
             currentProjections: try readCurrentProjections(),
             syncOperations: try readSyncOperationExports(),
-            remoteChangeReceipts: try readAllRemoteChangeReceipts()
+            remoteChangeReceipts: try readAllRemoteChangeReceipts(),
+            lifeModelAcceptances: try allLifeModelAcceptancesInCurrentTransaction(),
+            cachedLifeModelVersions: try allCachedLifeModelVersionsInCurrentTransaction()
         )
     }
 

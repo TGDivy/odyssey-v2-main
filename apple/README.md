@@ -14,9 +14,12 @@ the applied device cursor separate from the latest observed server cursor,
 stores every pulled server change as an immutable hash-checked receipt, applies
 push results and pull pages transactionally, reconciles same-device optimistic
 state, and records other-device changes in both the ledger and projection
-history. Export format v2 includes those receipts and structured operation
-results. The checked-in `Package.resolved` makes dependency resolution
-reproducible.
+history. Schema v3 adds a dedicated immutable owner-acceptance command queue,
+separate delivery state, and immutable cached Charter/life-stage/season
+receipts; these commands never enter generic document sync. Export format v3
+includes sync receipts, structured operation results, acceptance attempts, and
+cached life-model history. The checked-in `Package.resolved` makes dependency
+resolution reproducible.
 
 `OdysseySync` now includes backend-shaped wire contracts and an actor-isolated
 `URLSessionSyncTransport`. It obtains a bearer token per request, refuses plain

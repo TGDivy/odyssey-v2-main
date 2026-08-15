@@ -25,7 +25,7 @@ public struct SQLiteLedgerConfiguration: Sendable {
 }
 
 public final class SQLiteLedgerStore: @unchecked Sendable, LedgerStore, SyncOutboxStore, SyncPersistenceStore, ProjectionRebuilder, OwnerExporter, LocalBackupProvider {
-    public static let currentSchemaVersion = 2
+    public static let currentSchemaVersion = 3
     public static let maximumSyncPayloadBytes = 256 * 1_024
 
     let databasePool: DatabasePool

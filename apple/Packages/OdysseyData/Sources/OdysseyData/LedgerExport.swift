@@ -93,6 +93,8 @@ public struct LedgerExportArchive: Codable, Hashable, Sendable {
     public let currentProjections: [ProjectedEntity]
     public let syncOperations: [SyncOperationExport]
     public let remoteChangeReceipts: [RemoteChangeReceipt]
+    public let lifeModelAcceptances: [StoredLifeModelAcceptance]
+    public let cachedLifeModelVersions: [CachedLifeModelVersion]
 
     public init(
         exportFormatVersion: Int,
@@ -105,7 +107,9 @@ public struct LedgerExportArchive: Codable, Hashable, Sendable {
         projectionEvents: [ProjectionEventExport],
         currentProjections: [ProjectedEntity],
         syncOperations: [SyncOperationExport],
-        remoteChangeReceipts: [RemoteChangeReceipt]
+        remoteChangeReceipts: [RemoteChangeReceipt],
+        lifeModelAcceptances: [StoredLifeModelAcceptance],
+        cachedLifeModelVersions: [CachedLifeModelVersion]
     ) {
         self.exportFormatVersion = exportFormatVersion
         self.schemaVersion = schemaVersion
@@ -118,5 +122,7 @@ public struct LedgerExportArchive: Codable, Hashable, Sendable {
         self.currentProjections = currentProjections
         self.syncOperations = syncOperations
         self.remoteChangeReceipts = remoteChangeReceipts
+        self.lifeModelAcceptances = lifeModelAcceptances
+        self.cachedLifeModelVersions = cachedLifeModelVersions
     }
 }

@@ -39,7 +39,7 @@ func migrationFromV1CreatesVerifiedPreMigrationBackup() async throws {
     let backupURLs = try FileManager.default.contentsOfDirectory(
         at: directory,
         includingPropertiesForKeys: nil
-    ).filter { $0.lastPathComponent.hasPrefix("odyssey-pre-migration-v1-to-v2-") }
+    ).filter { $0.lastPathComponent.hasPrefix("odyssey-pre-migration-v1-to-v3-") }
         .filter { $0.pathExtension == "sqlite3" }
 
     #expect(backupURLs.count == 1)

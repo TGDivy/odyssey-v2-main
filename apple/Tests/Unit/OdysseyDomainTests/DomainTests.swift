@@ -55,6 +55,87 @@ func seasonRequiresPrimaryOverrideExplanation() throws {
 }
 
 @Test
+func charterAndLifeStageContractsPreserveOwnerReviewedVersions() throws {
+    let now = Date(timeIntervalSince1970: 1_786_752_000)
+    let metadata = try EntityMetadata(
+        createdAt: now,
+        createdBy: ActorRef(actorType: .user, actorID: "owner"),
+        lastRevisedAt: now,
+        revision: 1,
+        sensitivity: .private,
+        provenanceID: UUIDv7().rawValue
+    )
+    let interval = try TemporalInterval(
+        start: .instant(now),
+        timeZoneID: "Europe/London",
+        startPrecision: .exact
+    )
+    let value = try CharterValue(
+        title: "Integrity",
+        description: "Keep consequential choices self-endorsed.",
+        positiveExpression: "Act honestly and preserve agency."
+    )
+    let charter = try CharterVersion(
+        metadata: metadata,
+        charterID: UUIDv7(),
+        versionNumber: 1,
+        effectiveInterval: interval,
+        values: [value],
+        responsibilities: ["Keep explicit commitments."],
+        desiredWaysOfBeing: ["Present"],
+        nonNegotiableBoundaries: ["No hidden external action."],
+        antiOptimizationStatements: ["Never optimize away meaningful relationships."],
+        acceptedAt: now
+    )
+    let lifeStage = try LifeStageVersion(
+        metadata: metadata,
+        stageID: UUIDv7(),
+        effectiveInterval: interval,
+        title: "Owner-described current context",
+        uncertainties: ["Future location is unknown."]
+    )
+
+    #expect(charter.versionNumber == charter.metadata.revision)
+    #expect(charter.values == [value])
+    #expect(lifeStage.uncertainties == ["Future location is unknown."])
+    #expect(LifeModelKind.allCases == [.charter, .lifeStage, .season])
+}
+
+@Test
+func charterRejectsMissingOwnerBoundaries() throws {
+    let now = Date(timeIntervalSince1970: 1_786_752_000)
+    let metadata = try EntityMetadata(
+        createdAt: now,
+        createdBy: ActorRef(actorType: .user, actorID: "owner"),
+        lastRevisedAt: now,
+        revision: 1,
+        sensitivity: .private,
+        provenanceID: UUIDv7().rawValue
+    )
+    let interval = try TemporalInterval(start: .instant(now), timeZoneID: "UTC")
+    let value = try CharterValue(
+        title: "Agency",
+        description: "Retain final authority.",
+        positiveExpression: "Choose deliberately."
+    )
+
+    #expect(throws: DomainValidationError.invalidCharter) {
+        try CharterVersion(
+            metadata: metadata,
+            charterID: UUIDv7(),
+            versionNumber: 1,
+            effectiveInterval: interval,
+            values: [value],
+            responsibilities: [],
+            desiredWaysOfBeing: [],
+            nonNegotiableBoundaries: [],
+            antiOptimizationStatements: [],
+            acceptedAt: now
+        )
+    }
+}
+
+@Test
 func localDateIntervalsRejectReverseOrder() {
     #expect(throws: DomainValidationError.invalidTemporalInterval) {
         try TemporalInterval(
