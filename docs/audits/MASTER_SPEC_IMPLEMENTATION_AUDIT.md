@@ -40,7 +40,7 @@ deployment, external account configuration, or physical-device behavior.
 | §14 scientific evidence | `contract-only` | `evidence/models.py`; source/claim/appraisal schemas | Evidence ingestion/query, appraisal policy, counterevidence, applicability, citations, updates. |
 | §15 score philosophy | `documented` | Constitution prohibits universal Life Score; no ranking implementation | Optional removable day-alignment experiment with data-quality and comparison guards. |
 | §16 AI philosophy | `contract-only` | `ai/models.py` | Capability router, structured fallbacks, refusal/uncertainty, provenance, evaluations, rollback. |
-| §17 trust and agency | `contract-only` | standing authorization and policy-decision schemas; kill switches | Deterministic authority engine, visible/revocable permissions, correction effects, global pause. |
+| §17 trust and agency | `partial` | standing authorization/policy-decision contracts plus deterministic risk, scope, condition, review, limit, pause and confirmation policy | Durable Trust Center, revocation sync, correction effects and autonomous-action audit UI. |
 | §18 experience architecture | `partial` | iPhone quiet Now, capture, Archive, Workshop/repair surfaces | Tomorrow Map, decision/evidence flows, re-entry, accessibility and complete platform depth. |
 | §19 visual and art direction | `partial` | native SwiftUI shells and shared assets scaffold | Tokens, map/world states, motion/accessibility treatment, snapshots, reduced-motion proof. |
 | §20 Apple ecosystem | `partial` | iOS/Watch/macOS shells, widgets/intents/share targets, portable data/auth/sync packages | Real HealthKit/EventKit/location/watch/widget adapters and Xcode/device validation. |
@@ -73,7 +73,7 @@ deployment, external account configuration, or physical-device behavior.
 | §48 scenario stress tests | `missing` | isolated sync/recovery tests only | Encode every scenario as deterministic fixtures/replays plus owner-only Apple scenarios. |
 | Appendix A domain contracts | `verified` | Pydantic contracts and generated JSON Schemas | Behavioral validation still belongs to each owning section above. |
 | Appendix B API/events | `partial` | error envelope, auth/capture/sync/attachment/system routes; immutable event registry | Context, decision, intervention, feedback, evidence and encrypted asynchronous export APIs. |
-| Appendix C policies | `partial` | C.1 deterministic silence gate and focused replay-style unit cases | Implement C.2–C.7 and the cross-policy golden replay suite. |
+| Appendix C policies | `partial` | C.1 silence gate and C.4 standing-authority engine with focused replay-style unit cases | Implement C.2, C.3 and C.5–C.7 plus the cross-policy golden replay suite. |
 | Appendix D sources | `documented` | cited research and official-source register | Record source-version/update policy in evidence implementation. |
 | Appendix E traceability/definition of done | `partial` | this audit plus master traceability table | Close every unchecked E.2 row with automated or owner evidence. |
 
@@ -137,8 +137,8 @@ personal state or complete the longitudinal protocol.
 | Model rollback | `repo` | `missing` | No model release system. |
 | Notification budget/silence gate | `repo` | `verified` | `intent/policy.py` enforces hard gates, daily/window budgets, exponential cooldown and least-intrusive delivery with focused tests. |
 | Opportunity expiry/delivery recheck | `repo` | `missing` | Contracts only. |
-| Standing permissions visible/revocable | `repo` | `missing` | Contracts only. |
-| External action confirmation | `repo` | `missing` | Authority policy absent; no external actions enabled. |
+| Standing permissions visible/revocable | `repo` | `partial` | C.4 evaluates active/revoked/time-bounded/scoped grants; durable Trust Center and synced revocation UI remain. |
+| External action confirmation | `repo` | `verified` | C.4 elevates risky execution and requires contemporaneous confirmation for external commits; no external executor is enabled. |
 | Synced global proactive pause | `repo` | `missing` | No domain loop. |
 | Source/claim provenance inspectable | `repo` | `partial` | Provenance contracts and ledger exist; evidence UI/query absent. |
 | Population/personal evidence distinct | `repo` | `contract-only` | Evidence contracts distinguish them; query behavior absent. |
