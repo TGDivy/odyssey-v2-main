@@ -1,0 +1,321 @@
+{
+  "$defs": {
+    "ActorRef": {
+      "additionalProperties": false,
+      "properties": {
+        "actor_id": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Actor Id",
+          "type": "string"
+        },
+        "actor_type": {
+          "$ref": "#/$defs/ActorType"
+        }
+      },
+      "required": [
+        "actor_type",
+        "actor_id"
+      ],
+      "title": "ActorRef",
+      "type": "object"
+    },
+    "ActorType": {
+      "enum": [
+        "user",
+        "device",
+        "system",
+        "integration",
+        "model"
+      ],
+      "title": "ActorType",
+      "type": "string"
+    },
+    "DataClass": {
+      "enum": [
+        "public",
+        "private",
+        "sensitive",
+        "highly_sensitive",
+        "operational_secret",
+        "derived_sensitive"
+      ],
+      "title": "DataClass",
+      "type": "string"
+    },
+    "EntityMetadata": {
+      "additionalProperties": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "created_by": {
+          "$ref": "#/$defs/ActorRef"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "last_revised_at": {
+          "format": "date-time",
+          "title": "Last Revised At",
+          "type": "string"
+        },
+        "provenance_id": {
+          "format": "uuid",
+          "title": "Provenance Id",
+          "type": "string"
+        },
+        "revision": {
+          "minimum": 1,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "schema_version": {
+          "minimum": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "sensitivity": {
+          "$ref": "#/$defs/DataClass"
+        },
+        "tombstoned_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tombstoned At"
+        }
+      },
+      "required": [
+        "id",
+        "schema_version",
+        "created_at",
+        "created_by",
+        "last_revised_at",
+        "revision",
+        "sensitivity",
+        "provenance_id"
+      ],
+      "title": "EntityMetadata",
+      "type": "object"
+    },
+    "TemporalInterval": {
+      "additionalProperties": false,
+      "properties": {
+        "all_day_semantics": {
+          "default": false,
+          "title": "All Day Semantics",
+          "type": "boolean"
+        },
+        "end": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "End"
+        },
+        "end_precision": {
+          "$ref": "#/$defs/TemporalPrecision",
+          "default": "unknown"
+        },
+        "start": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Start"
+        },
+        "start_precision": {
+          "$ref": "#/$defs/TemporalPrecision",
+          "default": "unknown"
+        },
+        "timezone_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Timezone Id"
+        }
+      },
+      "title": "TemporalInterval",
+      "type": "object"
+    },
+    "TemporalPrecision": {
+      "enum": [
+        "exact",
+        "minute",
+        "hour",
+        "day",
+        "month",
+        "approximate",
+        "unknown"
+      ],
+      "title": "TemporalPrecision",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.odyssey.local/v1/personal-experiment.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "adverse_event_policy": {
+      "title": "Adverse Event Policy",
+      "type": "string"
+    },
+    "analysis_plan": {
+      "title": "Analysis Plan",
+      "type": "string"
+    },
+    "assignment_method": {
+      "title": "Assignment Method",
+      "type": "string"
+    },
+    "eligibility_criteria": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Eligibility Criteria",
+      "type": "array"
+    },
+    "interval": {
+      "$ref": "#/$defs/TemporalInterval"
+    },
+    "intervention_conditions": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Intervention Conditions",
+      "type": "array"
+    },
+    "measurement_plan": {
+      "title": "Measurement Plan",
+      "type": "string"
+    },
+    "metadata": {
+      "$ref": "#/$defs/EntityMetadata"
+    },
+    "multiple_testing_policy": {
+      "title": "Multiple Testing Policy",
+      "type": "string"
+    },
+    "preregistration": {
+      "title": "Preregistration",
+      "type": "string"
+    },
+    "primary_outcome": {
+      "title": "Primary Outcome",
+      "type": "string"
+    },
+    "result_id": {
+      "anyOf": [
+        {
+          "format": "uuid",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Result Id"
+    },
+    "sample_or_cycle_target": {
+      "title": "Sample Or Cycle Target",
+      "type": "integer"
+    },
+    "secondary_outcomes": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Secondary Outcomes",
+      "type": "array"
+    },
+    "status": {
+      "title": "Status",
+      "type": "string"
+    },
+    "stop_rules": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Stop Rules",
+      "type": "array"
+    },
+    "title": {
+      "title": "Title",
+      "type": "string"
+    },
+    "unit_of_randomization": {
+      "title": "Unit Of Randomization",
+      "type": "string"
+    },
+    "washout_or_carryover_policy": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Washout Or Carryover Policy"
+    }
+  },
+  "required": [
+    "metadata",
+    "title",
+    "preregistration",
+    "eligibility_criteria",
+    "intervention_conditions",
+    "assignment_method",
+    "unit_of_randomization",
+    "primary_outcome",
+    "measurement_plan",
+    "sample_or_cycle_target",
+    "analysis_plan",
+    "multiple_testing_policy",
+    "stop_rules",
+    "adverse_event_policy",
+    "interval",
+    "status"
+  ],
+  "title": "PersonalExperiment",
+  "type": "object"
+}

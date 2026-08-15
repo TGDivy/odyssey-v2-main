@@ -1,0 +1,362 @@
+{
+  "$defs": {
+    "ActorRef": {
+      "additionalProperties": false,
+      "properties": {
+        "actor_id": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Actor Id",
+          "type": "string"
+        },
+        "actor_type": {
+          "$ref": "#/$defs/ActorType"
+        }
+      },
+      "required": [
+        "actor_type",
+        "actor_id"
+      ],
+      "title": "ActorRef",
+      "type": "object"
+    },
+    "ActorType": {
+      "enum": [
+        "user",
+        "device",
+        "system",
+        "integration",
+        "model"
+      ],
+      "title": "ActorType",
+      "type": "string"
+    },
+    "DataClass": {
+      "enum": [
+        "public",
+        "private",
+        "sensitive",
+        "highly_sensitive",
+        "operational_secret",
+        "derived_sensitive"
+      ],
+      "title": "DataClass",
+      "type": "string"
+    },
+    "DecisionOwner": {
+      "enum": [
+        "user",
+        "delegated_within_scope"
+      ],
+      "title": "DecisionOwner",
+      "type": "string"
+    },
+    "DecisionStatus": {
+      "enum": [
+        "candidate",
+        "active",
+        "deferred",
+        "chosen",
+        "enacted",
+        "closed",
+        "superseded"
+      ],
+      "title": "DecisionStatus",
+      "type": "string"
+    },
+    "EntityMetadata": {
+      "additionalProperties": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "created_by": {
+          "$ref": "#/$defs/ActorRef"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "last_revised_at": {
+          "format": "date-time",
+          "title": "Last Revised At",
+          "type": "string"
+        },
+        "provenance_id": {
+          "format": "uuid",
+          "title": "Provenance Id",
+          "type": "string"
+        },
+        "revision": {
+          "minimum": 1,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "schema_version": {
+          "minimum": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "sensitivity": {
+          "$ref": "#/$defs/DataClass"
+        },
+        "tombstoned_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tombstoned At"
+        }
+      },
+      "required": [
+        "id",
+        "schema_version",
+        "created_at",
+        "created_by",
+        "last_revised_at",
+        "revision",
+        "sensitivity",
+        "provenance_id"
+      ],
+      "title": "EntityMetadata",
+      "type": "object"
+    },
+    "Externality": {
+      "enum": [
+        "private",
+        "affects_known_people",
+        "public_or_contractual"
+      ],
+      "title": "Externality",
+      "type": "string"
+    },
+    "Reversibility": {
+      "enum": [
+        "reversible",
+        "costly_to_reverse",
+        "irreversible",
+        "unknown"
+      ],
+      "title": "Reversibility",
+      "type": "string"
+    },
+    "Stakes": {
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "title": "Stakes",
+      "type": "string"
+    },
+    "TemporalInterval": {
+      "additionalProperties": false,
+      "properties": {
+        "all_day_semantics": {
+          "default": false,
+          "title": "All Day Semantics",
+          "type": "boolean"
+        },
+        "end": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "End"
+        },
+        "end_precision": {
+          "$ref": "#/$defs/TemporalPrecision",
+          "default": "unknown"
+        },
+        "start": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Start"
+        },
+        "start_precision": {
+          "$ref": "#/$defs/TemporalPrecision",
+          "default": "unknown"
+        },
+        "timezone_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Timezone Id"
+        }
+      },
+      "title": "TemporalInterval",
+      "type": "object"
+    },
+    "TemporalPrecision": {
+      "enum": [
+        "exact",
+        "minute",
+        "hour",
+        "day",
+        "month",
+        "approximate",
+        "unknown"
+      ],
+      "title": "TemporalPrecision",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.odyssey.local/v1/decision.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "charter_and_season_refs": {
+      "items": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "title": "Charter And Season Refs",
+      "type": "array"
+    },
+    "current_context_snapshot_id": {
+      "format": "uuid",
+      "title": "Current Context Snapshot Id",
+      "type": "string"
+    },
+    "decision_owner": {
+      "$ref": "#/$defs/DecisionOwner",
+      "default": "user"
+    },
+    "decision_window": {
+      "$ref": "#/$defs/TemporalInterval"
+    },
+    "detected_at": {
+      "format": "date-time",
+      "title": "Detected At",
+      "type": "string"
+    },
+    "externality": {
+      "$ref": "#/$defs/Externality"
+    },
+    "follow_up_plan": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Follow Up Plan"
+    },
+    "importance_dimensions": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Importance Dimensions",
+      "type": "array"
+    },
+    "metadata": {
+      "$ref": "#/$defs/EntityMetadata"
+    },
+    "missing_information": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Missing Information",
+      "type": "array"
+    },
+    "option_ids": {
+      "default": [],
+      "items": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "title": "Option Ids",
+      "type": "array"
+    },
+    "question": {
+      "maxLength": 4000,
+      "minLength": 1,
+      "title": "Question",
+      "type": "string"
+    },
+    "recommendation_id": {
+      "anyOf": [
+        {
+          "format": "uuid",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Recommendation Id"
+    },
+    "reversibility": {
+      "$ref": "#/$defs/Reversibility"
+    },
+    "stakes": {
+      "$ref": "#/$defs/Stakes"
+    },
+    "status": {
+      "$ref": "#/$defs/DecisionStatus"
+    },
+    "urgency": {
+      "title": "Urgency",
+      "type": "string"
+    }
+  },
+  "required": [
+    "metadata",
+    "question",
+    "status",
+    "detected_at",
+    "decision_window",
+    "stakes",
+    "reversibility",
+    "externality",
+    "urgency",
+    "current_context_snapshot_id",
+    "charter_and_season_refs"
+  ],
+  "title": "Decision",
+  "type": "object"
+}

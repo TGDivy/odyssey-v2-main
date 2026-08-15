@@ -1,0 +1,155 @@
+{
+  "$defs": {
+    "AccumulationModel": {
+      "enum": [
+        "none",
+        "count",
+        "dose",
+        "debt",
+        "threshold",
+        "custom"
+      ],
+      "title": "AccumulationModel",
+      "type": "string"
+    },
+    "ConfidenceBand": {
+      "enum": [
+        "very_low",
+        "low",
+        "moderate",
+        "high",
+        "very_high"
+      ],
+      "title": "ConfidenceBand",
+      "type": "string"
+    },
+    "ConsequenceDirection": {
+      "enum": [
+        "beneficial",
+        "harmful",
+        "mixed",
+        "neutral"
+      ],
+      "title": "ConsequenceDirection",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.odyssey.local/v1/consequence-candidate.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "accumulation_model": {
+      "$ref": "#/$defs/AccumulationModel"
+    },
+    "affected_state_or_landmark": {
+      "title": "Affected State Or Landmark",
+      "type": "string"
+    },
+    "assumptions": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Assumptions",
+      "type": "array"
+    },
+    "causal_path": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Causal Path",
+      "type": "array"
+    },
+    "causal_status": {
+      "title": "Causal Status",
+      "type": "string"
+    },
+    "decay_model": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Decay Model"
+    },
+    "direction": {
+      "$ref": "#/$defs/ConsequenceDirection"
+    },
+    "earliest_effect": {
+      "format": "date-time",
+      "title": "Earliest Effect",
+      "type": "string"
+    },
+    "expected_magnitude_band": {
+      "title": "Expected Magnitude Band",
+      "type": "string"
+    },
+    "id": {
+      "format": "uuid",
+      "title": "Id",
+      "type": "string"
+    },
+    "latest_relevant_effect": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Latest Relevant Effect"
+    },
+    "personal_evidence_refs": {
+      "default": [],
+      "items": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "title": "Personal Evidence Refs",
+      "type": "array"
+    },
+    "population_evidence_refs": {
+      "default": [],
+      "items": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "title": "Population Evidence Refs",
+      "type": "array"
+    },
+    "rule_or_model_version": {
+      "title": "Rule Or Model Version",
+      "type": "string"
+    },
+    "source_action_or_option": {
+      "format": "uuid",
+      "title": "Source Action Or Option",
+      "type": "string"
+    },
+    "uncertainty_band": {
+      "$ref": "#/$defs/ConfidenceBand"
+    }
+  },
+  "required": [
+    "id",
+    "source_action_or_option",
+    "affected_state_or_landmark",
+    "causal_path",
+    "direction",
+    "expected_magnitude_band",
+    "uncertainty_band",
+    "earliest_effect",
+    "accumulation_model",
+    "rule_or_model_version",
+    "causal_status"
+  ],
+  "title": "ConsequenceCandidate",
+  "type": "object"
+}

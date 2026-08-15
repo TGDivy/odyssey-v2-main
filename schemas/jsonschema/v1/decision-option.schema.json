@@ -1,0 +1,267 @@
+{
+  "$defs": {
+    "ActorRef": {
+      "additionalProperties": false,
+      "properties": {
+        "actor_id": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Actor Id",
+          "type": "string"
+        },
+        "actor_type": {
+          "$ref": "#/$defs/ActorType"
+        }
+      },
+      "required": [
+        "actor_type",
+        "actor_id"
+      ],
+      "title": "ActorRef",
+      "type": "object"
+    },
+    "ActorType": {
+      "enum": [
+        "user",
+        "device",
+        "system",
+        "integration",
+        "model"
+      ],
+      "title": "ActorType",
+      "type": "string"
+    },
+    "ConsequenceDirection": {
+      "enum": [
+        "beneficial",
+        "harmful",
+        "mixed",
+        "neutral"
+      ],
+      "title": "ConsequenceDirection",
+      "type": "string"
+    },
+    "DataClass": {
+      "enum": [
+        "public",
+        "private",
+        "sensitive",
+        "highly_sensitive",
+        "operational_secret",
+        "derived_sensitive"
+      ],
+      "title": "DataClass",
+      "type": "string"
+    },
+    "EntityMetadata": {
+      "additionalProperties": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "created_by": {
+          "$ref": "#/$defs/ActorRef"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "last_revised_at": {
+          "format": "date-time",
+          "title": "Last Revised At",
+          "type": "string"
+        },
+        "provenance_id": {
+          "format": "uuid",
+          "title": "Provenance Id",
+          "type": "string"
+        },
+        "revision": {
+          "minimum": 1,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "schema_version": {
+          "minimum": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "sensitivity": {
+          "$ref": "#/$defs/DataClass"
+        },
+        "tombstoned_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tombstoned At"
+        }
+      },
+      "required": [
+        "id",
+        "schema_version",
+        "created_at",
+        "created_by",
+        "last_revised_at",
+        "revision",
+        "sensitivity",
+        "provenance_id"
+      ],
+      "title": "EntityMetadata",
+      "type": "object"
+    },
+    "OptionConsequence": {
+      "additionalProperties": false,
+      "properties": {
+        "assumptions": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Assumptions",
+          "type": "array"
+        },
+        "direction": {
+          "$ref": "#/$defs/ConsequenceDirection"
+        },
+        "evidence_refs": {
+          "default": [],
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "title": "Evidence Refs",
+          "type": "array"
+        },
+        "magnitude_band": {
+          "title": "Magnitude Band",
+          "type": "string"
+        },
+        "outcome_type": {
+          "title": "Outcome Type",
+          "type": "string"
+        },
+        "probability_or_uncertainty": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Probability Or Uncertainty"
+        },
+        "time_horizon": {
+          "title": "Time Horizon",
+          "type": "string"
+        }
+      },
+      "required": [
+        "outcome_type",
+        "direction",
+        "magnitude_band",
+        "time_horizon"
+      ],
+      "title": "OptionConsequence",
+      "type": "object"
+    },
+    "Reversibility": {
+      "enum": [
+        "reversible",
+        "costly_to_reverse",
+        "irreversible",
+        "unknown"
+      ],
+      "title": "Reversibility",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.odyssey.local/v1/decision-option.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "consequences": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/OptionConsequence"
+      },
+      "title": "Consequences",
+      "type": "array"
+    },
+    "constraint_violations": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Constraint Violations",
+      "type": "array"
+    },
+    "decision_id": {
+      "format": "uuid",
+      "title": "Decision Id",
+      "type": "string"
+    },
+    "description": {
+      "maxLength": 8000,
+      "minLength": 1,
+      "title": "Description",
+      "type": "string"
+    },
+    "label": {
+      "maxLength": 500,
+      "minLength": 1,
+      "title": "Label",
+      "type": "string"
+    },
+    "metadata": {
+      "$ref": "#/$defs/EntityMetadata"
+    },
+    "opportunity_costs": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Opportunity Costs",
+      "type": "array"
+    },
+    "prerequisites": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Prerequisites",
+      "type": "array"
+    },
+    "reversibility": {
+      "$ref": "#/$defs/Reversibility"
+    },
+    "value_alignment": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Value Alignment",
+      "type": "array"
+    }
+  },
+  "required": [
+    "metadata",
+    "decision_id",
+    "label",
+    "description",
+    "reversibility"
+  ],
+  "title": "DecisionOption",
+  "type": "object"
+}

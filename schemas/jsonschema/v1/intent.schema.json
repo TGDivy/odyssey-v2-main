@@ -1,0 +1,285 @@
+{
+  "$defs": {
+    "ActorRef": {
+      "additionalProperties": false,
+      "properties": {
+        "actor_id": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Actor Id",
+          "type": "string"
+        },
+        "actor_type": {
+          "$ref": "#/$defs/ActorType"
+        }
+      },
+      "required": [
+        "actor_type",
+        "actor_id"
+      ],
+      "title": "ActorRef",
+      "type": "object"
+    },
+    "ActorType": {
+      "enum": [
+        "user",
+        "device",
+        "system",
+        "integration",
+        "model"
+      ],
+      "title": "ActorType",
+      "type": "string"
+    },
+    "AuthorityLevel": {
+      "enum": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "title": "AuthorityLevel",
+      "type": "integer"
+    },
+    "DataClass": {
+      "enum": [
+        "public",
+        "private",
+        "sensitive",
+        "highly_sensitive",
+        "operational_secret",
+        "derived_sensitive"
+      ],
+      "title": "DataClass",
+      "type": "string"
+    },
+    "EntityMetadata": {
+      "additionalProperties": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "created_by": {
+          "$ref": "#/$defs/ActorRef"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "last_revised_at": {
+          "format": "date-time",
+          "title": "Last Revised At",
+          "type": "string"
+        },
+        "provenance_id": {
+          "format": "uuid",
+          "title": "Provenance Id",
+          "type": "string"
+        },
+        "revision": {
+          "minimum": 1,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "schema_version": {
+          "minimum": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "sensitivity": {
+          "$ref": "#/$defs/DataClass"
+        },
+        "tombstoned_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tombstoned At"
+        }
+      },
+      "required": [
+        "id",
+        "schema_version",
+        "created_at",
+        "created_by",
+        "last_revised_at",
+        "revision",
+        "sensitivity",
+        "provenance_id"
+      ],
+      "title": "EntityMetadata",
+      "type": "object"
+    },
+    "IntentTemporalPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "cooldown": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cooldown"
+        },
+        "deadline": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Deadline"
+        },
+        "earliest": {
+          "format": "date-time",
+          "title": "Earliest",
+          "type": "string"
+        },
+        "expiry": {
+          "format": "date-time",
+          "title": "Expiry",
+          "type": "string"
+        },
+        "recurrence": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Recurrence"
+        }
+      },
+      "required": [
+        "earliest",
+        "expiry"
+      ],
+      "title": "IntentTemporalPolicy",
+      "type": "object"
+    },
+    "OpportunityDefinition": {
+      "additionalProperties": false,
+      "properties": {
+        "disqualifiers": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Disqualifiers",
+          "type": "array"
+        },
+        "ideal_context": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Ideal Context",
+          "type": "array"
+        },
+        "predicates": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Predicates",
+          "type": "array"
+        }
+      },
+      "required": [
+        "predicates"
+      ],
+      "title": "OpportunityDefinition",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.odyssey.local/v1/intent.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "authority_level": {
+      "$ref": "#/$defs/AuthorityLevel"
+    },
+    "default_intervention_options": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Default Intervention Options",
+      "type": "array"
+    },
+    "desired_behavior_or_state": {
+      "title": "Desired Behavior Or State",
+      "type": "string"
+    },
+    "fallback_behavior": {
+      "title": "Fallback Behavior",
+      "type": "string"
+    },
+    "importance": {
+      "title": "Importance",
+      "type": "string"
+    },
+    "metadata": {
+      "$ref": "#/$defs/EntityMetadata"
+    },
+    "opportunity_definition": {
+      "$ref": "#/$defs/OpportunityDefinition"
+    },
+    "serves_direction_ids": {
+      "default": [],
+      "items": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "title": "Serves Direction Ids",
+      "type": "array"
+    },
+    "statement": {
+      "maxLength": 4000,
+      "minLength": 1,
+      "title": "Statement",
+      "type": "string"
+    },
+    "status": {
+      "title": "Status",
+      "type": "string"
+    },
+    "temporal_policy": {
+      "$ref": "#/$defs/IntentTemporalPolicy"
+    }
+  },
+  "required": [
+    "metadata",
+    "statement",
+    "desired_behavior_or_state",
+    "opportunity_definition",
+    "temporal_policy",
+    "importance",
+    "default_intervention_options",
+    "fallback_behavior",
+    "authority_level",
+    "status"
+  ],
+  "title": "Intent",
+  "type": "object"
+}

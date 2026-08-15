@@ -1,0 +1,310 @@
+{
+  "$defs": {
+    "AcquisitionLicense": {
+      "additionalProperties": false,
+      "properties": {
+        "acquisition_method": {
+          "title": "Acquisition Method",
+          "type": "string"
+        },
+        "full_text_storage_allowed": {
+          "default": false,
+          "title": "Full Text Storage Allowed",
+          "type": "boolean"
+        },
+        "license_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "License Name"
+        },
+        "redistribution_allowed": {
+          "default": false,
+          "title": "Redistribution Allowed",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "acquisition_method"
+      ],
+      "title": "AcquisitionLicense",
+      "type": "object"
+    },
+    "ActorRef": {
+      "additionalProperties": false,
+      "properties": {
+        "actor_id": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Actor Id",
+          "type": "string"
+        },
+        "actor_type": {
+          "$ref": "#/$defs/ActorType"
+        }
+      },
+      "required": [
+        "actor_type",
+        "actor_id"
+      ],
+      "title": "ActorRef",
+      "type": "object"
+    },
+    "ActorType": {
+      "enum": [
+        "user",
+        "device",
+        "system",
+        "integration",
+        "model"
+      ],
+      "title": "ActorType",
+      "type": "string"
+    },
+    "DataClass": {
+      "enum": [
+        "public",
+        "private",
+        "sensitive",
+        "highly_sensitive",
+        "operational_secret",
+        "derived_sensitive"
+      ],
+      "title": "DataClass",
+      "type": "string"
+    },
+    "EntityMetadata": {
+      "additionalProperties": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "created_by": {
+          "$ref": "#/$defs/ActorRef"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "last_revised_at": {
+          "format": "date-time",
+          "title": "Last Revised At",
+          "type": "string"
+        },
+        "provenance_id": {
+          "format": "uuid",
+          "title": "Provenance Id",
+          "type": "string"
+        },
+        "revision": {
+          "minimum": 1,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "schema_version": {
+          "minimum": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "sensitivity": {
+          "$ref": "#/$defs/DataClass"
+        },
+        "tombstoned_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tombstoned At"
+        }
+      },
+      "required": [
+        "id",
+        "schema_version",
+        "created_at",
+        "created_by",
+        "last_revised_at",
+        "revision",
+        "sensitivity",
+        "provenance_id"
+      ],
+      "title": "EntityMetadata",
+      "type": "object"
+    },
+    "EvidenceIdentifier": {
+      "additionalProperties": false,
+      "properties": {
+        "identifier": {
+          "title": "Identifier",
+          "type": "string"
+        },
+        "kind": {
+          "title": "Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "identifier"
+      ],
+      "title": "EvidenceIdentifier",
+      "type": "object"
+    },
+    "EvidenceSourceType": {
+      "enum": [
+        "systematic_review",
+        "meta_analysis",
+        "randomized_trial",
+        "observational",
+        "guideline",
+        "expert_consensus",
+        "mechanism",
+        "qualitative",
+        "official_documentation",
+        "personal_experiment",
+        "personal_observation",
+        "other"
+      ],
+      "title": "EvidenceSourceType",
+      "type": "string"
+    },
+    "ExternalRef": {
+      "additionalProperties": false,
+      "properties": {
+        "canonical_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Canonical Url"
+        },
+        "identifier": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Identifier",
+          "type": "string"
+        },
+        "system": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "System",
+          "type": "string"
+        }
+      },
+      "required": [
+        "system",
+        "identifier"
+      ],
+      "title": "ExternalRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.odyssey.local/v1/evidence-source.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "acquisition_and_license": {
+      "$ref": "#/$defs/AcquisitionLicense"
+    },
+    "authors": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Authors",
+      "type": "array"
+    },
+    "content_hash": {
+      "anyOf": [
+        {
+          "maxLength": 128,
+          "minLength": 16,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Content Hash"
+    },
+    "external_refs": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/ExternalRef"
+      },
+      "title": "External Refs",
+      "type": "array"
+    },
+    "identifiers": {
+      "items": {
+        "$ref": "#/$defs/EvidenceIdentifier"
+      },
+      "title": "Identifiers",
+      "type": "array"
+    },
+    "metadata": {
+      "$ref": "#/$defs/EntityMetadata"
+    },
+    "publication": {
+      "title": "Publication",
+      "type": "string"
+    },
+    "publication_date": {
+      "anyOf": [
+        {
+          "format": "date",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Publication Date"
+    },
+    "source_type": {
+      "$ref": "#/$defs/EvidenceSourceType"
+    },
+    "title": {
+      "maxLength": 2000,
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    },
+    "version_or_retraction_state": {
+      "title": "Version Or Retraction State",
+      "type": "string"
+    }
+  },
+  "required": [
+    "metadata",
+    "title",
+    "authors",
+    "publication",
+    "source_type",
+    "identifiers",
+    "version_or_retraction_state",
+    "acquisition_and_license"
+  ],
+  "title": "EvidenceSource",
+  "type": "object"
+}

@@ -1,0 +1,75 @@
+{
+  "$id": "https://schemas.odyssey.local/v1/evidence-pack.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "assembled_at": {
+      "format": "date-time",
+      "title": "Assembled At",
+      "type": "string"
+    },
+    "contradictory_claims": {
+      "default": [],
+      "items": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "title": "Contradictory Claims",
+      "type": "array"
+    },
+    "exclusions": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Exclusions",
+      "type": "array"
+    },
+    "freshness": {
+      "title": "Freshness",
+      "type": "string"
+    },
+    "id": {
+      "format": "uuid",
+      "title": "Id",
+      "type": "string"
+    },
+    "personal_facts": {
+      "default": [],
+      "items": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "title": "Personal Facts",
+      "type": "array"
+    },
+    "question": {
+      "maxLength": 4000,
+      "minLength": 1,
+      "title": "Question",
+      "type": "string"
+    },
+    "retrieval_query_and_version": {
+      "title": "Retrieval Query And Version",
+      "type": "string"
+    },
+    "scientific_claims": {
+      "default": [],
+      "items": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "title": "Scientific Claims",
+      "type": "array"
+    }
+  },
+  "required": [
+    "id",
+    "question",
+    "retrieval_query_and_version",
+    "assembled_at",
+    "freshness"
+  ],
+  "title": "EvidencePack",
+  "type": "object"
+}

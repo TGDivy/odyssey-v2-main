@@ -9,16 +9,40 @@
       "sha256": "4528f7c09151cdc1bb08b06fecfac15e7fa7f732a9ba5ea2de6af143045f63a9"
     },
     {
+      "path": "schemas/jsonschema/v1/chapter-version.schema.json",
+      "sha256": "30b906a4392900f6c0d265d7c31b5b3f263f76c7b0d7e3b14f8329ab0f21eae7"
+    },
+    {
       "path": "schemas/jsonschema/v1/charter-version.schema.json",
       "sha256": "001180da28dd5221bc2d13e9b89aa6da2865b61d97e9f96321a10e17d5dff9b1"
+    },
+    {
+      "path": "schemas/jsonschema/v1/choice.schema.json",
+      "sha256": "f235cf419f2314535454d672c6540c712b21556fa3b024c5b50195a8a2cc4944"
+    },
+    {
+      "path": "schemas/jsonschema/v1/claim-appraisal.schema.json",
+      "sha256": "d6b67acca94fdcf83a22ac9fba252a5cb83e0b5ee0fa25fe23ebfe7e3ab628aa"
     },
     {
       "path": "schemas/jsonschema/v1/commitment.schema.json",
       "sha256": "0be576518597b9d951599d8ee7008c93d781ac5b9184423a4da632beeab5d229"
     },
     {
+      "path": "schemas/jsonschema/v1/consequence-candidate.schema.json",
+      "sha256": "ddc9fa2acd3d507ec4b46afe8df5ab98a441c0d49ff7711223eab36f19f6b7c8"
+    },
+    {
       "path": "schemas/jsonschema/v1/context-snapshot.schema.json",
       "sha256": "628907b84185dd5ad7ed512e09c0695c98dcb3e077124d40126d32d10e16dbba"
+    },
+    {
+      "path": "schemas/jsonschema/v1/decision-option.schema.json",
+      "sha256": "fe5148dff2f14646095349da5c8429f2c4ee4287544dd081e58976c6616775a1"
+    },
+    {
+      "path": "schemas/jsonschema/v1/decision.schema.json",
+      "sha256": "a8946f7bee0a2cc7b1a9e1003c45325519f78f3046c644970df418c612678037"
     },
     {
       "path": "schemas/jsonschema/v1/direction.schema.json",
@@ -29,16 +53,80 @@
       "sha256": "4f9f81c9cfd6546ccb57c1fb7d1a65acd96b0b40cde02c278add77dc436c882b"
     },
     {
+      "path": "schemas/jsonschema/v1/episode.schema.json",
+      "sha256": "f64e6fe57b87801368d097dcdf975bf2bd61e6f5d5093f98af1e0558204910c8"
+    },
+    {
       "path": "schemas/jsonschema/v1/epistemic-state.schema.json",
       "sha256": "966c7c76a56dc3158e9395f563b2b992f48d26d1096108d033c6b22d61c7ac4a"
+    },
+    {
+      "path": "schemas/jsonschema/v1/evidence-claim.schema.json",
+      "sha256": "eccbc17b5f7ee879af0c2260639cb83f1b3b675bfeaccd09b5a201b3d9ac5f20"
+    },
+    {
+      "path": "schemas/jsonschema/v1/evidence-pack.schema.json",
+      "sha256": "e0a28e13fac774d9e137910690c81aefdaf7720998fa3f4c8496a110444535e7"
+    },
+    {
+      "path": "schemas/jsonschema/v1/evidence-source.schema.json",
+      "sha256": "128877e378f14fadce1912067de6077d1647983186fdc4e67585364bf5de207e"
+    },
+    {
+      "path": "schemas/jsonschema/v1/experiment-result.schema.json",
+      "sha256": "be76c0f4b758e1058754562730aac31140af3ece3d77c342de33c1d51b22e16d"
+    },
+    {
+      "path": "schemas/jsonschema/v1/hypothesis.schema.json",
+      "sha256": "886d2e5f0da7b969ab2844dbd6768697df1287438ce594874cf37140b9c35fae"
+    },
+    {
+      "path": "schemas/jsonschema/v1/intent.schema.json",
+      "sha256": "92ac666352a323faecc71948aec20f77128719038ec2cb849c2b9ad1eee9bda9"
+    },
+    {
+      "path": "schemas/jsonschema/v1/intervention-opportunity.schema.json",
+      "sha256": "b0d07ae16492acefcb521fd23acec79a1080b53af1154db6e3dc93de2e909aee"
+    },
+    {
+      "path": "schemas/jsonschema/v1/intervention.schema.json",
+      "sha256": "ea7c713d97d9f95f26bb8c475e089b5d6f289ecf4e940cd6992b96be2d7ec87c"
     },
     {
       "path": "schemas/jsonschema/v1/life-stage-version.schema.json",
       "sha256": "e71d2faff1bfe40a44a3e12dbb74135282a4f768aa29a6384acae78b81c4c065"
     },
     {
+      "path": "schemas/jsonschema/v1/meaningful-contact.schema.json",
+      "sha256": "caaf6ced5503432d1ce396319180385099e5dd27b6bdba774e4dc048b33aa8a4"
+    },
+    {
+      "path": "schemas/jsonschema/v1/model-run.schema.json",
+      "sha256": "42c9b744ac24e7d954f6bae5fcbac7c242894579efaa3ed4eae4ffeb226fb873"
+    },
+    {
       "path": "schemas/jsonschema/v1/observation.schema.json",
       "sha256": "4dd52d539337d5c1ce59d3da1e52e8ecea16d8fa776372a3ab1328eb621cfd7c"
+    },
+    {
+      "path": "schemas/jsonschema/v1/person.schema.json",
+      "sha256": "893dc274d1795b9b1430e8e52fd4b162e441f8d520549ea2c768748257a79c18"
+    },
+    {
+      "path": "schemas/jsonschema/v1/personal-experiment.schema.json",
+      "sha256": "28e6c8bcc3ac1366c8a36c9d941fe50af9b4c2d8f32fc06e95974ab38901140e"
+    },
+    {
+      "path": "schemas/jsonschema/v1/policy-decision.schema.json",
+      "sha256": "d6593d69224b69610f419ae8126fe1f56b1216fa79ac749468c53d5733c5daa6"
+    },
+    {
+      "path": "schemas/jsonschema/v1/product-change-proposal.schema.json",
+      "sha256": "0c2b395eb17be1614f2ba49b49f915ab5cfb97b302538dda837311ef68d3911c"
+    },
+    {
+      "path": "schemas/jsonschema/v1/product-event.schema.json",
+      "sha256": "d9f4ef46f4c1ff4aeea3df2cb0485186c2d47a326f41a5687ac11d0702175884"
     },
     {
       "path": "schemas/jsonschema/v1/project.schema.json",
@@ -49,8 +137,20 @@
       "sha256": "eeeed62d03b3555ee00814c68ad4aa8ab5c13e384fcc78847aa6e2dbffbd141a"
     },
     {
+      "path": "schemas/jsonschema/v1/recommendation.schema.json",
+      "sha256": "0ce305785ad877a616a7a0a066a903b3d0445be7b1d38b0a26ac04a5959ee48e"
+    },
+    {
+      "path": "schemas/jsonschema/v1/relationship-assertion.schema.json",
+      "sha256": "133ec849828499f136d99497a203179bdb8bb705a1989f7cb3161db940a4a1b4"
+    },
+    {
       "path": "schemas/jsonschema/v1/season.schema.json",
       "sha256": "35b8f06a85977142c6ff435fd3bf3a663258720476bbae8285a65d4059d87dcc"
+    },
+    {
+      "path": "schemas/jsonschema/v1/standing-authorization.schema.json",
+      "sha256": "62383e375802b075a5a8459e76dcb75f59fedb81ba38d4f9851312487f967df4"
     },
     {
       "path": "schemas/jsonschema/v1/temporal-interval.schema.json",

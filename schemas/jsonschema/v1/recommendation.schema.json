@@ -1,0 +1,266 @@
+{
+  "$defs": {
+    "ActorRef": {
+      "additionalProperties": false,
+      "properties": {
+        "actor_id": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Actor Id",
+          "type": "string"
+        },
+        "actor_type": {
+          "$ref": "#/$defs/ActorType"
+        }
+      },
+      "required": [
+        "actor_type",
+        "actor_id"
+      ],
+      "title": "ActorRef",
+      "type": "object"
+    },
+    "ActorType": {
+      "enum": [
+        "user",
+        "device",
+        "system",
+        "integration",
+        "model"
+      ],
+      "title": "ActorType",
+      "type": "string"
+    },
+    "ConfidenceBand": {
+      "enum": [
+        "very_low",
+        "low",
+        "moderate",
+        "high",
+        "very_high"
+      ],
+      "title": "ConfidenceBand",
+      "type": "string"
+    },
+    "DataClass": {
+      "enum": [
+        "public",
+        "private",
+        "sensitive",
+        "highly_sensitive",
+        "operational_secret",
+        "derived_sensitive"
+      ],
+      "title": "DataClass",
+      "type": "string"
+    },
+    "EntityMetadata": {
+      "additionalProperties": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "created_by": {
+          "$ref": "#/$defs/ActorRef"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "last_revised_at": {
+          "format": "date-time",
+          "title": "Last Revised At",
+          "type": "string"
+        },
+        "provenance_id": {
+          "format": "uuid",
+          "title": "Provenance Id",
+          "type": "string"
+        },
+        "revision": {
+          "minimum": 1,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "schema_version": {
+          "minimum": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "sensitivity": {
+          "$ref": "#/$defs/DataClass"
+        },
+        "tombstoned_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tombstoned At"
+        }
+      },
+      "required": [
+        "id",
+        "schema_version",
+        "created_at",
+        "created_by",
+        "last_revised_at",
+        "revision",
+        "sensitivity",
+        "provenance_id"
+      ],
+      "title": "EntityMetadata",
+      "type": "object"
+    },
+    "GenerationMethod": {
+      "enum": [
+        "deterministic",
+        "hybrid",
+        "model"
+      ],
+      "title": "GenerationMethod",
+      "type": "string"
+    },
+    "RecommendationReason": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "title": "Code",
+          "type": "string"
+        },
+        "explanation": {
+          "title": "Explanation",
+          "type": "string"
+        },
+        "source_refs": {
+          "default": [],
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "title": "Source Refs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "code",
+        "explanation"
+      ],
+      "title": "RecommendationReason",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.odyssey.local/v1/recommendation.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "confidence_band": {
+      "$ref": "#/$defs/ConfidenceBand"
+    },
+    "counterarguments": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Counterarguments",
+      "type": "array"
+    },
+    "decision_id": {
+      "anyOf": [
+        {
+          "format": "uuid",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Decision Id"
+    },
+    "evidence_pack_id": {
+      "format": "uuid",
+      "title": "Evidence Pack Id",
+      "type": "string"
+    },
+    "generation_method": {
+      "$ref": "#/$defs/GenerationMethod"
+    },
+    "intervention_opportunity_id": {
+      "anyOf": [
+        {
+          "format": "uuid",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Intervention Opportunity Id"
+    },
+    "material_uncertainties": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Material Uncertainties",
+      "type": "array"
+    },
+    "metadata": {
+      "$ref": "#/$defs/EntityMetadata"
+    },
+    "policy_result_id": {
+      "format": "uuid",
+      "title": "Policy Result Id",
+      "type": "string"
+    },
+    "rationale_short": {
+      "maxLength": 1000,
+      "minLength": 1,
+      "title": "Rationale Short",
+      "type": "string"
+    },
+    "rationale_structured": {
+      "items": {
+        "$ref": "#/$defs/RecommendationReason"
+      },
+      "title": "Rationale Structured",
+      "type": "array"
+    },
+    "recommended_option_or_action": {
+      "maxLength": 4000,
+      "minLength": 1,
+      "title": "Recommended Option Or Action",
+      "type": "string"
+    },
+    "what_would_change_this": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "What Would Change This",
+      "type": "array"
+    }
+  },
+  "required": [
+    "metadata",
+    "recommended_option_or_action",
+    "rationale_short",
+    "rationale_structured",
+    "evidence_pack_id",
+    "confidence_band",
+    "generation_method",
+    "policy_result_id"
+  ],
+  "title": "Recommendation",
+  "type": "object"
+}

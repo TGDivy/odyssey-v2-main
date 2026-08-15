@@ -1,0 +1,328 @@
+{
+  "$defs": {
+    "ActorRef": {
+      "additionalProperties": false,
+      "properties": {
+        "actor_id": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Actor Id",
+          "type": "string"
+        },
+        "actor_type": {
+          "$ref": "#/$defs/ActorType"
+        }
+      },
+      "required": [
+        "actor_type",
+        "actor_id"
+      ],
+      "title": "ActorRef",
+      "type": "object"
+    },
+    "ActorType": {
+      "enum": [
+        "user",
+        "device",
+        "system",
+        "integration",
+        "model"
+      ],
+      "title": "ActorType",
+      "type": "string"
+    },
+    "CandidateIntervention": {
+      "additionalProperties": false,
+      "properties": {
+        "expected_effectiveness": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Expected Effectiveness",
+          "type": "number"
+        },
+        "kind": {
+          "title": "Kind",
+          "type": "string"
+        },
+        "semantic_key": {
+          "title": "Semantic Key",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "semantic_key",
+        "expected_effectiveness"
+      ],
+      "title": "CandidateIntervention",
+      "type": "object"
+    },
+    "ConfidenceBand": {
+      "enum": [
+        "very_low",
+        "low",
+        "moderate",
+        "high",
+        "very_high"
+      ],
+      "title": "ConfidenceBand",
+      "type": "string"
+    },
+    "DataClass": {
+      "enum": [
+        "public",
+        "private",
+        "sensitive",
+        "highly_sensitive",
+        "operational_secret",
+        "derived_sensitive"
+      ],
+      "title": "DataClass",
+      "type": "string"
+    },
+    "EntityMetadata": {
+      "additionalProperties": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "created_by": {
+          "$ref": "#/$defs/ActorRef"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "last_revised_at": {
+          "format": "date-time",
+          "title": "Last Revised At",
+          "type": "string"
+        },
+        "provenance_id": {
+          "format": "uuid",
+          "title": "Provenance Id",
+          "type": "string"
+        },
+        "revision": {
+          "minimum": 1,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "schema_version": {
+          "minimum": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "sensitivity": {
+          "$ref": "#/$defs/DataClass"
+        },
+        "tombstoned_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tombstoned At"
+        }
+      },
+      "required": [
+        "id",
+        "schema_version",
+        "created_at",
+        "created_by",
+        "last_revised_at",
+        "revision",
+        "sensitivity",
+        "provenance_id"
+      ],
+      "title": "EntityMetadata",
+      "type": "object"
+    },
+    "InterventionPolicyStatus": {
+      "enum": [
+        "pending",
+        "suppress",
+        "ambient",
+        "visible",
+        "expired"
+      ],
+      "title": "InterventionPolicyStatus",
+      "type": "string"
+    },
+    "TemporalInterval": {
+      "additionalProperties": false,
+      "properties": {
+        "all_day_semantics": {
+          "default": false,
+          "title": "All Day Semantics",
+          "type": "boolean"
+        },
+        "end": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "End"
+        },
+        "end_precision": {
+          "$ref": "#/$defs/TemporalPrecision",
+          "default": "unknown"
+        },
+        "start": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Start"
+        },
+        "start_precision": {
+          "$ref": "#/$defs/TemporalPrecision",
+          "default": "unknown"
+        },
+        "timezone_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Timezone Id"
+        }
+      },
+      "title": "TemporalInterval",
+      "type": "object"
+    },
+    "TemporalPrecision": {
+      "enum": [
+        "exact",
+        "minute",
+        "hour",
+        "day",
+        "month",
+        "approximate",
+        "unknown"
+      ],
+      "title": "TemporalPrecision",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.odyssey.local/v1/intervention-opportunity.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "candidate_interventions": {
+      "items": {
+        "$ref": "#/$defs/CandidateIntervention"
+      },
+      "title": "Candidate Interventions",
+      "type": "array"
+    },
+    "context_snapshot_id": {
+      "format": "uuid",
+      "title": "Context Snapshot Id",
+      "type": "string"
+    },
+    "detected_at": {
+      "format": "date-time",
+      "title": "Detected At",
+      "type": "string"
+    },
+    "expected_benefit": {
+      "title": "Expected Benefit",
+      "type": "number"
+    },
+    "expected_interruption_cost": {
+      "title": "Expected Interruption Cost",
+      "type": "number"
+    },
+    "intent_id": {
+      "format": "uuid",
+      "title": "Intent Id",
+      "type": "string"
+    },
+    "metadata": {
+      "$ref": "#/$defs/EntityMetadata"
+    },
+    "opportunity_confidence": {
+      "$ref": "#/$defs/ConfidenceBand"
+    },
+    "policy_reasons": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Policy Reasons",
+      "type": "array"
+    },
+    "policy_status": {
+      "$ref": "#/$defs/InterventionPolicyStatus",
+      "default": "pending"
+    },
+    "prior_burden": {
+      "minimum": 0,
+      "title": "Prior Burden",
+      "type": "number"
+    },
+    "trigger_sources": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Trigger Sources",
+      "type": "array"
+    },
+    "urgency": {
+      "title": "Urgency",
+      "type": "string"
+    },
+    "valid_interval": {
+      "$ref": "#/$defs/TemporalInterval"
+    }
+  },
+  "required": [
+    "metadata",
+    "intent_id",
+    "context_snapshot_id",
+    "detected_at",
+    "valid_interval",
+    "trigger_sources",
+    "opportunity_confidence",
+    "expected_benefit",
+    "expected_interruption_cost",
+    "urgency",
+    "candidate_interventions",
+    "prior_burden"
+  ],
+  "title": "InterventionOpportunity",
+  "type": "object"
+}

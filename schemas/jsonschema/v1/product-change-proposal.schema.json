@@ -1,0 +1,209 @@
+{
+  "$defs": {
+    "ActorRef": {
+      "additionalProperties": false,
+      "properties": {
+        "actor_id": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Actor Id",
+          "type": "string"
+        },
+        "actor_type": {
+          "$ref": "#/$defs/ActorType"
+        }
+      },
+      "required": [
+        "actor_type",
+        "actor_id"
+      ],
+      "title": "ActorRef",
+      "type": "object"
+    },
+    "ActorType": {
+      "enum": [
+        "user",
+        "device",
+        "system",
+        "integration",
+        "model"
+      ],
+      "title": "ActorType",
+      "type": "string"
+    },
+    "DataClass": {
+      "enum": [
+        "public",
+        "private",
+        "sensitive",
+        "highly_sensitive",
+        "operational_secret",
+        "derived_sensitive"
+      ],
+      "title": "DataClass",
+      "type": "string"
+    },
+    "EntityMetadata": {
+      "additionalProperties": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "created_by": {
+          "$ref": "#/$defs/ActorRef"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "last_revised_at": {
+          "format": "date-time",
+          "title": "Last Revised At",
+          "type": "string"
+        },
+        "provenance_id": {
+          "format": "uuid",
+          "title": "Provenance Id",
+          "type": "string"
+        },
+        "revision": {
+          "minimum": 1,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "schema_version": {
+          "minimum": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "sensitivity": {
+          "$ref": "#/$defs/DataClass"
+        },
+        "tombstoned_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tombstoned At"
+        }
+      },
+      "required": [
+        "id",
+        "schema_version",
+        "created_at",
+        "created_by",
+        "last_revised_at",
+        "revision",
+        "sensitivity",
+        "provenance_id"
+      ],
+      "title": "EntityMetadata",
+      "type": "object"
+    },
+    "ProductChangeStatus": {
+      "enum": [
+        "proposed",
+        "approved",
+        "running",
+        "rejected",
+        "adopted",
+        "reverted"
+      ],
+      "title": "ProductChangeStatus",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.odyssey.local/v1/product-change-proposal.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "affected_invariants": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Affected Invariants",
+      "type": "array"
+    },
+    "alternative_explanations": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Alternative Explanations",
+      "type": "array"
+    },
+    "counterexamples": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Counterexamples",
+      "type": "array"
+    },
+    "expected_benefit": {
+      "title": "Expected Benefit",
+      "type": "string"
+    },
+    "experiment_plan": {
+      "title": "Experiment Plan",
+      "type": "string"
+    },
+    "metadata": {
+      "$ref": "#/$defs/EntityMetadata"
+    },
+    "observed_pattern": {
+      "title": "Observed Pattern",
+      "type": "string"
+    },
+    "possible_harms": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Possible Harms",
+      "type": "array"
+    },
+    "proposed_change": {
+      "title": "Proposed Change",
+      "type": "string"
+    },
+    "rollback": {
+      "title": "Rollback",
+      "type": "string"
+    },
+    "sample_summary": {
+      "title": "Sample Summary",
+      "type": "string"
+    },
+    "status": {
+      "$ref": "#/$defs/ProductChangeStatus"
+    },
+    "supporting_product_event_query": {
+      "title": "Supporting Product Event Query",
+      "type": "string"
+    }
+  },
+  "required": [
+    "metadata",
+    "observed_pattern",
+    "supporting_product_event_query",
+    "sample_summary",
+    "alternative_explanations",
+    "proposed_change",
+    "expected_benefit",
+    "possible_harms",
+    "experiment_plan",
+    "rollback",
+    "status"
+  ],
+  "title": "ProductChangeProposal",
+  "type": "object"
+}

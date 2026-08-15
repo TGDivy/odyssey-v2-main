@@ -1,0 +1,124 @@
+{
+  "$id": "https://schemas.odyssey.local/v1/product-event.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "app_build": {
+      "title": "App Build",
+      "type": "string"
+    },
+    "causal_parent_event_id": {
+      "anyOf": [
+        {
+          "format": "uuid",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Causal Parent Event Id"
+    },
+    "context_version": {
+      "title": "Context Version",
+      "type": "string"
+    },
+    "device_id": {
+      "format": "uuid",
+      "title": "Device Id",
+      "type": "string"
+    },
+    "event_id": {
+      "format": "uuid",
+      "title": "Event Id",
+      "type": "string"
+    },
+    "event_name": {
+      "title": "Event Name",
+      "type": "string"
+    },
+    "feature_flag_assignments": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Feature Flag Assignments",
+      "type": "object"
+    },
+    "local_only_flag": {
+      "default": false,
+      "title": "Local Only Flag",
+      "type": "boolean"
+    },
+    "object_id_pseudonymous": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Object Id Pseudonymous"
+    },
+    "object_type": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Object Type"
+    },
+    "occurred_at": {
+      "format": "date-time",
+      "title": "Occurred At",
+      "type": "string"
+    },
+    "properties_typed": {
+      "additionalProperties": true,
+      "title": "Properties Typed",
+      "type": "object"
+    },
+    "received_at": {
+      "format": "date-time",
+      "title": "Received At",
+      "type": "string"
+    },
+    "session_id": {
+      "anyOf": [
+        {
+          "format": "uuid",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Session Id"
+    },
+    "surface": {
+      "title": "Surface",
+      "type": "string"
+    }
+  },
+  "required": [
+    "event_id",
+    "occurred_at",
+    "received_at",
+    "device_id",
+    "app_build",
+    "surface",
+    "event_name",
+    "context_version",
+    "feature_flag_assignments",
+    "properties_typed"
+  ],
+  "title": "ProductEvent",
+  "type": "object"
+}

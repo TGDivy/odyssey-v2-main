@@ -1,0 +1,87 @@
+{
+  "$defs": {
+    "AuthorityLevel": {
+      "enum": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "title": "AuthorityLevel",
+      "type": "integer"
+    },
+    "PolicyOutcome": {
+      "enum": [
+        "allow",
+        "require_confirmation",
+        "deny",
+        "defer"
+      ],
+      "title": "PolicyOutcome",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.odyssey.local/v1/policy-decision.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "authority_required": {
+      "$ref": "#/$defs/AuthorityLevel"
+    },
+    "authorization_refs": {
+      "default": [],
+      "items": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "title": "Authorization Refs",
+      "type": "array"
+    },
+    "context_snapshot_id": {
+      "format": "uuid",
+      "title": "Context Snapshot Id",
+      "type": "string"
+    },
+    "decision": {
+      "$ref": "#/$defs/PolicyOutcome"
+    },
+    "explanation": {
+      "title": "Explanation",
+      "type": "string"
+    },
+    "id": {
+      "format": "uuid",
+      "title": "Id",
+      "type": "string"
+    },
+    "policy_version": {
+      "title": "Policy Version",
+      "type": "string"
+    },
+    "requested_action": {
+      "title": "Requested Action",
+      "type": "string"
+    },
+    "risk_factors": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Risk Factors",
+      "type": "array"
+    }
+  },
+  "required": [
+    "id",
+    "requested_action",
+    "context_snapshot_id",
+    "authority_required",
+    "decision",
+    "explanation",
+    "policy_version"
+  ],
+  "title": "PolicyDecision",
+  "type": "object"
+}
