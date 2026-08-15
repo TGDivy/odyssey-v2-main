@@ -261,7 +261,6 @@ class SyncService:
                 device.clock_skew_seconds = operation_skew
 
         device.client_schema_version = request.client_schema_version
-        device.last_server_cursor = state.last_change_id
         device.last_push_at = received_at
         state.updated_at = received_at
         response = SyncPushResponse(

@@ -116,6 +116,66 @@ class SyncPullResponse(StrictModel):
     minimum_client_schema_version: int = Field(ge=1)
 
 
+class SchemaCompatibility(StrEnum):
+    COMPATIBLE = "compatible"
+    CLIENT_UPGRADE_REQUIRED = "client_upgrade_required"
+    SERVER_UPGRADE_REQUIRED = "server_upgrade_required"
+
+
+class SyncDeviceDiagnosticsInput(StrictModel):
+    client_schema_version: int = Field(ge=1)
+    device_cursor: str
+    operations_queued: int = Field(ge=0)
+    oldest_unsynced_operation_at: AwareDatetime | None = None
+    attachment_backlog: int = Field(ge=0)
+
+    @model_validator(mode="after")
+    def validate_diagnostics(self) -> "SyncDeviceDiagnosticsInput":
+        parse_cursor(self.device_cursor)
+        if self.operations_queued == 0 and self.oldest_unsynced_operation_at is not None:
+            raise ValueError("an empty queue cannot have an oldest unsynced operation")
+        if self.operations_queued > 0 and self.oldest_unsynced_operation_at is None:
+            raise ValueError("a nonempty queue must report its oldest unsynced operation")
+        return self
+
+
+class SyncDeviceDiagnostics(StrictModel):
+    device_id: UUID7
+    client_schema_version: int = Field(ge=1)
+    schema_compatibility: SchemaCompatibility
+    last_successful_push_at: AwareDatetime | None
+    last_successful_pull_at: AwareDatetime | None
+    operations_queued: int = Field(ge=0)
+    oldest_unsynced_operation_at: AwareDatetime | None
+    attachment_backlog: int = Field(ge=0)
+    last_device_sequence: int = Field(ge=0)
+    device_cursor: str
+    server_cursor: str
+    clock_skew_seconds: int | None
+    diagnostics_reported_at: AwareDatetime | None
+    diagnostics_stale: bool
+
+
+class SyncRepairOptions(StrictModel):
+    projection_rebuild_available: bool
+    projection_rebuild_command: str
+    integrity_check_command: str
+
+
+class SyncDiagnosticsResponse(StrictModel):
+    server_time: AwareDatetime
+    server_cursor: str
+    server_schema_version: int = Field(ge=1)
+    minimum_client_schema_version: int = Field(ge=1)
+    pending_conflicts: int = Field(ge=0)
+    pending_attachment_uploads: int = Field(ge=0)
+    pending_outbox_jobs: int = Field(ge=0)
+    sync_push_enabled: bool
+    sync_pull_enabled: bool
+    devices: tuple[SyncDeviceDiagnostics, ...]
+    repair: SyncRepairOptions
+
+
 def parse_cursor(value: str) -> int:
     if not CURSOR_PATTERN.fullmatch(value):
         raise ValueError("cursor must use c_<nonnegative integer>")

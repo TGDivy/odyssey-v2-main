@@ -10,8 +10,17 @@ from odyssey.api.auth import OwnerDependency
 from odyssey.api.dependencies import SessionDependency
 from odyssey.api.errors import OdysseyError
 from odyssey.config import Settings, get_settings
+from odyssey.domain.common import UUID7
 from odyssey.operations.kill_switches import KillSwitchKey, KillSwitchService
-from odyssey.sync.contracts import SyncPullResponse, SyncPushRequest, SyncPushResponse
+from odyssey.sync.contracts import (
+    SyncDeviceDiagnostics,
+    SyncDeviceDiagnosticsInput,
+    SyncDiagnosticsResponse,
+    SyncPullResponse,
+    SyncPushRequest,
+    SyncPushResponse,
+)
+from odyssey.sync.diagnostics import SyncDiagnosticsService
 from odyssey.sync.models import SyncBatchReceiptRecord
 from odyssey.sync.service import (
     BatchIdempotencyConflictError,
@@ -30,6 +39,13 @@ SettingsDependency = Annotated[Settings, Depends(get_settings)]
 
 def service(settings: Settings) -> SyncService:
     return SyncService(
+        minimum_client_schema_version=settings.minimum_client_schema_version,
+        current_schema_version=settings.current_sync_schema_version,
+    )
+
+
+def diagnostics_service(settings: Settings) -> SyncDiagnosticsService:
+    return SyncDiagnosticsService(
         minimum_client_schema_version=settings.minimum_client_schema_version,
         current_schema_version=settings.current_sync_schema_version,
     )
@@ -137,3 +153,40 @@ async def changes(
             )
     except SyncError as error:
         raise sync_error(error, settings) from error
+
+
+@router.put(
+    "/devices/{device_id}/diagnostics",
+    response_model=SyncDeviceDiagnostics,
+)
+async def report_device_diagnostics(
+    device_id: UUID7,
+    body: SyncDeviceDiagnosticsInput,
+    session: SessionDependency,
+    _owner: OwnerDependency,
+    settings: SettingsDependency,
+) -> SyncDeviceDiagnostics:
+    try:
+        async with session.begin():
+            return await diagnostics_service(settings).report_device(
+                session,
+                device_id=device_id,
+                report=body,
+                now=datetime.now(UTC),
+            )
+    except SyncError as error:
+        raise sync_error(error, settings) from error
+
+
+@router.get("/diagnostics", response_model=SyncDiagnosticsResponse)
+async def diagnostics(
+    session: SessionDependency,
+    owner: OwnerDependency,
+    settings: SettingsDependency,
+) -> SyncDiagnosticsResponse:
+    async with session.begin():
+        return await diagnostics_service(settings).snapshot(
+            session,
+            owner_id=owner.owner_id,
+            now=datetime.now(UTC),
+        )

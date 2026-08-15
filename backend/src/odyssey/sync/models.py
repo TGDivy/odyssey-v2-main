@@ -16,6 +16,7 @@ from sqlalchemy import (
     UniqueConstraint,
     Uuid,
     event,
+    text,
 )
 from sqlalchemy.engine import Connection
 from sqlalchemy.orm import Mapped, Mapper, mapped_column
@@ -35,6 +36,14 @@ class SyncDeviceRecord(Base):
     registered_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     last_push_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_pull_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    local_queued_operations: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default=text("0")
+    )
+    local_oldest_unsynced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    local_attachment_backlog: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default=text("0")
+    )
+    diagnostics_reported_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class SyncStateRecord(Base):

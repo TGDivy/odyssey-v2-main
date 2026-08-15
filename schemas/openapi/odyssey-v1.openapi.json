@@ -607,6 +607,15 @@
         "title": "RejectedOperation",
         "type": "object"
       },
+      "SchemaCompatibility": {
+        "enum": [
+          "compatible",
+          "client_upgrade_required",
+          "server_upgrade_required"
+        ],
+        "title": "SchemaCompatibility",
+        "type": "string"
+      },
       "SyncChange": {
         "additionalProperties": false,
         "properties": {
@@ -746,6 +755,244 @@
           "current_revision"
         ],
         "title": "SyncConflictSummary",
+        "type": "object"
+      },
+      "SyncDeviceDiagnostics": {
+        "additionalProperties": false,
+        "properties": {
+          "attachment_backlog": {
+            "minimum": 0.0,
+            "title": "Attachment Backlog",
+            "type": "integer"
+          },
+          "client_schema_version": {
+            "minimum": 1.0,
+            "title": "Client Schema Version",
+            "type": "integer"
+          },
+          "clock_skew_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clock Skew Seconds"
+          },
+          "device_cursor": {
+            "title": "Device Cursor",
+            "type": "string"
+          },
+          "device_id": {
+            "format": "uuid",
+            "title": "Device Id",
+            "type": "string"
+          },
+          "diagnostics_reported_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diagnostics Reported At"
+          },
+          "diagnostics_stale": {
+            "title": "Diagnostics Stale",
+            "type": "boolean"
+          },
+          "last_device_sequence": {
+            "minimum": 0.0,
+            "title": "Last Device Sequence",
+            "type": "integer"
+          },
+          "last_successful_pull_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Successful Pull At"
+          },
+          "last_successful_push_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Successful Push At"
+          },
+          "oldest_unsynced_operation_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Oldest Unsynced Operation At"
+          },
+          "operations_queued": {
+            "minimum": 0.0,
+            "title": "Operations Queued",
+            "type": "integer"
+          },
+          "schema_compatibility": {
+            "$ref": "#/components/schemas/SchemaCompatibility"
+          },
+          "server_cursor": {
+            "title": "Server Cursor",
+            "type": "string"
+          }
+        },
+        "required": [
+          "device_id",
+          "client_schema_version",
+          "schema_compatibility",
+          "last_successful_push_at",
+          "last_successful_pull_at",
+          "operations_queued",
+          "oldest_unsynced_operation_at",
+          "attachment_backlog",
+          "last_device_sequence",
+          "device_cursor",
+          "server_cursor",
+          "clock_skew_seconds",
+          "diagnostics_reported_at",
+          "diagnostics_stale"
+        ],
+        "title": "SyncDeviceDiagnostics",
+        "type": "object"
+      },
+      "SyncDeviceDiagnosticsInput": {
+        "additionalProperties": false,
+        "properties": {
+          "attachment_backlog": {
+            "minimum": 0.0,
+            "title": "Attachment Backlog",
+            "type": "integer"
+          },
+          "client_schema_version": {
+            "minimum": 1.0,
+            "title": "Client Schema Version",
+            "type": "integer"
+          },
+          "device_cursor": {
+            "title": "Device Cursor",
+            "type": "string"
+          },
+          "oldest_unsynced_operation_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Oldest Unsynced Operation At"
+          },
+          "operations_queued": {
+            "minimum": 0.0,
+            "title": "Operations Queued",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "client_schema_version",
+          "device_cursor",
+          "operations_queued",
+          "attachment_backlog"
+        ],
+        "title": "SyncDeviceDiagnosticsInput",
+        "type": "object"
+      },
+      "SyncDiagnosticsResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "devices": {
+            "items": {
+              "$ref": "#/components/schemas/SyncDeviceDiagnostics"
+            },
+            "title": "Devices",
+            "type": "array"
+          },
+          "minimum_client_schema_version": {
+            "minimum": 1.0,
+            "title": "Minimum Client Schema Version",
+            "type": "integer"
+          },
+          "pending_attachment_uploads": {
+            "minimum": 0.0,
+            "title": "Pending Attachment Uploads",
+            "type": "integer"
+          },
+          "pending_conflicts": {
+            "minimum": 0.0,
+            "title": "Pending Conflicts",
+            "type": "integer"
+          },
+          "pending_outbox_jobs": {
+            "minimum": 0.0,
+            "title": "Pending Outbox Jobs",
+            "type": "integer"
+          },
+          "repair": {
+            "$ref": "#/components/schemas/SyncRepairOptions"
+          },
+          "server_cursor": {
+            "title": "Server Cursor",
+            "type": "string"
+          },
+          "server_schema_version": {
+            "minimum": 1.0,
+            "title": "Server Schema Version",
+            "type": "integer"
+          },
+          "server_time": {
+            "format": "date-time",
+            "title": "Server Time",
+            "type": "string"
+          },
+          "sync_pull_enabled": {
+            "title": "Sync Pull Enabled",
+            "type": "boolean"
+          },
+          "sync_push_enabled": {
+            "title": "Sync Push Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "server_time",
+          "server_cursor",
+          "server_schema_version",
+          "minimum_client_schema_version",
+          "pending_conflicts",
+          "pending_attachment_uploads",
+          "pending_outbox_jobs",
+          "sync_push_enabled",
+          "sync_pull_enabled",
+          "devices",
+          "repair"
+        ],
+        "title": "SyncDiagnosticsResponse",
         "type": "object"
       },
       "SyncMutationType": {
@@ -972,6 +1219,30 @@
           "minimum_client_schema_version"
         ],
         "title": "SyncPushResponse",
+        "type": "object"
+      },
+      "SyncRepairOptions": {
+        "additionalProperties": false,
+        "properties": {
+          "integrity_check_command": {
+            "title": "Integrity Check Command",
+            "type": "string"
+          },
+          "projection_rebuild_available": {
+            "title": "Projection Rebuild Available",
+            "type": "boolean"
+          },
+          "projection_rebuild_command": {
+            "title": "Projection Rebuild Command",
+            "type": "string"
+          }
+        },
+        "required": [
+          "projection_rebuild_available",
+          "projection_rebuild_command",
+          "integrity_check_command"
+        ],
+        "title": "SyncRepairOptions",
         "type": "object"
       },
       "ValidationError": {
@@ -1502,6 +1773,124 @@
           }
         },
         "summary": "Changes",
+        "tags": [
+          "sync"
+        ]
+      }
+    },
+    "/v1/sync/devices/{device_id}/diagnostics": {
+      "put": {
+        "operationId": "report_device_diagnostics_v1_sync_devices__device_id__diagnostics_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "device_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Device Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SyncDeviceDiagnosticsInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncDeviceDiagnostics"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Report Device Diagnostics",
+        "tags": [
+          "sync"
+        ]
+      }
+    },
+    "/v1/sync/diagnostics": {
+      "get": {
+        "operationId": "diagnostics_v1_sync_diagnostics_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncDiagnosticsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Diagnostics",
         "tags": [
           "sync"
         ]

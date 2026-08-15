@@ -1,5 +1,6 @@
 import asyncio
 from datetime import UTC, datetime
+from hashlib import sha256
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -171,3 +172,113 @@ def test_sync_uses_application_schema_window(tmp_path: Path) -> None:
     assert response.status_code == 426
     assert response.json()["error"]["code"] == "SYNC_CLIENT_SCHEMA_TOO_OLD"
     assert response.json()["error"]["details"] == {"minimum_client_schema_version": 2}
+
+
+def test_sync_diagnostics_track_local_queue_and_pull_cursor(tmp_path: Path) -> None:
+    database = prepare_database(tmp_path / "sync-diagnostics.sqlite")
+    app = create_app(Settings(env=Environment.TEST), database=database)
+    device_id = new_uuid7()
+    body = push_body(device_id, new_uuid7(), new_uuid7())
+    attachment_content = b"pending attachment"
+    attachment_body = {
+        "attachment_id": str(new_uuid7()),
+        "content_sha256": sha256(attachment_content).hexdigest(),
+        "byte_size": len(attachment_content),
+        "media_type": "text/plain",
+    }
+    diagnostics_body = {
+        "client_schema_version": 1,
+        "device_cursor": "c_0",
+        "operations_queued": 2,
+        "oldest_unsynced_operation_at": "2026-08-15T10:00:00Z",
+        "attachment_backlog": 1,
+    }
+
+    with TestClient(app) as client:
+        pushed = client.post(
+            "/v1/sync/push",
+            json=body,
+            headers={"Idempotency-Key": "diagnostic-push"},
+        )
+        reported = client.put(
+            f"/v1/sync/devices/{device_id}/diagnostics",
+            json=diagnostics_body,
+        )
+        pending_attachment = client.post("/v1/attachments/uploads", json=attachment_body)
+        before_pull = client.get("/v1/sync/diagnostics")
+        pulled = client.get(
+            "/v1/sync/changes",
+            params={"cursor": "c_0"},
+            headers={"X-Odyssey-Device-ID": str(device_id)},
+        )
+        after_pull = client.get("/v1/sync/diagnostics")
+
+    assert pushed.status_code == 200
+    assert reported.status_code == 200
+    assert reported.json()["device_cursor"] == "c_0"
+    assert reported.json()["server_cursor"] == "c_1"
+    assert reported.json()["operations_queued"] == 2
+    assert pending_attachment.status_code == 200
+    assert before_pull.status_code == 200
+    assert before_pull.json()["pending_attachment_uploads"] == 1
+    assert before_pull.json()["pending_outbox_jobs"] == 1
+    assert before_pull.json()["devices"][0]["last_successful_push_at"] is not None
+    assert before_pull.json()["devices"][0]["last_successful_pull_at"] is None
+    assert before_pull.json()["devices"][0]["device_cursor"] == "c_0"
+    assert before_pull.json()["devices"][0]["schema_compatibility"] == "compatible"
+    assert before_pull.json()["repair"]["projection_rebuild_command"] == (
+        "make rebuild-projections"
+    )
+    assert pulled.status_code == 200
+    assert after_pull.json()["devices"][0]["device_cursor"] == "c_1"
+    assert after_pull.json()["devices"][0]["last_successful_pull_at"] is not None
+
+
+def test_sync_diagnostics_report_schema_incompatibility_and_cursor_error(tmp_path: Path) -> None:
+    database = prepare_database(tmp_path / "sync-diagnostic-schema.sqlite")
+    app = create_app(
+        Settings(
+            env=Environment.TEST,
+            minimum_client_schema_version=2,
+            current_sync_schema_version=3,
+        ),
+        database=database,
+    )
+    old_device = new_uuid7()
+    new_device = new_uuid7()
+
+    with TestClient(app) as client:
+        old = client.put(
+            f"/v1/sync/devices/{old_device}/diagnostics",
+            json={
+                "client_schema_version": 1,
+                "device_cursor": "c_0",
+                "operations_queued": 0,
+                "attachment_backlog": 0,
+            },
+        )
+        new = client.put(
+            f"/v1/sync/devices/{new_device}/diagnostics",
+            json={
+                "client_schema_version": 4,
+                "device_cursor": "c_0",
+                "operations_queued": 0,
+                "attachment_backlog": 0,
+            },
+        )
+        ahead = client.put(
+            f"/v1/sync/devices/{new_uuid7()}/diagnostics",
+            json={
+                "client_schema_version": 3,
+                "device_cursor": "c_1",
+                "operations_queued": 0,
+                "attachment_backlog": 0,
+            },
+        )
+
+    assert old.status_code == 200
+    assert old.json()["schema_compatibility"] == "client_upgrade_required"
+    assert new.status_code == 200
+    assert new.json()["schema_compatibility"] == "server_upgrade_required"
+    assert ahead.status_code == 409
+    assert ahead.json()["error"]["code"] == "SYNC_CURSOR_AHEAD"
