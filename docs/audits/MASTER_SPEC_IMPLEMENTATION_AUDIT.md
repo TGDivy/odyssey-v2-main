@@ -34,7 +34,7 @@ deployment, external account configuration, or physical-device behavior.
 | §8 ontology and knowledge model | `partial` | provenance, temporal, assertion, event, person, relationship contracts; durable ledger | Admission, supersession, graph derivation, contradiction, redaction, and retrieval services. |
 | §9 decision architecture | `partial` | decision contracts/events plus deterministic evidence-strength cap and observational-language guard | Lifecycle service, preparation API, replay, UI and durable recommendation audit. |
 | §10 temporal consequence engine | `partial` | versioned bounded graph traversal with time/depth/path limits, cycle/accumulation controls, uncertainty propagation, causal-status preservation, correlated-path collapse and deterministic ranking | Domain rule registry, direct-effect services, calibration reports, persistence, APIs, narrative/UI and historical replay suite. |
-| §11 intent/intervention engine | `partial` | `intent/models.py`; deterministic versioned silence/delivery policy with expiry, pause, cooldown, budget, context-recheck and channel tests | Durable opportunity service, synced pause state, scheduling, outcome loop and platform surfaces. |
+| §11 intent/intervention engine | `partial` | deterministic versioned silence/delivery policy plus B.6 owner-only evaluation of synced opportunities/intents, global pause, delivery-time client state, durable budgets and immutable audit | Opportunity generation, scheduling, response/outcome learning and platform delivery surfaces. |
 | §12 memory architecture | `partial` | immutable ledger/projections, capture/archive contracts, rebuild/export tools and immutable source-linked context snapshots | Admission, retrieval plans, contradiction, condensation, forgetting/redaction and broader source annotation services. |
 | §13 personal learning | `partial` | experiment contracts plus C.6 sample/multiplicity/missingness/temporal/confounder/robustness/context/safety promotion policy | Durable hypothesis/preregistration workflow, analysis runner, replication, preference drift and owner review. |
 | §14 scientific evidence | `contract-only` | `evidence/models.py`; source/claim/appraisal schemas | Evidence ingestion/query, appraisal policy, counterevidence, applicability, citations, updates. |
@@ -49,7 +49,7 @@ deployment, external account configuration, or physical-device behavior.
 | §23 backend architecture | `partial` | FastAPI modular monolith, Postgres/SQLite support, worker/outbox, auth/sync/attachments and deterministic context assembly | Remaining domain modules and Appendix B routes, queues/workflows and operational SLO evidence. |
 | §24 AI/model architecture | `contract-only` | model-run schema | Provider-neutral router, tool boundaries, prompt defense, eval gates, budget and rollback control. |
 | §25 offline/synchronization | `verified` | server sync service, simulated clients, conflicts, native GRDB queue/coordinator, convergence tests | Xcode/device multi-device proof remains owner-only. |
-| §26 notification/background | `partial` | background refresh coordinator and widget/intent targets | Deterministic intervention policy, local scheduling, redaction, expiry, delivery recheck, device tests. |
+| §26 notification/background | `partial` | background refresh/widget/intent targets plus deterministic C.1/B.6 expiry, pause, burden and delivery-state policy | Local scheduling, rendered redaction, receipts/outcomes and physical-device tests. |
 | §27 observability | `partial` | structured payload-safe logging, OpenTelemetry runtime, alerts/IaC, record trace | Deploy collectors/dashboards and prove external alert delivery. |
 | §28 product telemetry/self-improvement | `contract-only` | product-event/change-proposal contracts and runtime redaction | Declared-question registry, approved metrics, proposal review, counterexamples, rollback experiments. |
 | §29 evaluation framework | `partial` | backend/Swift tests, synthetic fixtures, CI/verify command | Golden scenarios, rubrics, model/security/replay/performance/UI evaluation artifacts. |
@@ -72,7 +72,7 @@ deployment, external account configuration, or physical-device behavior.
 | §47 implementation-agent handoff | `partial` | README, assumptions, architecture docs, runbooks, detailed owner handoff | Maintain final requirement ledger and unresolved credential/manual-step register. |
 | §48 scenario stress tests | `missing` | isolated sync/recovery tests only | Encode every scenario as deterministic fixtures/replays plus owner-only Apple scenarios. |
 | Appendix A domain contracts | `verified` | Pydantic contracts and generated JSON Schemas | Behavioral validation still belongs to each owning section above. |
-| Appendix B API/events | `partial` | error envelope, auth/capture/sync/attachment/system routes, B.4 owner-only immutable context assembly and immutable event registry | Decision, intervention, feedback, evidence and encrypted asynchronous export APIs. |
+| Appendix B API/events | `partial` | error envelope, auth/capture/sync/attachment/system routes, B.4 immutable context assembly, B.6 durable intervention evaluation and immutable event registry | Decision preparation, feedback, evidence and encrypted asynchronous export APIs. |
 | Appendix C policies | `verified` | C.1–C.7 are versioned deterministic pure policies with focused boundary/replay-style automated tests; C.5 is disabled by default | Cross-policy golden scenarios remain tracked under §29 rather than policy implementation. |
 | Appendix D sources | `documented` | cited research and official-source register | Record source-version/update policy in evidence implementation. |
 | Appendix E traceability/definition of done | `partial` | this audit plus master traceability table | Close every unchecked E.2 row with automated or owner evidence. |
@@ -136,10 +136,10 @@ personal state or complete the longitudinal protocol.
 | Prompt-injection/sensitive-route tests | `repo` | `missing` | No model pipeline/eval suite. |
 | Model rollback | `repo` | `missing` | No model release system. |
 | Notification budget/silence gate | `repo` | `verified` | `intent/policy.py` enforces hard gates, daily/window budgets, exponential cooldown and least-intrusive delivery with focused tests. |
-| Opportunity expiry/delivery recheck | `repo` | `missing` | Contracts only. |
+| Opportunity expiry/delivery recheck | `repo` | `verified` | C.1/B.6 suppress expired opportunities and fail closed when client reports material delivery-time state change without recomputation. |
 | Standing permissions visible/revocable | `repo` | `partial` | C.4 evaluates active/revoked/time-bounded/scoped grants; durable Trust Center and synced revocation UI remain. |
 | External action confirmation | `repo` | `verified` | C.4 elevates risky execution and requires contemporaneous confirmation for external commits; no external executor is enabled. |
-| Synced global proactive pause | `repo` | `missing` | No domain loop. |
+| Synced global proactive pause | `repo` | `partial` | B.6 reads the sync-converged `proactive_control` and hard-suppresses; Trust Center/native multi-device control surface remains. |
 | Source/claim provenance inspectable | `repo` | `partial` | Provenance contracts and ledger exist; evidence UI/query absent. |
 | Population/personal evidence distinct | `repo` | `contract-only` | Evidence contracts distinguish them; query behavior absent. |
 | Historical replay passes | `repo` | `missing` | No cross-domain replay suite. |
@@ -164,7 +164,7 @@ At this snapshot:
 
 - The last full `make verify` baseline reported 106 backend tests, 85.65% backend
   coverage, 67 deterministic generated schema artifacts, OpenTofu validation,
-  and five mocked OpenTofu plans; focused work since then adds policy/context tests and an eleventh migration.
+  and five mocked OpenTofu plans; focused work since then adds policy/context/intervention tests and twelve migrations.
 - The portable Swift 6.1 release suite reported 45 tests passing.
 - iOS sources passed parser-only validation and `apple/project.yml` passed YAML
   structure checks.

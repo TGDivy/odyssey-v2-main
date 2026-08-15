@@ -912,6 +912,38 @@
         "title": "DataClass",
         "type": "string"
       },
+      "DeliveryCapabilities": {
+        "additionalProperties": false,
+        "properties": {
+          "in_app": {
+            "default": true,
+            "title": "In App",
+            "type": "boolean"
+          },
+          "live_activity": {
+            "default": false,
+            "title": "Live Activity",
+            "type": "boolean"
+          },
+          "local_notification": {
+            "default": false,
+            "title": "Local Notification",
+            "type": "boolean"
+          },
+          "watch_reachable": {
+            "default": false,
+            "title": "Watch Reachable",
+            "type": "boolean"
+          },
+          "widget_snapshot": {
+            "default": true,
+            "title": "Widget Snapshot",
+            "type": "boolean"
+          }
+        },
+        "title": "DeliveryCapabilities",
+        "type": "object"
+      },
       "DeviceEnrollmentResponse": {
         "additionalProperties": false,
         "properties": {
@@ -1159,6 +1191,148 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "InterventionClientState": {
+        "additionalProperties": false,
+        "properties": {
+          "focus_redaction": {
+            "maxLength": 50,
+            "minLength": 1,
+            "title": "Focus Redaction",
+            "type": "string"
+          },
+          "foreground": {
+            "title": "Foreground",
+            "type": "boolean"
+          },
+          "local_day_started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Local Day Started At"
+          },
+          "material_state_changed": {
+            "default": false,
+            "title": "Material State Changed",
+            "type": "boolean"
+          },
+          "more_important_intervention_recent": {
+            "default": false,
+            "title": "More Important Intervention Recent",
+            "type": "boolean"
+          },
+          "recently_dismissed": {
+            "default": false,
+            "title": "Recently Dismissed",
+            "type": "boolean"
+          },
+          "recently_handled": {
+            "default": false,
+            "title": "Recently Handled",
+            "type": "boolean"
+          },
+          "recomputed_for_current_state": {
+            "default": false,
+            "title": "Recomputed For Current State",
+            "type": "boolean"
+          },
+          "sensitive_or_social_moment": {
+            "default": false,
+            "title": "Sensitive Or Social Moment",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "foreground",
+          "focus_redaction"
+        ],
+        "title": "InterventionClientState",
+        "type": "object"
+      },
+      "InterventionEvaluationRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "client_state": {
+            "$ref": "#/components/schemas/InterventionClientState"
+          },
+          "delivery_capabilities": {
+            "$ref": "#/components/schemas/DeliveryCapabilities"
+          },
+          "opportunity_id": {
+            "format": "uuid",
+            "title": "Opportunity Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "opportunity_id",
+          "delivery_capabilities",
+          "client_state"
+        ],
+        "title": "InterventionEvaluationRequest",
+        "type": "object"
+      },
+      "InterventionEvaluationResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "policy": {
+            "title": "Policy",
+            "type": "string"
+          },
+          "policy_version": {
+            "title": "Policy Version",
+            "type": "string"
+          },
+          "reason_codes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reason Codes",
+            "type": "array"
+          },
+          "retry_after": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retry After"
+          },
+          "surface": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Surface"
+          }
+        },
+        "required": [
+          "policy",
+          "reason_codes",
+          "expires_at",
+          "policy_version"
+        ],
+        "title": "InterventionEvaluationResponse",
         "type": "object"
       },
       "JsonValue": {},
@@ -2921,6 +3095,52 @@
         "summary": "Assemble Context",
         "tags": [
           "context"
+        ]
+      }
+    },
+    "/v1/intents/opportunities/evaluate": {
+      "post": {
+        "operationId": "evaluate_opportunity_v1_intents_opportunities_evaluate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InterventionEvaluationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InterventionEvaluationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Evaluate Opportunity",
+        "tags": [
+          "intents"
         ]
       }
     },

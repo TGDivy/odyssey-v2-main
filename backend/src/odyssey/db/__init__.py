@@ -6,6 +6,7 @@ from odyssey.context import persistence as context_persistence
 from odyssey.db import models as database_models
 from odyssey.db.base import Base
 from odyssey.db.session import Database
+from odyssey.intent import persistence as intent_persistence
 from odyssey.sync import models as sync_models
 
 assert (
@@ -13,6 +14,7 @@ assert (
     and auth_persistence
     and context_persistence
     and database_models
+    and intent_persistence
     and sync_models
 )
 
