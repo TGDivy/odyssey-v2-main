@@ -1,0 +1,69 @@
+[project]
+name = "odyssey-backend"
+version = "0.1.0"
+description = "Local-first Odyssey API and worker modular monolith"
+readme = "README.md"
+requires-python = ">=3.13,<3.15"
+dependencies = [
+  "fastapi>=0.116.0,<1.0.0",
+  "pydantic>=2.11.0,<3.0.0",
+  "pydantic-settings>=2.10.0,<3.0.0",
+  "structlog>=25.4.0,<26.0.0",
+  "uvicorn[standard]>=0.35.0,<1.0.0",
+]
+
+[project.scripts]
+odyssey-api = "odyssey.main:run"
+odyssey-worker = "odyssey.worker:main"
+
+[dependency-groups]
+dev = [
+  "httpx>=0.28.0,<1.0.0",
+  "mypy>=1.17.0,<2.0.0",
+  "pytest>=8.4.0,<9.0.0",
+  "pytest-asyncio>=1.1.0,<2.0.0",
+  "pytest-cov>=6.2.0,<7.0.0",
+  "ruff>=0.12.0,<1.0.0",
+]
+
+[build-system]
+requires = ["hatchling>=1.27.0"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/odyssey"]
+
+[[tool.uv.index]]
+name = "pypi"
+url = "https://pypi.org/simple"
+default = true
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "ASYNC", "S", "RUF"]
+ignore = ["S101"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["S105", "S106"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+plugins = ["pydantic.mypy"]
+packages = ["odyssey"]
+
+[tool.pytest.ini_options]
+addopts = "--strict-config --strict-markers -q"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+branch = true
+source = ["odyssey"]
+
+[tool.coverage.report]
+fail_under = 85
+show_missing = true
