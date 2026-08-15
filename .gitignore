@@ -24,6 +24,8 @@ DerivedData/
 xcuserdata/
 *.ipa
 *.dSYM.zip
+apple/.swiftpm/
+apple/Package.resolved
 
 # Local configuration and credentials
 .env
@@ -55,4 +57,3 @@ evals/reports/*.json
 evals/reports/*.html
 coverage/
 .cache/
-
