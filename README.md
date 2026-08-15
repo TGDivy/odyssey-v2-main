@@ -74,6 +74,8 @@ Mac-only checks separately rather than silently pretending they ran.
 See `docs/constitution.md`, `SECURITY.md`, and the architecture decision records
 under `docs/adr/` before changing these boundaries.
 
+Operational recovery procedures are indexed in `docs/runbooks/README.md`.
+
 ## Deployment
 
 Local development is credential-free. Cloud and Apple account setup is kept
@@ -86,4 +88,3 @@ entitlements, deployment, rollback, export, and restoration.
 Never commit real personal data, access tokens, provider payloads, signed Apple
 artifacts, production exports, or decrypted backups. Use only fixtures from
 `fixtures/synthetic-life/` in tests and demos.
-
