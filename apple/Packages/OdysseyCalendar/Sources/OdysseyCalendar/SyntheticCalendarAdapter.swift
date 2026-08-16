@@ -17,7 +17,7 @@ public struct SyntheticCalendarPage: Hashable, Sendable {
 public actor SyntheticCalendarAdapter: CalendarContextProviding {
     private let mirrorCapability: CalendarMirrorCapability
     private let authorizationAfterRequest: IntegrationPermissionState
-    private let pages: [SyntheticCalendarPage]
+    private var pages: [SyntheticCalendarPage]
     private let clock: @Sendable () -> Date
     private var permission: IntegrationPermissionState
 
@@ -70,9 +70,12 @@ public actor SyntheticCalendarAdapter: CalendarContextProviding {
         else {
             return try unavailablePage(window: window, outcome: .unavailable)
         }
-        guard let page = pages.first(where: { $0.expectedWindow == window }) else {
+        guard let pageIndex = pages.firstIndex(where: {
+            $0.expectedWindow == window
+        }) else {
             throw CalendarMirrorError.unexpectedSyntheticWindow
         }
+        let page = pages.remove(at: pageIndex)
         guard page.page.window == window else {
             throw CalendarMirrorError.invalidBatch
         }
