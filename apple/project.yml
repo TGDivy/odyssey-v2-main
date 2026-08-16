@@ -80,6 +80,8 @@ targets:
       - package: OdysseyPackages
         product: OdysseyApplication
       - package: OdysseyPackages
+        product: OdysseyHealth
+      - package: OdysseyPackages
         product: OdysseyIntelligence
       - package: OdysseyPackages
         product: OdysseyDesignSystem

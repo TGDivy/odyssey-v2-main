@@ -7,6 +7,7 @@ import OdysseyApplication
 import OdysseyAuth
 import OdysseyData
 import OdysseyDomain
+import OdysseyHealth
 import OdysseySync
 import UIKit
 
@@ -27,11 +28,19 @@ private enum CaptureReviewApplicationError: Error, LocalizedError {
 @MainActor
 final class OdysseyAppModel: ObservableObject {
     @Published private(set) var state = ApplicationFeatureState()
+    @Published private(set) var foodHealthAuthorization: FoodHealthAuthorizationState = .unavailable
+    @Published private(set) var foodHealthMessage: String?
 
     private var localServices: NativeLocalServices?
     private var remoteServices: NativeRemoteServices?
     private var workshopDraftFactory: LifeModelWorkshopDraftFactory?
     private var isBootstrapping = false
+
+    #if canImport(HealthKit)
+    private let foodHealthCoordinator = FoodHealthWriteCoordinator(
+        writer: HealthKitFoodWriter()
+    )
+    #endif
 
     var captureImportBuffer: LocalCaptureImportBuffer? {
         localServices?.captureImportBuffer
@@ -77,6 +86,11 @@ final class OdysseyAppModel: ObservableObject {
             refreshRecentCaptures()
             await refreshWorkshop()
             await refreshFoodQuickLog()
+            if foodHealthAuthorization == .authorized {
+                Task { [weak self] in
+                    await self?.reconcileFoodHealthWrites()
+                }
+            }
             Task { [weak self] in
                 await self?.resumePendingCaptureInterpretations()
             }
@@ -199,6 +213,7 @@ final class OdysseyAppModel: ObservableObject {
         apply(.foodLoadStarted)
         do {
             apply(.foodLoaded(try await foodQuickLogSnapshot(at: Date())))
+            await refreshFoodHealthAuthorization()
         } catch let error as LocalizedError {
             apply(.foodFailed(
                 error.errorDescription ?? "The food library could not be read safely."
@@ -217,6 +232,7 @@ final class OdysseyAppModel: ObservableObject {
                 sensitivity: .sensitive
             )
             await completeFoodMutation(.presetCreated(receipt.preset.metadata.id))
+            await refreshFoodHealthAuthorization()
             return true
         } catch let error as LocalizedError {
             apply(.foodFailed(error.errorDescription ?? "The food preset was not saved."))
@@ -247,6 +263,9 @@ final class OdysseyAppModel: ObservableObject {
                 receipt.occurrence.metadata.id,
                 at: receipt.occurrence.occurredAt
             ))
+            Task { [weak self, occurrence = receipt.occurrence] in
+                await self?.writeFoodOccurrenceToHealth(occurrence)
+            }
             return true
         } catch let error as LocalizedError {
             apply(.foodFailed(error.errorDescription ?? "The food was not logged."))
@@ -280,6 +299,12 @@ final class OdysseyAppModel: ObservableObject {
                 receipt.occurrence.metadata.id,
                 at: receipt.occurrence.metadata.lastRevisedAt
             ))
+            Task { [weak self, occurrence = receipt.occurrence] in
+                await self?.writeFoodOccurrenceToHealth(
+                    occurrence,
+                    replacingExisting: true
+                )
+            }
             return true
         } catch let error as LocalizedError {
             apply(.foodFailed(error.errorDescription ?? "The correction was not saved."))
@@ -301,6 +326,9 @@ final class OdysseyAppModel: ObservableObject {
                 receipt.occurrence.metadata.id,
                 at: receipt.occurrence.metadata.lastRevisedAt
             ))
+            Task { [weak self, occurrenceID = receipt.occurrence.metadata.id] in
+                await self?.deleteFoodOccurrenceFromHealth(occurrenceID)
+            }
             return true
         } catch let error as LocalizedError {
             apply(.foodFailed(error.errorDescription ?? "The food log was not voided."))
@@ -312,6 +340,45 @@ final class OdysseyAppModel: ObservableObject {
 
     func dismissFoodStatus() {
         apply(.foodDismissed)
+    }
+
+    var hasFoodHealthWriteCandidates: Bool {
+        !foodHealthNutrientKinds.isEmpty
+    }
+
+    func requestFoodHealthAuthorization() async {
+        let kinds = foodHealthNutrientKinds
+        guard !kinds.isEmpty else {
+            foodHealthMessage = "Add energy, protein, or caffeine to a preset before enabling Apple Health writes."
+            return
+        }
+        foodHealthMessage = nil
+        #if canImport(HealthKit)
+        do {
+            foodHealthAuthorization = try await foodHealthCoordinator.requestAuthorization(
+                for: kinds
+            )
+            switch foodHealthAuthorization {
+            case .authorized:
+                await reconcileFoodHealthWrites()
+            case .denied:
+                foodHealthMessage = "Apple Health did not authorize these nutrient writes. Odyssey logs still work locally."
+            case .notDetermined:
+                foodHealthMessage = "Apple Health permission was not completed. Odyssey logs still work locally."
+            case .unavailable:
+                foodHealthMessage = "Apple Health is unavailable on this device. Odyssey logs still work locally."
+            }
+        } catch {
+            foodHealthMessage = "Apple Health permission could not be completed. Odyssey logs still work locally."
+        }
+        #else
+        foodHealthAuthorization = .unavailable
+        foodHealthMessage = "Apple Health is unavailable on this platform."
+        #endif
+    }
+
+    func dismissFoodHealthMessage() {
+        foodHealthMessage = nil
     }
 
     func refreshCaptureArchive() async {
@@ -663,6 +730,136 @@ final class OdysseyAppModel: ObservableObject {
             at: date,
             timeZoneID: TimeZone.current.identifier
         )
+    }
+
+    private var foodHealthNutrientKinds: Set<FoodHealthNutrientKind> {
+        var kinds = Set<FoodHealthNutrientKind>()
+        for preset in state.foodSnapshot?.activePresets ?? [] {
+            if preset.nutrients?.energyKilocalories != nil {
+                kinds.insert(.energyKilocalories)
+            }
+            if preset.nutrients?.proteinGrams != nil {
+                kinds.insert(.proteinGrams)
+            }
+            if preset.nutrients?.caffeineMilligrams != nil {
+                kinds.insert(.caffeineMilligrams)
+            }
+        }
+        for occurrence in state.foodSnapshot?.recentOccurrences ?? [] {
+            if occurrence.nutrientTotals?.energyKilocalories != nil {
+                kinds.insert(.energyKilocalories)
+            }
+            if occurrence.nutrientTotals?.proteinGrams != nil {
+                kinds.insert(.proteinGrams)
+            }
+            if occurrence.nutrientTotals?.caffeineMilligrams != nil {
+                kinds.insert(.caffeineMilligrams)
+            }
+        }
+        return kinds
+    }
+
+    private func refreshFoodHealthAuthorization() async {
+        let kinds = foodHealthNutrientKinds
+        guard !kinds.isEmpty else {
+            foodHealthAuthorization = .notDetermined
+            return
+        }
+        #if canImport(HealthKit)
+        foodHealthAuthorization = await foodHealthCoordinator.authorizationState(
+            for: kinds
+        )
+        #else
+        foodHealthAuthorization = .unavailable
+        #endif
+    }
+
+    func reconcileFoodHealthWrites() async {
+        #if canImport(HealthKit)
+        guard foodHealthAuthorization == .authorized,
+              let localServices
+        else { return }
+        do {
+            let occurrences = try await localServices.foodOccurrenceService
+                .recentOccurrences(limit: 500)
+            let voidedOccurrenceIDs = try await localServices.foodOccurrenceService
+                .voidedOccurrenceIDs(limit: 500)
+            var writtenCount = 0
+            var omittedAlcohol = false
+            for occurrence in occurrences {
+                let result = try await foodHealthCoordinator.writeIfAuthorized(occurrence)
+                if case let .written(sampleCount, omittedAlcoholGrams) = result {
+                    writtenCount += sampleCount
+                    omittedAlcohol = omittedAlcohol || omittedAlcoholGrams != nil
+                }
+            }
+            for occurrenceID in voidedOccurrenceIDs {
+                _ = try await foodHealthCoordinator.deleteOwnedSamples(
+                    occurrenceID: occurrenceID
+                )
+            }
+            if writtenCount > 0 {
+                foodHealthMessage = "Reconciled \(writtenCount) Odyssey nutrient sample"
+                    + "\(writtenCount == 1 ? "" : "s") with Apple Health."
+                if omittedAlcohol {
+                    foodHealthMessage? += " Alcohol grams remain in Odyssey because no exact HealthKit type is used."
+                }
+            }
+        } catch {
+            foodHealthMessage = "Odyssey kept every food log locally, but Apple Health reconciliation will need another try."
+        }
+        #endif
+    }
+
+    private func writeFoodOccurrenceToHealth(
+        _ occurrence: FoodOccurrence,
+        replacingExisting: Bool = false
+    ) async {
+        #if canImport(HealthKit)
+        do {
+            let result = try await foodHealthCoordinator.writeIfAuthorized(
+                occurrence,
+                replacingExisting: replacingExisting
+            )
+            switch result {
+            case let .written(sampleCount, omittedAlcoholGrams):
+                if sampleCount == 0 {
+                    foodHealthMessage = "Removed prior Odyssey nutrient samples from Apple Health."
+                } else {
+                    foodHealthMessage = "Wrote \(sampleCount) nutrient sample"
+                        + "\(sampleCount == 1 ? "" : "s") to Apple Health."
+                }
+                if omittedAlcoholGrams != nil {
+                    foodHealthMessage? += " Alcohol grams remain in Odyssey."
+                }
+            case .authorizationRequired:
+                foodHealthAuthorization = .notDetermined
+            case .denied:
+                foodHealthAuthorization = .denied
+            case .unavailable:
+                foodHealthAuthorization = .unavailable
+            case .noSupportedNutrients, .deleted:
+                break
+            }
+        } catch {
+            foodHealthMessage = "The food log is safe in Odyssey; Apple Health will need reconciliation later."
+        }
+        #endif
+    }
+
+    private func deleteFoodOccurrenceFromHealth(_ occurrenceID: UUIDv7) async {
+        #if canImport(HealthKit)
+        do {
+            let result = try await foodHealthCoordinator.deleteOwnedSamples(
+                occurrenceID: occurrenceID
+            )
+            if result == .deleted {
+                foodHealthMessage = "Removed Odyssey-owned nutrient samples from Apple Health."
+            }
+        } catch {
+            foodHealthMessage = "The log is voided in Odyssey; Apple Health cleanup will need reconciliation later."
+        }
+        #endif
     }
 
     private func completeFoodMutation(_ success: FoodQuickLogSuccess) async {

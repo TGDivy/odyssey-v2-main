@@ -126,6 +126,26 @@ tombstone with an empty delete payload; it cannot be restored through this
 service. Active, bounded occurrence pages provide the ranker's deterministic
 usage history.
 
+## Permission-gated HealthKit write boundary
+
+`FoodHealthWritePlan` deterministically maps an immutable occurrence snapshot to
+exact dietary-energy kilocalories, protein grams, and caffeine milligrams.
+Alcohol grams are reported as omitted instead of being coerced into an inexact
+HealthKit type. The portable coordinator never requests permission implicitly:
+unauthorized writes return a typed result while the durable Odyssey commit
+remains successful.
+
+On Apple platforms, `HealthKitFoodWriter` requests only write access for the
+supported nutrient types currently present in the owner food library. Samples
+carry the Odyssey occurrence ID, occurrence revision, preset ID/revision,
+nutrient kind, and HealthKit sync identifier/version metadata. Repeated delivery replaces the
+same Odyssey-owned occurrence samples; correction clears stale owned samples
+before a replacement when authorization changed, and void deletes only samples
+tagged with that occurrence. Authorized startup/manual reconciliation replays
+active local occurrences and durable tombstone IDs so transient failure or
+reinstall/restore can converge. No health value gates or rolls back local
+logging.
+
 ## Current boundary
 
 The iPhone Now surface and global quick-action menu now open a local-first
@@ -134,26 +154,26 @@ results as one-tap one-serving logs, supports alias-aware search across all
 active presets, creates owner-estimated presets without requesting Health
 permission, and exposes recent corrections and voids as explicit revision
 actions. Portable projector/reducer state keeps loading and mutation transitions
-deterministic. This slice does **not** provide HealthKit writes, a cross-stack
-occurrence-event consumer, or a live experiment assignment. Generated schemas
+deterministic. This slice does **not** provide a cross-stack occurrence-event
+consumer or a live experiment assignment. Generated schemas
 register both preset and both occurrence event names. Backend
 integration proves that native-shaped disjoint edits normalize mechanical
 metadata and converge while overlapping owner fields remain conflicts; a
 portable pull-persistence regression proves the resulting canonical document is
 still a valid `FoodPreset`. No authenticated physical two-device run has been
 performed, so live convergence remains owner evidence. Xcode/accessibility,
-warm-device timing, permission, and integration proof remain. In particular,
-the presence of
-optional nutrient values does not authorize HealthKit access or write anything
-to Apple Health.
+warm-device timing, and physical HealthKit permission, sample ownership,
+correction, and non-interference proof remain. Optional nutrient values alone do
+not authorize HealthKit access; only the explicit food-sheet action can request
+write permission.
 
-Eighteen focused tests cover value validation, time-zone-aware context derivation,
+Twenty focused tests cover value validation, time-zone-aware context derivation,
 both ranking strategies, threshold behavior, deterministic ordering, excluded
 history, idempotent deduplication, fail-closed identity handling, atomic preset
 lifecycle commits, partial/null sync payloads, optimistic revision, and
 tombstones, including server-normalized pull materialization, immutable
 occurrence snapshots, DST-aware offsets, malformed nutrient rejection, and
 atomic occurrence record/correct/void behavior. The full portable Swift package
-reports 118 tests passing under the official Swift
+reports 120 tests passing under the official Swift
 6.1 Linux toolchain. This does not type-check SwiftUI or prove Xcode, HealthKit,
 signing, simulator, accessibility, or physical-device behavior.

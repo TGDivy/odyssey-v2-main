@@ -125,8 +125,8 @@ protein grams, caffeine milligrams, and alcohol grams. A versioned pure ranker
 orders active presets from a 90-day usage window using repeated coarse local
 context, recent and total frequency, recency, and stable lexical/UUID ties; its
 frequency-only fallback uses the same auditable outputs. This slice has no
-HealthKit write, recipe/restaurant model, or live experiment assignment. Preset
-create, optimistic revision, and archive
+recipe/restaurant model or live experiment assignment. Preset create,
+optimistic revision, and archive
 now commit an immutable local ledger event, current projection, and sync-outbox
 operation atomically; updates send only changed fields and archives are true
 tombstones. See
@@ -146,7 +146,13 @@ occurrence time, IANA zone, and original UTC offset. The iPhone Now surface and
 global quick-action menu open a local-first food sheet with four ranked one-tap
 presets, searchable fallback, preset creation, recent history, and explicit
 correction/void flows. Those sources are parser-validated only; no Xcode,
-accessibility, device timing, or permission-gated HealthKit write is claimed.
+accessibility, or device timing is claimed. A portable-tested Health write
+coordinator and `canImport(HealthKit)` adapter map exact energy, protein, and
+caffeine values, request write-only permission from an explicit UI action, use
+stable occurrence/revision metadata, replace only Odyssey-owned samples on
+correction, and delete them on void. Alcohol grams remain local because the
+adapter does not substitute an inexact HealthKit type. The Apple-framework path
+still requires Xcode and physical-device proof.
 
 ## Accepted orientation state
 

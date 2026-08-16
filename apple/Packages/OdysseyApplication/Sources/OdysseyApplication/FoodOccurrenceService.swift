@@ -3,7 +3,13 @@ import OdysseyData
 import OdysseyDomain
 import OdysseySync
 
-public protocol FoodOccurrenceStore: FoodPresetStore {}
+public protocol FoodOccurrenceStore: FoodPresetStore {
+    func projectedEntityIDs(
+        entityType: String,
+        tombstone: Bool,
+        limit: Int
+    ) throws -> [UUIDv7]
+}
 
 extension SQLiteLedgerStore: FoodOccurrenceStore {}
 
@@ -351,6 +357,19 @@ public actor FoodOccurrenceService {
                 context: context
             )
         }
+    }
+
+    public func voidedOccurrenceIDs(limit: Int = 500) throws -> [UUIDv7] {
+        guard (1 ... 500).contains(limit) else {
+            throw FoodOccurrenceServiceError.invalidConfiguration(
+                "Food occurrence tombstone pages require 1 through 500 values."
+            )
+        }
+        return try store.projectedEntityIDs(
+            entityType: Self.entityType,
+            tombstone: true,
+            limit: limit
+        )
     }
 
     private func activeOccurrences() throws -> [FoodOccurrence] {

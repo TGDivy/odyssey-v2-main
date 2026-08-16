@@ -20,6 +20,15 @@ permission to use the corresponding data or perform an external action.
 | Photos | iOS | Add usage description | User-selected references only | Archive without photo enrichment |
 | Foundation Models | supported Apple targets | No cloud credential; availability-gated | Optional rendering/enrichment, never canonical mutation | Deterministic local or evaluated cloud fallback |
 
+The food HealthKit write path is narrower than the entitlement. It asks from an
+explicit food-sheet action for write-only dietary energy, protein, and caffeine
+types currently used by the food library. The local occurrence is committed
+first and remains authoritative for semantic meaning. HealthKit samples use
+stable occurrence/revision metadata, correction replaces only Odyssey-owned samples,
+and void removes those owned samples. Alcohol grams are not approximated. The
+portable plan/reconciler is tested; Xcode type-checking and physical permission,
+sample replacement, revocation, and non-interference evidence remain owner work.
+
 `apple/Config/*.xcconfig` intentionally contains placeholder bundle IDs and
 domains. Exact account registration and replacement steps belong in
 `docs/deployment/OWNER_HANDOFF.md`.

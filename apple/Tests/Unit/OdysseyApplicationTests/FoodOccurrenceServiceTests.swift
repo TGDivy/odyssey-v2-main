@@ -220,6 +220,7 @@ func foodOccurrenceServiceVoidsAndRejectsFutureOrStaleLogsWithoutMutation() asyn
     #expect(voided.occurrence.metadata.tombstonedAt == foodLogVoidedAt)
     #expect(try await voidService.recentOccurrences().isEmpty)
     #expect(try await voidService.rankingUsages().isEmpty)
+    #expect(try await voidService.voidedOccurrenceIDs() == [recorded.occurrence.metadata.id])
     await #expect(throws: FoodOccurrenceServiceError.occurrenceVoided) {
         try await voidService.occurrence(id: recorded.occurrence.metadata.id)
     }

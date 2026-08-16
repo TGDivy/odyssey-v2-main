@@ -2,13 +2,16 @@ import Foundation
 import OdysseyApplication
 import OdysseyDomain
 import SwiftUI
+import UIKit
 
 struct FoodQuickLogView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
     @EnvironmentObject private var model: OdysseyAppModel
     @State private var searchText = ""
     @State private var isCreatingPreset = false
     @State private var selectedOccurrence: FoodOccurrenceSelection?
+    @State private var confirmsHealthAuthorization = false
 
     private var snapshot: FoodQuickLogSnapshot? {
         model.state.foodSnapshot
@@ -82,6 +85,17 @@ struct FoodQuickLogView: View {
                 FoodOccurrenceCorrectionView(occurrence: selection.occurrence)
                     .environmentObject(model)
             }
+            .confirmationDialog(
+                "Write Odyssey nutrients to Apple Health?",
+                isPresented: $confirmsHealthAuthorization,
+                titleVisibility: .visible
+            ) {
+                Button("Continue to Health Permission") {
+                    Task { await model.requestFoodHealthAuthorization() }
+                }
+            } message: {
+                Text("Odyssey will request write-only access for the energy, protein, and caffeine types used by your food library. Local logging never depends on permission. Alcohol grams are not written because Odyssey does not substitute an inexact HealthKit type.")
+            }
         }
     }
 
@@ -131,6 +145,8 @@ struct FoodQuickLogView: View {
                 }
             }
 
+            appleHealthSection
+
             if !snapshot.recentOccurrences.isEmpty && searchText.isEmpty {
                 Section {
                     ForEach(snapshot.recentOccurrences, id: \.metadata.id) { occurrence in
@@ -153,6 +169,47 @@ struct FoodQuickLogView: View {
             }
         }
         .refreshable { await model.refreshFoodQuickLog() }
+    }
+
+    private var appleHealthSection: some View {
+        Section {
+            switch model.foodHealthAuthorization {
+            case .authorized:
+                Label("Nutrient writes authorized", systemImage: "heart.fill")
+                    .foregroundStyle(.green)
+                Button("Reconcile Odyssey Logs") {
+                    Task { await model.reconcileFoodHealthWrites() }
+                }
+                .disabled(isBusy)
+            case .notDetermined:
+                Button("Enable Nutrient Writes") {
+                    confirmsHealthAuthorization = true
+                }
+                .disabled(!model.hasFoodHealthWriteCandidates || isBusy)
+            case .denied:
+                Label("Nutrient writes not authorized", systemImage: "heart.slash")
+                Button("Review Health Settings") {
+                    if let settings = URL(string: UIApplication.openSettingsURLString) {
+                        openURL(settings)
+                    }
+                }
+            case .unavailable:
+                Label("Apple Health unavailable", systemImage: "heart.slash")
+                    .foregroundStyle(.secondary)
+            }
+            if let message = model.foodHealthMessage {
+                Text(message)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                Button("Dismiss Health Status") {
+                    model.dismissFoodHealthMessage()
+                }
+            }
+        } header: {
+            Text("Apple Health")
+        } footer: {
+            Text("Permission is requested only from this explicit action. Odyssey replaces or deletes only samples carrying its occurrence metadata; the durable local food log remains authoritative for preset meaning and corrections.")
+        }
     }
 
     private func quickLogButton(_ preset: FoodPreset, reason: String?) -> some View {

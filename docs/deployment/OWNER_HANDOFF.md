@@ -24,7 +24,7 @@ it does not prove an owner deployment:
   environment.
 - No Apple-platform package build, Xcode archive, signing operation, TestFlight
   upload, or physical-device test has been performed. The portable Swift
-  package has been compiled and its 118 deterministic tests have run under the
+  package has been compiled and its 120 deterministic tests have run under the
   official Linux Swift 6.1 toolchain; that is not Apple-platform validation.
 - The cloud model remains `deterministic`. Adding a model-provider key alone
   enables nothing; no evaluated cloud-model adapter is implemented.
@@ -52,9 +52,11 @@ it does not prove an owner deployment:
   ranking, native-shaped server merge/pull regressions, and atomic local meal
   occurrence record/correct/void, registered occurrence event schemas, and a
   parser-validated iPhone ranked quick-log/create/correct/void source also exist.
-  Xcode/accessibility and warm-device timing proof, event consumers, HealthKit
-  writes, authenticated physical two-device food convergence, and live ranking
-  experiments do not.
+  A portable-tested, parser-validated permission-gated HealthKit food writer
+  also exists for exact energy/protein/caffeine values and Odyssey-owned
+  correction/void reconciliation. Xcode/accessibility, warm-device timing and
+  physical HealthKit proof, event consumers, authenticated physical two-device
+  food convergence, and live ranking experiments do not.
   The device/refresh Keychain vault, in-memory access-token refresh session,
   native Apple ceremony, and auth HTTP exchange are implemented as package
   boundaries. Recovery UI, server-side device-revocation UI, and physical
@@ -1159,7 +1161,26 @@ Do not enter real owner data. Then execute this staged flow:
 11. Run **Verify local integrity**, then **Rebuild projections from ledger** and
    verify both complete without changing the immutable ledger or losing the
    synthetic captures.
-12. Background the app and retain the app-refresh scheduling/debug evidence. Do
+12. Open **Log Food** before granting Health permission. Create a synthetic
+   preset with distinctive energy, protein, caffeine, and alcohol values, then
+   log it offline. Confirm the occurrence is immediately visible and queued,
+   no Health prompt appears during create/log, and the local result survives a
+   force-quit.
+13. In **Log Food → Apple Health**, read the disclosure and choose **Enable
+   Nutrient Writes**. Confirm the system request is write-only and limited to
+   dietary energy, protein, and caffeine types actually present in the food
+   library.
+   Test denial first on a disposable install: local logging must still succeed
+   and Settings must be offered. After authorization, reconcile and inspect
+   only synthetic Health data. Exact values/time/source must match; no alcohol
+   sample may be invented.
+14. Correct the synthetic occurrence and confirm each Odyssey-owned nutrient
+   has one replacement at the new revision, not a duplicate. Add an unrelated
+   synthetic sample from another source, void the Odyssey occurrence, and
+   confirm only Odyssey-tagged samples disappear. Relaunch and reconcile to
+   exercise durable tombstone cleanup. Retain counts and metadata identifiers,
+   never screenshots or real health values.
+15. Background the app and retain the app-refresh scheduling/debug evidence. Do
    not claim timing guarantees; the OS may defer or cancel the task.
 
 Follow `docs/architecture/authentication.md` for the matching backend and token
@@ -1173,12 +1194,14 @@ the backend owner runbook until a device-registry UI is implemented.
   text/voice/photo/file capture commits offline; microphone denial and
   backgrounding degrade safely; Photos remains selected-only; Files provider
   scope succeeds; cancel/replacement/oversize paths create no capture or
-  temporary residue; authenticated push/pull clears the queue; cursors advance;
-  integrity/rebuild succeed; app refresh is observed as opportunistic rather
-  than exact.
+  temporary residue; food logging remains local-first before/after Health denial;
+  authorized exact energy/protein/caffeine samples replace idempotently while
+  alcohol and foreign samples remain untouched; authenticated push/pull clears
+  the queue; cursors advance; integrity/rebuild succeed; app refresh is observed
+  as opportunistic rather than exact.
 - Still-unavailable evidence: uninstall/reinstall recovery, second-device
   convergence, server revocation from native UI, attachment transfer, and all
-  HealthKit/Watch/widget/background production behaviors.
+  unexecuted HealthKit/Watch/widget/background production behaviors.
 
 **Troubleshooting**
 
@@ -1193,6 +1216,9 @@ the backend owner runbook until a device-registry UI is implemented.
 - If a backgrounded voice recorder continues capturing, a delayed permission
   result starts recording after cancellation, or microphone denial disables
   Text, stop and retain only payload-free diagnostic evidence.
+- If food create/log requests Health permission implicitly, denial blocks the
+  local ledger, correction duplicates samples, alcohol is approximated, or a
+  void touches another source, stop and retain only synthetic metadata evidence.
 - If Workshop reports a placeholder host, fix the ignored staging xcconfig;
   never weaken HTTPS validation outside development loopback.
 - Do not substitute a simulator for HealthKit, background, APNs, Watch, or
