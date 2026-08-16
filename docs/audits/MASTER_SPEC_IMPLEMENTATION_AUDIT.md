@@ -35,12 +35,12 @@ deployment, external account configuration, or physical-device behavior.
 | §9 decision architecture | `partial` | decision contracts/events, B.5 immutable context-bound preparation and B.7 idempotent recommendation feedback/event-only assertion supersession with exact durable-change reporting | Full lifecycle/choice/outcome service, future-learning correction consumption, replay and product UI. |
 | §10 temporal consequence engine | `partial` | versioned bounded graph traversal with time/depth/path limits, cycle/accumulation controls, uncertainty propagation, causal-status preservation, correlated-path collapse and deterministic ranking | Domain rule registry, direct-effect services, calibration reports, persistence, APIs, narrative/UI and historical replay suite. |
 | §11 intent/intervention engine | `partial` | deterministic versioned silence/delivery policy plus B.6 owner-only evaluation of synced opportunities/intents, global pause, delivery-time client state, durable budgets and immutable audit | Opportunity generation, scheduling, response/outcome learning and platform delivery surfaces. |
-| §12 memory architecture | `partial` | immutable ledger/projections, capture/archive contracts, source-linked interpretation versions with atomic derivative/outbox commits, pending recovery and append-only owner-review lineage contract, rebuild/export tools and immutable context snapshots | Durable interpretation review, normalized admission, retrieval plans, contradiction, condensation, forgetting/redaction and broader source annotation services. |
+| §12 memory architecture | `partial` | immutable ledger/projections, capture/archive contracts, source-linked interpretation versions with atomic derivative/outbox commits, pending recovery and optimistic append-only owner review, rebuild/export tools and immutable context snapshots | Normalized admission, retrieval plans, contradiction, condensation, forgetting/redaction and broader source annotation services. |
 | §13 personal learning | `partial` | experiment contracts plus C.6 sample/multiplicity/missingness/temporal/confounder/robustness/context/safety promotion policy | Durable hypothesis/preregistration workflow, analysis runner, replication, preference drift and owner review. |
 | §14 scientific evidence | `partial` | source/claim/appraisal contracts plus B.8 deterministic quality-filtered citation retrieval, counterevidence search, applicability, explicit uncertainty and immutable query replay | Curated ingestion/appraisal workflow, source update/retraction jobs, broader synthesis and evidence UI. |
 | §15 score philosophy | `partial` | Constitution prohibits universal Life Score/people ranking; optional C.5 qualitative day-alignment policy is disabled by default, non-scalar, coverage/exception/comparison guarded and canonical-history independent | Owner-approved experiment flag, product surface and longitudinal harm/usefulness evaluation only if deliberately enabled. |
 | §16 AI philosophy | `contract-only` | provider-neutral model-run contract plus durable coalesced native capture-interpreter boundary and conservative explicit-prefix fallback | Capability router, provider execution, structured fallbacks, refusal/uncertainty, model-run provenance, evaluations and rollback. |
-| §17 trust and agency | `partial` | deterministic authority policy, B.7 append-only recommendation correction, and cross-stack capture-interpretation accept/correct/dismiss lineage contract | Durable capture review execution/UI, Trust Center, future correction retrieval, revocation UI and autonomous-action audit UI. |
+| §17 trust and agency | `partial` | deterministic authority policy, B.7 append-only recommendation correction, and stable/idempotent capture-interpretation accept/correct/dismiss commits | Capture review UI, Trust Center, future correction retrieval, revocation UI and autonomous-action audit UI. |
 | §18 experience architecture | `partial` | iPhone quiet Now, capture, Archive, typed reviewed life-model Workshop, accepted Season landscape/plain-language Map, sync/repair surfaces and deterministic guilt-free re-entry surface contract | Tomorrow Map, rendered re-entry, decision/evidence flows, Xcode accessibility and complete platform depth. |
 | §19 visual and art direction | `partial` | calm SwiftUI/Canvas regional prototype, deterministic qualitative paths/terrain/landmarks, complete plain-language alternative, native shells and shared assets | Theme tokens, richer prototype, atlas/world states, snapshots, Xcode accessibility and dogfood proof. |
 | §20 Apple ecosystem | `partial` | iOS/Watch/macOS shells, widgets/intents/share targets, portable data/auth/sync packages | Real HealthKit/EventKit/location/watch/widget adapters and Xcode/device validation. |
@@ -58,7 +58,7 @@ deployment, external account configuration, or physical-device behavior.
 | §32 failure modes/pre-mortem | `partial` | kill switches, retry/conflict diagnostics, incident/recovery runbooks | Regression scenarios for each severe failure and owner drills. |
 | §33 technology choices | `documented` | master specification, ADR 0001, lockfiles, OpenTofu and XcodeGen manifests | Add ADRs whenever implementation departs from selected architecture. |
 | §34 repository architecture | `verified` | monorepo layout, portable paths, package/infra/docs/tool boundaries | Keep directory contract synchronized as editions are added. |
-| §35 testing strategy | `partial` | 212 backend tests pass at 86.79% coverage, 86 portable Swift 6.1 tests pass, and deterministic policy golden replay plus schema/fixture/IaC checks pass in this Linux snapshot | Clear repository-wide formatter drift; historical/model, UI, performance, broader fault, Apple integration and live recovery suites remain. |
+| §35 testing strategy | `partial` | 213 backend tests pass at 86.79% coverage, 88 portable Swift 6.1 tests pass, and deterministic policy golden replay plus schema/fixture/IaC checks pass in this Linux snapshot | Clear repository-wide formatter drift; historical/model, UI, performance, broader fault, Apple integration and live recovery suites remain. |
 | §36 deployment architecture | `implemented` | GCP OpenTofu, deployment workflow examples, migration/canary/rollback and handoff docs | Owner provisions accounts, imports secrets, deploys, validates alerts/backups/restore and signs apps. |
 | §37 development environments | `verified` | lockfiles, Compose, environment diagnostics, `make verify`, Mac-only skip reporting | Fresh personal Mac proof is owner-only. |
 | §38 roadmap | `partial` | Edition 0 substrate and iPhone capture/auth/sync slice | Edition 1–4 product loops and milestone acceptance artifacts remain. |
@@ -86,7 +86,7 @@ deployment, external account configuration, or physical-device behavior.
 | 0.3 cloud core/sync | `verified` | Auth, sync, attachments, conflicts and convergence/fault tests exist; live cloud proof is owner-only. |
 | 0.4 durability/observability | `implemented` | Tools/runbooks/IaC exist; isolated live restore and external alert evidence are owner-only. |
 | 1.1 Charter/Season Workshop | `implemented` | Server acceptance/history/context loop, typed local draft ledger/editors, editable seed, semantic review ceremony, immutable native history, frozen outgoing summaries, optional retrospectives, explicit successor flow, offline queue, authenticated delivery, terminal conflict guidance and accepted-history-only plain/Canvas map exist; Xcode/accessibility and two-device proof remain owner-only. |
-| 1.2 capture/personal library | `partial` | Offline durable text capture, local Archive, source-linked interpretation versions, coalesced async adapter execution, atomic derivative/outbox commit, restart recovery, conservative fallback and append-only owner-review lineage contract exist; review execution/UI, voice/media, provider interpretation, food/quick logging and HealthKit write remain. |
+| 1.2 capture/personal library | `partial` | Offline durable text capture, local Archive, source-linked interpretation versions, coalesced async execution, atomic derivative/outbox commit, restart recovery, conservative fallback and optimistic append-only owner accept/correct/dismiss commits exist; review UI, voice/media, provider interpretation, food/quick logging and HealthKit write remain. |
 | 1.3 Apple context adapters | `missing` | Targets/seams exist without real incremental HealthKit/calendar/location adapters. |
 | 1.4 Now/Tomorrow Map v1 | `partial` | Quiet Now, C.7 re-entry policy and immutable deterministic model-free server context assembly exist; Tomorrow Map and rendered re-entry do not. |
 | 1.5 telemetry/review | `contract-only` | Schemas exist; declared questions and product review loop do not. |
@@ -162,7 +162,7 @@ personal state or complete the longitudinal protocol.
 
 At this snapshot:
 
-- The current full backend run reports 212 tests passing at 86.79% coverage.
+- The current full backend run reports 213 tests passing at 86.79% coverage.
   Full Ruff lint and strict mypy pass across 138 source files; all changed Python
   files are format-clean. The repository-wide formatter gate still finds 16
   pre-existing drifts outside this slice, so the aggregate verification script
@@ -175,7 +175,7 @@ At this snapshot:
   mocked plans, including encrypted-export secret, storage, IAM and worker
   wiring across seventeen migrations. OpenTofu is unavailable for a current
   rerun in this environment.
-- The complete portable Swift package reports 86 tests passing under the
+- The complete portable Swift package reports 88 tests passing under the
   official Swift 6.1 release toolchain in a local Ubuntu container. This includes
   typed Workshop/editor/reducer coverage, deterministic Season map, durable
   source-linked capture interpretation, and temporal/acronym codec regressions.

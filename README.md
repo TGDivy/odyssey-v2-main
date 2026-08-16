@@ -89,7 +89,9 @@ creates versioned proposed fields that each link back to the exact capture
 source. The current deterministic fallback recognizes only explicit prefixes,
 does not infer tasks or facts from ordinary notes, and safely leaves media
 pending. Successful derivatives append a registered event and projection/outbox
-update atomically; startup and background refresh recover pending work. See
+update atomically; startup and background refresh recover pending work. Owner
+acceptance, correction, and dismissal append a new lineage-bound version with
+optimistic review rather than editing an inference in place. See
 [`docs/architecture/capture-interpretation.md`](docs/architecture/capture-interpretation.md).
 
 ## Accepted orientation state

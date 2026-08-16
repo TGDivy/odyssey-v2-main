@@ -79,8 +79,8 @@ class InterpretationVersion(StrictModel):
                 raise ValueError("dismissed review cannot retain proposed fields")
         elif self.status != "interpreted":
             raise ValueError("accepted or corrected review must remain interpreted")
-        elif disposition is InterpretationReviewDisposition.CORRECTED and not self.proposed_fields:
-            raise ValueError("corrected review requires replacement fields")
+        elif not self.proposed_fields:
+            raise ValueError("accepted or corrected review requires proposed fields")
         return self
 
 

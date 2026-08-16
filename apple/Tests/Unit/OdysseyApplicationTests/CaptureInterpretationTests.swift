@@ -264,6 +264,147 @@ func captureInterpretationCoalescesConcurrentAdapterExecution() async throws {
     #expect(try await fixture.store.pendingSyncOperations().count == 2)
 }
 
+@Test
+func captureInterpretationReviewCorrectsFieldsWithStableRetryIdentity() async throws {
+    let fixture = try CaptureInterpretationFixture()
+    defer { fixture.remove() }
+    let original = try await fixture.captureService.record(.text(
+        "Food: espresso",
+        timeZoneID: "UTC",
+        locationPermissionState: .denied,
+        invokingSurface: .iPhoneGlobalCapture
+    ))
+    let interpreted = try await fixture.interpretationService.interpret(
+        captureID: original.capture.metadata.id,
+        using: DeterministicCaptureInterpreter()
+    )
+    guard case let .recorded(interpretationReceipt) = interpreted else {
+        Issue.record("Expected an interpretation before owner review")
+        return
+    }
+    let draft = try CaptureInterpretationReviewDraft(
+        reviewVersionID: captureInterpretationIdentifier(500),
+        targetInterpretationVersionID: interpretationReceipt.interpretation.id,
+        expectedCaptureRevision: interpretationReceipt.capture.metadata.revision,
+        disposition: .corrected,
+        replacementValues: ["capture_type": .string("caffeine")],
+        note: "Corrected the explicit category."
+    )
+
+    let reviewed = try await fixture.interpretationService.review(
+        captureID: original.capture.metadata.id,
+        draft: draft
+    )
+
+    guard case let .recorded(reviewReceipt) = reviewed else {
+        Issue.record("Expected an append-only owner correction")
+        return
+    }
+    #expect(reviewReceipt.capture.metadata.revision == 3)
+    #expect(reviewReceipt.capture.originalPayload == original.capture.originalPayload)
+    #expect(reviewReceipt.interpretation.ownerReviewDisposition == .corrected)
+    #expect(
+        reviewReceipt.interpretation.supersedesInterpretationVersionID
+            == interpretationReceipt.interpretation.id
+    )
+    #expect(
+        reviewReceipt.interpretation.proposedFields["capture_type"]?.value
+            == .string("caffeine")
+    )
+    #expect(
+        reviewReceipt.interpretation.proposedFields["requires_owner_review"]?.value
+            == .bool(false)
+    )
+    let entries = try fixture.store.storedEntries()
+    let pending = try await fixture.store.pendingSyncOperations()
+    #expect(entries.map(\.entry.eventType) == [
+        ManualCaptureService.eventType,
+        CaptureInterpretationService.eventType,
+        CaptureInterpretationService.reviewEventType,
+    ])
+    #expect(pending.count == 3)
+    #expect(pending[2].baseRevision == 2)
+    #expect(reviewReceipt.deviceSequence == 3)
+
+    let repeated = try await fixture.interpretationService.review(
+        captureID: original.capture.metadata.id,
+        draft: draft
+    )
+    #expect(repeated == .alreadyRecorded(reviewReceipt.interpretation))
+    #expect(try fixture.store.storedEntries().count == 3)
+
+    let conflictingDraft = try CaptureInterpretationReviewDraft(
+        reviewVersionID: draft.reviewVersionID,
+        targetInterpretationVersionID: draft.targetInterpretationVersionID,
+        expectedCaptureRevision: draft.expectedCaptureRevision,
+        disposition: .corrected,
+        replacementValues: ["capture_type": .string("alcohol")]
+    )
+    await #expect(throws: CaptureInterpretationServiceError.reviewIdentityConflict) {
+        try await fixture.interpretationService.review(
+            captureID: original.capture.metadata.id,
+            draft: conflictingDraft
+        )
+    }
+}
+
+@Test
+func captureInterpretationReviewAcceptsThenDismissesWithoutRewritingHistory() async throws {
+    let fixture = try CaptureInterpretationFixture()
+    defer { fixture.remove() }
+    let original = try await fixture.captureService.record(.text(
+        "Decision: keep the next step bounded",
+        timeZoneID: "UTC",
+        locationPermissionState: .denied,
+        invokingSurface: .iPhoneGlobalCapture
+    ))
+    let interpreted = try await fixture.interpretationService.interpret(
+        captureID: original.capture.metadata.id,
+        using: DeterministicCaptureInterpreter()
+    )
+    guard case let .recorded(interpretationReceipt) = interpreted else {
+        Issue.record("Expected an interpretation before owner review")
+        return
+    }
+    let accepted = try await fixture.interpretationService.review(
+        captureID: original.capture.metadata.id,
+        draft: CaptureInterpretationReviewDraft(
+            reviewVersionID: captureInterpretationIdentifier(510),
+            targetInterpretationVersionID: interpretationReceipt.interpretation.id,
+            expectedCaptureRevision: 2,
+            disposition: .accepted
+        )
+    )
+    guard case let .recorded(acceptedReceipt) = accepted else {
+        Issue.record("Expected an accepted interpretation version")
+        return
+    }
+    let dismissed = try await fixture.interpretationService.review(
+        captureID: original.capture.metadata.id,
+        draft: CaptureInterpretationReviewDraft(
+            reviewVersionID: captureInterpretationIdentifier(511),
+            targetInterpretationVersionID: acceptedReceipt.interpretation.id,
+            expectedCaptureRevision: 3,
+            disposition: .dismissed
+        )
+    )
+    guard case let .recorded(dismissedReceipt) = dismissed else {
+        Issue.record("Expected a dismissed interpretation version")
+        return
+    }
+
+    #expect(acceptedReceipt.interpretation.ownerReviewDisposition == .accepted)
+    #expect(acceptedReceipt.interpretation.proposedFields["capture_type"] != nil)
+    #expect(dismissedReceipt.capture.metadata.revision == 4)
+    #expect(dismissedReceipt.capture.interpretationVersions.count == 3)
+    #expect(dismissedReceipt.capture.interpretationStatus == .dismissed)
+    #expect(dismissedReceipt.interpretation.ownerReviewDisposition == .dismissed)
+    #expect(dismissedReceipt.interpretation.proposedFields.isEmpty)
+    #expect(dismissedReceipt.capture.originalPayload == original.capture.originalPayload)
+    #expect(try fixture.store.storedEntries().count == 4)
+    #expect(try await fixture.store.pendingSyncOperations().count == 4)
+}
+
 private func captureInterpretationInput(
     kind: CapturePayloadKind,
     content: String

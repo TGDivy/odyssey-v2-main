@@ -35,10 +35,15 @@ dismissal is a distinct terminal meaning and cannot retain proposed fields.
 The cross-stack contract rejects self-supersession, unbound review metadata,
 empty corrections, and incoherent status/disposition combinations.
 
-This slice defines the append-only semantics and registered
-`capture.interpretation_reviewed.v1` event. Durable review execution and the
-Archive correction surface are implemented in the following slices rather than
-overloading analytics feedback.
+`CaptureInterpretationService.review` enforces an optimistic capture revision
+and requires the reviewed version to remain latest. A stable review-version ID
+makes local retries idempotent and fails closed if reused for different content.
+Acceptance copies the reviewed fields, correction applies explicit replacements,
+and both clear the review-required proposal flag; dismissal retains no proposed
+fields. Each result atomically appends `capture.interpretation_reviewed.v1`,
+advances the same capture projection, and queues its sync update while preserving
+all earlier versions and the original payload. The Archive correction surface is
+implemented separately rather than overloading analytics feedback.
 
 ## Adapter boundary
 

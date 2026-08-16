@@ -109,7 +109,9 @@ rather than inventing content. Bootstrap and opportunistic app refresh rescan
 pending captures. Provider-backed interpretation and correction UI remain. See
 [`docs/architecture/capture-interpretation.md`](../docs/architecture/capture-interpretation.md).
 The same cross-stack contract now defines stable append-only owner acceptance,
-correction, and dismissal lineage; durable review execution follows separately.
+correction, and dismissal lineage. The local service enforces latest-version and
+optimistic-revision review, atomically records the result and sync update, and
+preserves every prior version; the Archive review UI follows separately.
 
 `NativeLocalServices` opens the stable Keychain device identity, protected
 Application Support database, migration-backup directory, and capture service
@@ -139,7 +141,7 @@ swift test --package-path apple
 ../tools/apple/generate-project.sh
 ```
 
-The portable package currently reports 86 tests passing under the official
+The portable package currently reports 88 tests passing under the official
 Swift 6.1 release toolchain on Linux. That result does not type-check SwiftUI or
 replace the required Xcode, simulator, accessibility, signing, and device runs.
 

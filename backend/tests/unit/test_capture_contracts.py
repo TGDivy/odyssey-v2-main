@@ -29,6 +29,7 @@ def test_interpretation_review_preserves_explicit_lineage() -> None:
 @pytest.mark.parametrize(
     ("disposition", "status", "proposed_fields"),
     [
+        (InterpretationReviewDisposition.ACCEPTED, "interpreted", {}),
         (InterpretationReviewDisposition.CORRECTED, "interpreted", {}),
         (InterpretationReviewDisposition.DISMISSED, "interpreted", {}),
         (InterpretationReviewDisposition.DISMISSED, "dismissed", {"capture_type": "food"}),

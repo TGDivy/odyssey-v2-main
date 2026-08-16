@@ -22,6 +22,9 @@ public enum CaptureInterpretationServiceError: Error, Equatable, Sendable {
     case invalidCaptureProjection(String)
     case invalidClock
     case foreignSourceReference(String)
+    case staleCaptureRevision(expected: Int, actual: Int)
+    case staleReviewTarget
+    case reviewIdentityConflict
 }
 
 extension CaptureInterpretationServiceError: LocalizedError {
@@ -37,6 +40,12 @@ extension CaptureInterpretationServiceError: LocalizedError {
             "The interpretation clock is invalid."
         case .foreignSourceReference:
             "An interpreted field does not point to this capture's immutable source."
+        case .staleCaptureRevision:
+            "The capture changed after this interpretation review opened. Reload and review again."
+        case .staleReviewTarget:
+            "A newer interpretation review already exists. Reload before applying another review."
+        case .reviewIdentityConflict:
+            "This review identity is already bound to different immutable content."
         }
     }
 }
@@ -77,10 +86,22 @@ private struct CaptureInterpretationLedgerPayload: Codable {
     let status: CaptureInterpretationStatus
 }
 
+private struct CaptureInterpretationReviewLedgerPayload: Codable {
+    let captureID: UUIDv7
+    let interpretationVersionID: UUIDv7
+    let reviewedInterpretationVersionID: UUIDv7
+    let disposition: CaptureInterpretationReviewDisposition
+}
+
 private struct CaptureInterpretationExecutionKey: Hashable {
     let captureID: UUIDv7
     let interpreter: String
     let interpreterVersion: String
+}
+
+private struct CaptureInterpretationReviewKey: Hashable {
+    let captureID: UUIDv7
+    let reviewVersionID: UUIDv7
 }
 
 private struct InFlightCaptureInterpretation {
@@ -90,12 +111,16 @@ private struct InFlightCaptureInterpretation {
 
 public actor CaptureInterpretationService {
     public static let eventType = "capture.interpreted.v1"
+    public static let reviewEventType = "capture.interpretation_reviewed.v1"
 
     private let store: any CaptureInterpretationStore
     private let clock: @Sendable () -> Date
     private let identifier: @Sendable () -> UUIDv7
     private let provenanceIdentifier: @Sendable () -> UUID
     private var inFlight: [CaptureInterpretationExecutionKey: InFlightCaptureInterpretation] = [:]
+    private var inFlightReviews: [
+        CaptureInterpretationReviewKey: InFlightCaptureInterpretation
+    ] = [:]
     private var nextExecutionID = 0
 
     public init(
@@ -184,32 +209,6 @@ public actor CaptureInterpretationService {
             proposedFields: proposal.proposedFields
         )
         try validateSourceReferences(version.sourceSpanRefs, capture: current)
-        let revisedMetadata = try EntityMetadata(
-            id: current.metadata.id,
-            schemaVersion: current.metadata.schemaVersion,
-            createdAt: current.metadata.createdAt,
-            createdBy: current.metadata.createdBy,
-            lastRevisedAt: createdAt,
-            revision: current.metadata.revision + 1,
-            tombstonedAt: current.metadata.tombstonedAt,
-            sensitivity: current.metadata.sensitivity,
-            provenanceID: current.metadata.provenanceID
-        )
-        let updated = CaptureRecord(
-            metadata: revisedMetadata,
-            capturedAt: current.capturedAt,
-            originalPayload: current.originalPayload,
-            initialContext: current.initialContext,
-            attachments: current.attachments,
-            interpretationStatus: version.status,
-            interpretationVersions: current.interpretationVersions + [version]
-        )
-        let document = try SyncJSONCoding.makeEncoder().encode(updated)
-        guard document.count <= SQLiteLedgerStore.maximumSyncPayloadBytes else {
-            throw CaptureContractError.payloadTooLarge(
-                maximumBytes: SQLiteLedgerStore.maximumSyncPayloadBytes
-            )
-        }
         let eventPayload = try SyncJSONCoding.makeEncoder().encode(
             CaptureInterpretationLedgerPayload(
                 captureID: captureID,
@@ -219,47 +218,121 @@ public actor CaptureInterpretationService {
                 status: version.status
             )
         )
-        let eventID = identifier()
-        let operationID = identifier()
-        let commit = try await store.commit(
-            LedgerCommit(
-                entry: LedgerEntry(
-                    eventID: eventID,
-                    eventType: Self.eventType,
-                    aggregateType: ManualCaptureService.entityType,
-                    aggregateID: captureID,
-                    occurredAt: createdAt,
-                    recordedAt: createdAt,
-                    payload: eventPayload,
-                    provenanceID: provenanceIdentifier()
-                ),
-                projection: ProjectionMutation(
-                    entityType: ManualCaptureService.entityType,
-                    entityID: captureID,
-                    revision: revisedMetadata.revision,
-                    mutationType: .update,
-                    document: document
-                ),
-                syncMutation: SyncMutationDraft(
-                    operationID: operationID,
-                    entityType: ManualCaptureService.entityType,
-                    entityID: captureID,
-                    mutationType: .update,
-                    baseRevision: current.metadata.revision,
-                    payload: document,
-                    createdAt: createdAt,
-                    idempotencyKey: operationID.description,
-                    sensitivityClass: current.metadata.sensitivity
-                )
+        return try await commitVersion(
+            version,
+            to: current,
+            eventType: Self.eventType,
+            eventPayload: eventPayload
+        )
+    }
+
+    public func review(
+        captureID: UUIDv7,
+        draft: CaptureInterpretationReviewDraft
+    ) async throws -> CaptureInterpretationExecution {
+        let key = CaptureInterpretationReviewKey(
+            captureID: captureID,
+            reviewVersionID: draft.reviewVersionID
+        )
+        if let execution = inFlightReviews[key] {
+            return try await execution.task.value
+        }
+        nextExecutionID += 1
+        let execution = InFlightCaptureInterpretation(
+            id: nextExecutionID,
+            task: Task {
+                try await self.performReview(captureID: captureID, draft: draft)
+            }
+        )
+        inFlightReviews[key] = execution
+        do {
+            let result = try await execution.task.value
+            if inFlightReviews[key]?.id == execution.id {
+                inFlightReviews[key] = nil
+            }
+            return result
+        } catch {
+            if inFlightReviews[key]?.id == execution.id {
+                inFlightReviews[key] = nil
+            }
+            throw error
+        }
+    }
+
+    private func performReview(
+        captureID: UUIDv7,
+        draft: CaptureInterpretationReviewDraft
+    ) async throws -> CaptureInterpretationExecution {
+        let current = try capture(id: captureID)
+        guard let target = current.interpretationVersions.first(where: {
+            $0.id == draft.targetInterpretationVersionID
+        }) else {
+            throw CaptureInterpretationServiceError.staleReviewTarget
+        }
+        let proposedFields = try reviewedFields(
+            target: target,
+            draft: draft,
+            capture: current
+        )
+        let status: CaptureInterpretationStatus = draft.disposition == .dismissed
+            ? .dismissed
+            : .interpreted
+        if let existing = current.interpretationVersions.first(where: {
+            $0.id == draft.reviewVersionID
+        }) {
+            guard existing.interpreter == "odyssey.owner-review",
+                  existing.interpreterVersion == "1",
+                  existing.status == status,
+                  existing.proposedFields == proposedFields,
+                  existing.supersedesInterpretationVersionID == target.id,
+                  existing.ownerReviewDisposition == draft.disposition,
+                  existing.ownerReviewNote == draft.note
+            else {
+                throw CaptureInterpretationServiceError.reviewIdentityConflict
+            }
+            return .alreadyRecorded(existing)
+        }
+        guard current.metadata.revision == draft.expectedCaptureRevision else {
+            throw CaptureInterpretationServiceError.staleCaptureRevision(
+                expected: draft.expectedCaptureRevision,
+                actual: current.metadata.revision
+            )
+        }
+        guard current.interpretationVersions.last?.id == target.id else {
+            throw CaptureInterpretationServiceError.staleReviewTarget
+        }
+        let createdAt = clock()
+        guard createdAt.timeIntervalSinceReferenceDate.isFinite,
+              createdAt >= current.capturedAt
+        else {
+            throw CaptureInterpretationServiceError.invalidClock
+        }
+        let version = try CaptureInterpretationVersion(
+            id: draft.reviewVersionID,
+            interpreter: "odyssey.owner-review",
+            interpreterVersion: "1",
+            createdAt: createdAt,
+            status: status,
+            proposedFields: proposedFields,
+            supersedesInterpretationVersionID: target.id,
+            ownerReviewDisposition: draft.disposition,
+            ownerReviewNote: draft.note
+        )
+        try validateSourceReferences(version.sourceSpanRefs, capture: current)
+        let eventPayload = try SyncJSONCoding.makeEncoder().encode(
+            CaptureInterpretationReviewLedgerPayload(
+                captureID: captureID,
+                interpretationVersionID: version.id,
+                reviewedInterpretationVersionID: target.id,
+                disposition: draft.disposition
             )
         )
-        return .recorded(CaptureInterpretationCommitReceipt(
-            capture: updated,
-            interpretation: version,
-            ledgerLocalSequence: commit.localSequence,
-            operationID: operationID,
-            deviceSequence: commit.queuedOperation?.deviceSequence
-        ))
+        return try await commitVersion(
+            version,
+            to: current,
+            eventType: Self.reviewEventType,
+            eventPayload: eventPayload
+        )
     }
 
     public func pendingCaptureIDs(limit: Int = 100) throws -> [UUIDv7] {
@@ -325,6 +398,106 @@ public actor CaptureInterpretationService {
             $0.interpreter == interpreter.interpreterID
                 && $0.interpreterVersion == interpreter.interpreterVersion
         }
+    }
+
+    private func reviewedFields(
+        target: CaptureInterpretationVersion,
+        draft: CaptureInterpretationReviewDraft,
+        capture: CaptureRecord
+    ) throws -> [String: CaptureInterpretedField] {
+        guard draft.disposition != .dismissed else { return [:] }
+        var fields = target.proposedFields
+        let sourceReference = "capture:\(capture.metadata.id)#original_payload"
+        if draft.disposition == .corrected {
+            for (name, value) in draft.replacementValues {
+                fields[name] = try CaptureInterpretedField(
+                    value: value,
+                    sourceSpanRefs: [sourceReference]
+                )
+            }
+        }
+        if fields["requires_owner_review"] != nil {
+            fields["requires_owner_review"] = try CaptureInterpretedField(
+                value: .bool(false),
+                sourceSpanRefs: [sourceReference]
+            )
+        }
+        return fields
+    }
+
+    private func commitVersion(
+        _ version: CaptureInterpretationVersion,
+        to current: CaptureRecord,
+        eventType: String,
+        eventPayload: Data
+    ) async throws -> CaptureInterpretationExecution {
+        let revisedMetadata = try EntityMetadata(
+            id: current.metadata.id,
+            schemaVersion: current.metadata.schemaVersion,
+            createdAt: current.metadata.createdAt,
+            createdBy: current.metadata.createdBy,
+            lastRevisedAt: version.createdAt,
+            revision: current.metadata.revision + 1,
+            tombstonedAt: current.metadata.tombstonedAt,
+            sensitivity: current.metadata.sensitivity,
+            provenanceID: current.metadata.provenanceID
+        )
+        let updated = CaptureRecord(
+            metadata: revisedMetadata,
+            capturedAt: current.capturedAt,
+            originalPayload: current.originalPayload,
+            initialContext: current.initialContext,
+            attachments: current.attachments,
+            interpretationStatus: version.status,
+            interpretationVersions: current.interpretationVersions + [version]
+        )
+        let document = try SyncJSONCoding.makeEncoder().encode(updated)
+        guard document.count <= SQLiteLedgerStore.maximumSyncPayloadBytes else {
+            throw CaptureContractError.payloadTooLarge(
+                maximumBytes: SQLiteLedgerStore.maximumSyncPayloadBytes
+            )
+        }
+        let eventID = identifier()
+        let operationID = identifier()
+        let commit = try await store.commit(
+            LedgerCommit(
+                entry: LedgerEntry(
+                    eventID: eventID,
+                    eventType: eventType,
+                    aggregateType: ManualCaptureService.entityType,
+                    aggregateID: current.metadata.id,
+                    occurredAt: version.createdAt,
+                    recordedAt: version.createdAt,
+                    payload: eventPayload,
+                    provenanceID: provenanceIdentifier()
+                ),
+                projection: ProjectionMutation(
+                    entityType: ManualCaptureService.entityType,
+                    entityID: current.metadata.id,
+                    revision: revisedMetadata.revision,
+                    mutationType: .update,
+                    document: document
+                ),
+                syncMutation: SyncMutationDraft(
+                    operationID: operationID,
+                    entityType: ManualCaptureService.entityType,
+                    entityID: current.metadata.id,
+                    mutationType: .update,
+                    baseRevision: current.metadata.revision,
+                    payload: document,
+                    createdAt: version.createdAt,
+                    idempotencyKey: operationID.description,
+                    sensitivityClass: current.metadata.sensitivity
+                )
+            )
+        )
+        return .recorded(CaptureInterpretationCommitReceipt(
+            capture: updated,
+            interpretation: version,
+            ledgerLocalSequence: commit.localSequence,
+            operationID: operationID,
+            deviceSequence: commit.queuedOperation?.deviceSequence
+        ))
     }
 
     private func validateSourceReferences(

@@ -103,8 +103,8 @@ public struct CaptureInterpretationVersion: Codable, Hashable, Sendable {
             }
             switch ownerReviewDisposition {
             case .accepted:
-                guard status == .interpreted else {
-                    throw CaptureContractError.invalidInterpretation("accepted review status")
+                guard status == .interpreted, !proposedFields.isEmpty else {
+                    throw CaptureContractError.invalidInterpretation("accepted review fields")
                 }
             case .corrected:
                 guard status == .interpreted, !proposedFields.isEmpty else {
