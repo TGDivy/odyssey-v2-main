@@ -46,6 +46,16 @@ accepted history, and requires the exact reviewed digest before creating an
 acceptance command. Draft edits remain owner-exported and replayable but never
 become canonical through generic synchronization.
 
+The iPhone Workshop builds on that service with typed Charter-value and policy
+list fields, descriptive life-stage contexts, and season portfolio, status,
+constraint, opportunity-budget, signal, guardrail, and transition editors. It
+ships an editable synthetic commission-derived seed, not accepted defaults.
+Every acceptance opens a complete semantic review, shows composition warnings,
+and requires an explicit immutable-history confirmation. Accepted versions are
+decoded into read-only plain-language history. A `409` remains a visible
+terminal meaning conflict with no auto-merge; the owner must refresh history and
+start a new reviewed revision.
+
 `OdysseyAuth` defines the closed challenge, exchange, refresh, recovery, and
 device lifecycle values. Its actor-isolated access-token session keeps access
 tokens in memory, refreshes through a device-bound credential, and persists
@@ -84,15 +94,16 @@ same token session and local ledger. Placeholder or unsafe endpoints therefore
 disable remote work without disabling offline capture or acceptance queueing.
 
 The iPhone shell now uses the tested application reducer for bootstrap,
-capture, enrollment, sync, diagnostics, and repair state. Its global text
+capture, Workshop loading/edit/review/queue/delivery, enrollment, sync,
+diagnostics, and repair state. Its global text
 capture returns only after the ledger/projection/outbox transaction, triggers
 sync afterward without awaiting it, and schedules an opportunistic app-refresh
-request. Workshop shows exact local queue/cursor/conflict state, offers Apple
-device enrollment and local credential removal without claiming server
-revocation, and exposes integrity verification and projection rebuild. These
-SwiftUI, BackgroundTasks, Security, AuthenticationServices, and UIKit paths have
-only received parse-level checks in this Linux environment; they have not been
-Xcode-built or run on Apple hardware.
+request. Workshop shows both dedicated normative-command and generic-sync
+queue/conflict state, offers Apple device enrollment and local credential
+removal without claiming server revocation, and exposes integrity verification
+and projection rebuild. These SwiftUI, BackgroundTasks, Security,
+AuthenticationServices, and UIKit paths have not been Xcode-built or run on
+Apple hardware in this environment.
 
 On a Mac with Swift 6.1 or newer and Xcode installed:
 
@@ -100,6 +111,10 @@ On a Mac with Swift 6.1 or newer and Xcode installed:
 swift test --package-path apple
 ../tools/apple/generate-project.sh
 ```
+
+The portable package currently reports 72 tests passing under the official
+Swift 6.1 release toolchain on Linux. That result does not type-check SwiftUI or
+replace the required Xcode, simulator, accessibility, signing, and device runs.
 
 The SQLite database must live in an Application Support container protected by
 the platform data-protection policy. Callers must supply the stable Keychain

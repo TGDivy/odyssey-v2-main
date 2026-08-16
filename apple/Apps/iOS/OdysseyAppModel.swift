@@ -6,6 +6,7 @@ import Foundation
 import OdysseyApplication
 import OdysseyAuth
 import OdysseyData
+import OdysseyDomain
 import OdysseySync
 import UIKit
 
@@ -15,6 +16,7 @@ final class OdysseyAppModel: ObservableObject {
 
     private var localServices: NativeLocalServices?
     private var remoteServices: NativeRemoteServices?
+    private var workshopDraftFactory: LifeModelWorkshopDraftFactory?
     private var isBootstrapping = false
 
     static var backgroundRefreshIdentifier: String {
@@ -39,10 +41,15 @@ final class OdysseyAppModel: ObservableObject {
         apply(.bootstrapStarted)
         localServices = nil
         remoteServices = nil
+        workshopDraftFactory = nil
 
         let local: NativeLocalServices
         do {
             let localConfiguration = try makeLocalConfiguration()
+            workshopDraftFactory = try LifeModelWorkshopDraftFactory(
+                ownerActorID: localConfiguration.ownerActorID,
+                timeZoneID: TimeZone.current.identifier
+            )
             local = try await NativeLocalServices.bootstrap(
                 configuration: localConfiguration
             )
@@ -50,6 +57,7 @@ final class OdysseyAppModel: ObservableObject {
             apply(.localReady)
             await refreshDiagnostics()
             refreshRecentCaptures()
+            await refreshWorkshop()
         } catch {
             apply(.localUnavailable(
                 "Local storage could not be opened safely. No capture was attempted."
@@ -178,6 +186,7 @@ final class OdysseyAppModel: ObservableObject {
             apply(.syncSucceeded(report))
             await refreshDiagnostics()
             refreshRecentCaptures()
+            await deliverLifeModelAcceptances()
             scheduleBackgroundRefresh()
         } catch AuthSessionError.notEnrolled,
                 AuthSessionError.refreshCredentialExpired
@@ -200,6 +209,7 @@ final class OdysseyAppModel: ObservableObject {
         } onCancel: {
             Task {
                 await remoteServices.syncCoordinator.cancelSynchronization()
+                await remoteServices.lifeModelAcceptanceCoordinator.cancelSynchronization()
             }
         }
     }
@@ -233,6 +243,7 @@ final class OdysseyAppModel: ObservableObject {
             apply(.maintenanceSucceeded("Local projections rebuilt from the ledger."))
             await refreshDiagnostics()
             refreshRecentCaptures()
+            await refreshWorkshop()
         } catch {
             apply(.maintenanceFailed(
                 "Projection rebuild failed. The immutable ledger was not changed."
@@ -242,6 +253,181 @@ final class OdysseyAppModel: ObservableObject {
 
     func dismissMaintenanceStatus() {
         apply(.maintenanceDismissed)
+    }
+
+    func refreshWorkshop() async {
+        guard let localServices else { return }
+        apply(.workshopLoadStarted)
+        guard state.workshopPhase == .loading else { return }
+        do {
+            let snapshot = try await localServices.lifeModelWorkshopService.snapshot()
+            apply(.workshopLoaded(snapshot))
+        } catch {
+            apply(.workshopFailed(
+                "The local Workshop history could not be loaded safely."
+            ))
+        }
+    }
+
+    func createInitialWorkshopDraft(_ kind: LifeModelKind) async {
+        guard let localServices, let workshopDraftFactory else { return }
+        apply(.workshopSaveStarted)
+        guard state.workshopPhase == .saving else { return }
+        do {
+            let proposal: LifeModelDraftProposal
+            switch kind {
+            case .charter:
+                proposal = try workshopDraftFactory.initialCharter()
+            case .lifeStage:
+                proposal = try workshopDraftFactory.initialLifeStage()
+            case .season:
+                guard let charterVersionID = workshopCharterVersionID else {
+                    throw WorkshopApplicationError.charterRequired
+                }
+                proposal = try workshopDraftFactory.initialSeason(
+                    charterVersionID: charterVersionID
+                )
+            }
+            _ = try await localServices.lifeModelWorkshopService.createDraft(proposal)
+            let snapshot = try await localServices.lifeModelWorkshopService.snapshot()
+            apply(.workshopSaved(snapshot))
+        } catch {
+            apply(.workshopFailed(workshopMessage(
+                for: error,
+                fallback: "The initial life-model draft could not be created."
+            )))
+        }
+    }
+
+    func createWorkshopRevision(
+        of version: CachedLifeModelVersion
+    ) async {
+        guard let localServices, let workshopDraftFactory else { return }
+        apply(.workshopSaveStarted)
+        guard state.workshopPhase == .saving else { return }
+        do {
+            let proposal = try workshopDraftFactory.revision(of: version)
+            _ = try await localServices.lifeModelWorkshopService.createDraft(proposal)
+            let snapshot = try await localServices.lifeModelWorkshopService.snapshot()
+            apply(.workshopSaved(snapshot))
+        } catch {
+            apply(.workshopFailed(workshopMessage(
+                for: error,
+                fallback: "A reviewed revision could not be started."
+            )))
+        }
+    }
+
+    func createSuccessorSeason(
+        after version: CachedLifeModelVersion
+    ) async {
+        guard let localServices, let workshopDraftFactory else { return }
+        apply(.workshopSaveStarted)
+        guard state.workshopPhase == .saving else { return }
+        do {
+            let proposal = try workshopDraftFactory.successorSeason(after: version)
+            _ = try await localServices.lifeModelWorkshopService.createDraft(proposal)
+            let snapshot = try await localServices.lifeModelWorkshopService.snapshot()
+            apply(.workshopSaved(snapshot))
+        } catch {
+            apply(.workshopFailed(workshopMessage(
+                for: error,
+                fallback: "The successor season could not be started."
+            )))
+        }
+    }
+
+    func saveWorkshopDraft(
+        draftID: UUIDv7,
+        expectedStateRevision: Int,
+        document: [String: JSONValue]
+    ) async -> Bool {
+        guard let localServices else { return false }
+        apply(.workshopSaveStarted)
+        guard state.workshopPhase == .saving else { return false }
+        do {
+            _ = try await localServices.lifeModelWorkshopService.saveDraft(
+                draftID: draftID,
+                expectedStateRevision: expectedStateRevision,
+                document: document
+            )
+            let snapshot = try await localServices.lifeModelWorkshopService.snapshot()
+            apply(.workshopSaved(snapshot))
+            return true
+        } catch {
+            apply(.workshopFailed(workshopMessage(
+                for: error,
+                fallback: "The Workshop draft could not be saved."
+            )))
+            return false
+        }
+    }
+
+    func prepareWorkshopReview(for draft: LifeModelDraftRecord) async {
+        guard let localServices else { return }
+        apply(.workshopReviewStarted)
+        guard state.workshopPhase == .reviewing else { return }
+        do {
+            let review = try await localServices.lifeModelWorkshopService.prepareReview(
+                draftID: draft.draftID,
+                expectedStateRevision: draft.stateRevision
+            )
+            let snapshot = try await localServices.lifeModelWorkshopService.snapshot()
+            apply(.workshopReviewPrepared(review: review, snapshot: snapshot))
+        } catch {
+            apply(.workshopFailed(workshopMessage(
+                for: error,
+                fallback: "The complete semantic review could not be prepared."
+            )))
+        }
+    }
+
+    func queueWorkshopAcceptance(_ review: LifeModelDraftReview) async {
+        guard let localServices,
+              state.workshopReview?.reviewDigest == review.reviewDigest
+        else { return }
+        apply(.workshopQueueStarted)
+        guard state.workshopPhase == .queueing else { return }
+        do {
+            _ = try await localServices.lifeModelWorkshopService.queueReviewedDraft(
+                draftID: review.draft.draftID,
+                reviewDigest: review.reviewDigest
+            )
+            let snapshot = try await localServices.lifeModelWorkshopService.snapshot()
+            apply(.workshopQueued(snapshot))
+            scheduleBackgroundRefresh()
+            if remoteServices != nil, state.enrollmentPhase == .credentialStored {
+                await deliverLifeModelAcceptances()
+            }
+        } catch {
+            apply(.workshopFailed(workshopMessage(
+                for: error,
+                fallback: "The reviewed acceptance command could not be queued."
+            )))
+        }
+    }
+
+    func abandonWorkshopDraft(_ draft: LifeModelDraftRecord) async {
+        guard let localServices else { return }
+        apply(.workshopSaveStarted)
+        guard state.workshopPhase == .saving else { return }
+        do {
+            _ = try await localServices.lifeModelWorkshopService.abandonDraft(
+                draftID: draft.draftID,
+                expectedStateRevision: draft.stateRevision
+            )
+            let snapshot = try await localServices.lifeModelWorkshopService.snapshot()
+            apply(.workshopSaved(snapshot))
+        } catch {
+            apply(.workshopFailed(workshopMessage(
+                for: error,
+                fallback: "The Workshop draft could not be abandoned."
+            )))
+        }
+    }
+
+    func dismissWorkshopReview() {
+        apply(.workshopReviewDismissed)
     }
 
     private func refreshDiagnostics() async {
@@ -265,6 +451,53 @@ final class OdysseyAppModel: ObservableObject {
             apply(.recentCapturesUpdated(try localServices.recentCaptures()))
         } catch {
             return
+        }
+    }
+
+    private func deliverLifeModelAcceptances() async {
+        guard let localServices, let remoteServices else { return }
+        apply(.workshopDeliveryStarted)
+        guard state.workshopPhase == .delivering else { return }
+        do {
+            _ = try await remoteServices.lifeModelAcceptanceCoordinator.synchronize()
+            let snapshot = try await localServices.lifeModelWorkshopService.snapshot()
+            apply(.workshopDeliveryFinished(snapshot))
+        } catch {
+            apply(.workshopFailed(
+                "Life-model delivery did not complete. The reviewed command remains local "
+                    + "and will retry safely."
+            ))
+        }
+    }
+
+    private var workshopCharterVersionID: UUIDv7? {
+        guard let snapshot = state.workshopSnapshot else { return nil }
+        if let queued = snapshot.acceptanceCommands.first(where: {
+            $0.command.kind == .charter
+                && ($0.deliveryStatus == .pending
+                    || $0.deliveryStatus == .retry
+                    || $0.deliveryStatus == .accepted)
+        }) {
+            return queued.command.versionID
+        }
+        return snapshot.acceptedVersions.first(where: { $0.kind == .charter })?.versionID
+    }
+
+    private func workshopMessage(
+        for error: Error,
+        fallback: String
+    ) -> String {
+        switch error {
+        case let error as LifeModelWorkshopError:
+            error.errorDescription ?? fallback
+        case let error as LifeModelWorkshopDraftFactoryError:
+            error.errorDescription ?? fallback
+        case let error as LifeModelWorkshopEditorError:
+            error.errorDescription ?? fallback
+        case let error as WorkshopApplicationError:
+            error.errorDescription ?? fallback
+        default:
+            fallback
         }
     }
 
@@ -357,5 +590,16 @@ final class OdysseyAppModel: ObservableObject {
             }
         }
         return UIWindow()
+    }
+}
+
+private enum WorkshopApplicationError: LocalizedError {
+    case charterRequired
+
+    var errorDescription: String? {
+        switch self {
+        case .charterRequired:
+            "Review and queue the Charter before creating its first season."
+        }
     }
 }

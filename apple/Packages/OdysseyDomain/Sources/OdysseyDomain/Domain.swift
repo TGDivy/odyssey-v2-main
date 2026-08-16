@@ -24,7 +24,10 @@ public struct UUIDv7: Codable, Hashable, Sendable, CustomStringConvertible {
         let randomB = UInt64.random(in: 0 ... 0x3fff_ffff_ffff_ffff)
         let variantAndHighRandom = UInt16(0x8000) | UInt16((randomB >> 48) & 0x3fff)
         let lowRandom = randomB & 0x0000_ffff_ffff_ffff
-        let value = "\(timestamp.prefix(8))-\(timestamp.suffix(4))-7\(String(format: "%03x", randomA))-\(String(format: "%04x", variantAndHighRandom))-\(String(format: "%012llx", lowRandom))"
+        let value = "\(timestamp.prefix(8))-\(timestamp.suffix(4))"
+            + "-7\(String(format: "%03x", randomA))"
+            + "-\(String(format: "%04x", variantAndHighRandom))"
+            + "-\(String(format: "%012llx", lowRandom))"
         self.rawValue = UUID(uuidString: value)!
     }
 
@@ -391,7 +394,7 @@ public struct LifeStageVersion: Codable, Hashable, Sendable {
     }
 }
 
-public enum SeasonStatus: String, Codable, Sendable {
+public enum SeasonStatus: String, Codable, CaseIterable, Hashable, Sendable {
     case draft
     case calibration
     case active
@@ -400,13 +403,13 @@ public enum SeasonStatus: String, Codable, Sendable {
     case abandoned
 }
 
-public enum SeasonCreationSource: String, Codable, Sendable {
+public enum SeasonCreationSource: String, Codable, CaseIterable, Hashable, Sendable {
     case user
     case assisted
     case imported
 }
 
-public enum DirectionRole: String, Codable, Sendable {
+public enum DirectionRole: String, Codable, CaseIterable, Hashable, Sendable {
     case primary
     case foundation
     case maintenance
@@ -414,7 +417,7 @@ public enum DirectionRole: String, Codable, Sendable {
     case dormant
 }
 
-public enum AllocationBand: String, Codable, Sendable {
+public enum AllocationBand: String, Codable, CaseIterable, Hashable, Sendable {
     case minimal
     case low
     case moderate

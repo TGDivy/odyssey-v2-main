@@ -94,6 +94,13 @@ public enum SyncJSONCoding {
     }
 
     private static func swiftPropertyName(for key: String) -> String {
+        let positionalKey = key.dropFirst()
+        if key.first == "_",
+           !positionalKey.isEmpty,
+           positionalKey.allSatisfy(\.isNumber)
+        {
+            return key
+        }
         let components = key.split(separator: "_", omittingEmptySubsequences: false)
         guard components.count > 1 else {
             return key
@@ -108,6 +115,9 @@ public enum SyncJSONCoding {
             }
             if value == "url" {
                 return "URL"
+            }
+            if value == "sha256" {
+                return "SHA256"
             }
             return value.prefix(1).uppercased() + value.dropFirst()
         }.joined()

@@ -6,6 +6,11 @@ import Testing
 
 private let fixtureDate = Date(timeIntervalSince1970: 1_786_752_000.125)
 
+private struct AcronymCodingFixture: Codable, Equatable {
+    let documentSHA256: String
+    let sourceEventID: UUIDv7
+}
+
 @Test
 func cursorRequiresCanonicalWireFormat() throws {
     #expect(try SyncCursor("c_0").value == 0)
@@ -19,6 +24,49 @@ func cursorRequiresCanonicalWireFormat() throws {
     #expect(throws: SyncContractError.invalidCursor("c_-1")) {
         try SyncCursor("c_-1")
     }
+}
+
+@Test
+func jsonValueRoundTripPreservesTemporalEnumPayloadKeys() throws {
+    let interval = try TemporalInterval(
+        start: .instant(fixtureDate),
+        end: .instant(fixtureDate.addingTimeInterval(3_600)),
+        timeZoneID: "UTC",
+        startPrecision: .minute,
+        endPrecision: .minute
+    )
+    let encoded = try SyncJSONCoding.makeEncoder().encode(interval)
+    let document = try SyncJSONCoding.makeDecoder().decode(
+        [String: JSONValue].self,
+        from: encoded
+    )
+    let reencoded = try SyncJSONCoding.makeEncoder().encode(document)
+    let decoded = try SyncJSONCoding.makeDecoder().decode(
+        TemporalInterval.self,
+        from: reencoded
+    )
+
+    #expect(decoded == interval)
+}
+
+@Test
+func syncCodingRestoresDeclaredWireAcronyms() throws {
+    let fixture = AcronymCodingFixture(
+        documentSHA256: String(repeating: "a", count: 64),
+        sourceEventID: try identifier(77)
+    )
+    let encoded = try SyncJSONCoding.makeEncoder().encode(fixture)
+    let object = try #require(
+        JSONSerialization.jsonObject(with: encoded) as? [String: Any]
+    )
+    let decoded = try SyncJSONCoding.makeDecoder().decode(
+        AcronymCodingFixture.self,
+        from: encoded
+    )
+
+    #expect(object["document_sha256"] as? String == fixture.documentSHA256)
+    #expect(object["source_event_id"] as? String == fixture.sourceEventID.description)
+    #expect(decoded == fixture)
 }
 
 @Test

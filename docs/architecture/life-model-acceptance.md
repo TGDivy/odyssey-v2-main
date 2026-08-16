@@ -2,9 +2,9 @@
 
 Odyssey treats the Charter, life stage, and season as owner-accepted normative
 state, not as mutable model memory. This implementation covers the server-side
-acceptance/history boundary and the portable native offline command,
-delivery-state, authenticated transport, and immutable history cache for §§6–7.
-It does not yet provide the native Workshop editor or review ceremony.
+acceptance/history boundary, portable native draft and offline-command ledgers,
+authenticated delivery, immutable history cache, and the iPhone Workshop
+editor/review/conflict surface for §§6–7.
 
 ## Authority boundary
 
@@ -17,9 +17,10 @@ It does not yet provide the native Workshop editor or review ceremony.
   can activate a Charter, life-stage revision, or season.
 - Every accepted document keeps a UUIDv7 provenance record and content hash.
 
-The server ships no permanent Charter seed. A future native editor may begin
-from the commission seed, but the owner must edit or affirm it before it becomes
-accepted state.
+The server ships no permanent Charter seed. The native Workshop can create an
+editable synthetic seed derived from the commission, but it remains an
+owner-authored local draft until the owner reviews and accepts that exact
+version.
 
 ## Immutable storage
 
@@ -98,6 +99,37 @@ digest, then emits the dedicated acceptance command. Draft history is therefore
 recoverable by ledger replay and included in owner export without making a
 model-generated suggestion canonical.
 
+## Native Workshop ceremony
+
+`LifeModelWorkshopDraftFactory` creates owner-authored Charter, descriptive
+life-stage, and Charter-bound season proposals. It also creates same-identity
+revisions from immutable cached history and a new-identity successor only after
+a terminal season. Identity, version, predecessor, metadata, provenance, and
+effective-interval fields are not editable through SwiftUI.
+
+The iPhone Workshop exposes only typed plain-language fields:
+
+- chosen Charter values, responsibilities, ways of being, boundaries, and
+  anti-optimization statements;
+- descriptive career, partnership/family, health/capability, geography,
+  financial, care, identity-transition, horizon, and uncertainty context;
+- season status, portfolio role/allocation, minimum commitments, sacrifice
+  limits, signals, constraints, opportunity budgets, non-goals, guardrails,
+  protected experiences, trade-offs, good-week description, review cadence,
+  and transition conditions.
+
+Saving appends a local draft event. Review persists the exact document digest
+and presents metadata-free semantic changes plus attention warnings. Acceptance
+requires a separate explicit acknowledgement that this exact version is
+immutable. Offline acceptance stays in the dedicated command queue; enrollment
+then triggers sequential authenticated delivery and a complete remote-history
+refresh. Accepted history is decoded back into typed read-only views.
+
+Terminal `409` conflicts display fixed local guidance. No server message text is
+persisted or shown as authority, and no auto-merge occurs. After history refresh,
+the owner can inspect the newly accepted meaning and start a fresh reviewed
+revision.
+
 ## Charter rules
 
 - The logical `charter_id` never changes after initial acceptance.
@@ -155,9 +187,10 @@ requested scenario time and emits them as `charter_version`, `life_stage`, and
 with life-model names. This prevents a raw sync write or unresolved multi-device
 edit from changing recommendation context.
 
-Current resolution uses the accepted supersession timeline. The pending native
-Workshop must construct this dedicated queue command, show the semantic diff,
-and surface terminal conflicts rather than applying last-write-wins.
+Current resolution uses the accepted supersession timeline. The native Workshop
+constructs the dedicated queue command only from an exact persisted review,
+shows the semantic diff, refreshes immutable history after delivery, and
+surfaces terminal conflicts rather than applying last-write-wins.
 
 ## Deployment and operations
 
@@ -182,10 +215,9 @@ source control.
 
 ## Remaining work
 
-- Native Workshop editor, review diff, semantic conflict UI, and acceptance
-  ceremony.
-- Multi-device Workshop refresh proof against the server history cache.
+- Xcode/UI automation and a two-device Workshop refresh proof against the
+  server history cache.
 - Frozen outgoing-season summary and optional retrospective draft.
 - Recommendation and UI citations that expose which accepted versions were
   used.
-- macOS/Xcode/device validation; this Linux run had no Swift toolchain.
+- macOS Workshop parity and Xcode/accessibility/device validation.

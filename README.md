@@ -91,9 +91,13 @@ synced `season` document cannot silently become normative owner state.
 The native portable layer now persists a separate immutable offline acceptance
 queue, validates authenticated route bodies against queued metadata, delivers
 commands sequentially with bounded retries, records `409` as an owner-review
-conflict, and caches auditable server history. The native Charter/Season editor,
-semantic review ceremony, and conflict UI are still pending. Do not seed real
-orientation data through SQL or treat model output as accepted.
+conflict, and caches auditable server history. The iPhone Workshop provides
+typed plain-language Charter, descriptive life-stage, and season editors; an
+editable commission-derived seed; exact semantic review and immutable
+acceptance confirmation; accepted history; terminal conflict guidance; and
+offline queue status. These SwiftUI paths are source-validated here but still
+require Xcode, simulator, accessibility, and physical-device validation. Do not
+seed real orientation data through SQL or treat model output as accepted.
 See [`docs/architecture/life-model-acceptance.md`](docs/architecture/life-model-acceptance.md).
 
 ## Safety invariants

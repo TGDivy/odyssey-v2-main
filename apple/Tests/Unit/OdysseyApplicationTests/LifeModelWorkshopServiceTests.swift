@@ -52,7 +52,8 @@ func workshopDraftReviewAndAcceptanceRemainLocalDurableAndInspectable() async th
 
     #expect(queued.deliveryStatus == .pending)
     #expect(queued.command.versionID == proposal.versionID)
-    #expect(queued.command.document == try SyncJSONCoding.makeEncoder().encode(editedDocument))
+    let expectedDocument = try SyncJSONCoding.makeEncoder().encode(editedDocument)
+    #expect(queued.command.document == expectedDocument)
     let request = try SyncJSONCoding.makeDecoder().decode(
         CharterRevisionRequest.self,
         from: queued.command.requestBody

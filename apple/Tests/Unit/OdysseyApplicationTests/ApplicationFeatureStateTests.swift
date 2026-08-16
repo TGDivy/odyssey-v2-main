@@ -1,5 +1,6 @@
 import Foundation
 import OdysseyApplication
+import OdysseyData
 import OdysseyDomain
 import OdysseySync
 import Testing
@@ -57,6 +58,117 @@ func applicationReducerAllowsSyncOnlyAfterCredentialIsStored() throws {
     )
     ApplicationFeatureReducer.reduce(state: &state, action: .syncSucceeded(report))
     #expect(state.syncPhase == .succeeded(report))
+}
+
+@Test
+func applicationReducerOwnsWorkshopLoadingAndDeliveryLifecycle() {
+    var state = ApplicationFeatureState()
+    let snapshot = emptyWorkshopSnapshot()
+
+    ApplicationFeatureReducer.reduce(state: &state, action: .workshopLoadStarted)
+    #expect(state.workshopPhase == .idle)
+
+    ApplicationFeatureReducer.reduce(state: &state, action: .localReady)
+    ApplicationFeatureReducer.reduce(state: &state, action: .workshopLoadStarted)
+    #expect(state.workshopPhase == .loading)
+    #expect(!state.canUseWorkshop)
+
+    ApplicationFeatureReducer.reduce(state: &state, action: .workshopLoaded(snapshot))
+    #expect(state.workshopPhase == .ready)
+    #expect(state.workshopSnapshot == snapshot)
+    #expect(state.canUseWorkshop)
+
+    ApplicationFeatureReducer.reduce(state: &state, action: .workshopDeliveryStarted)
+    #expect(state.workshopPhase == .delivering)
+    #expect(!state.canUseWorkshop)
+
+    ApplicationFeatureReducer.reduce(
+        state: &state,
+        action: .workshopDeliveryFinished(snapshot)
+    )
+    #expect(state.workshopPhase == .ready)
+    #expect(state.canUseWorkshop)
+}
+
+@Test
+func applicationReducerClearsWorkshopStateWhenLocalStorageFails() {
+    var state = ApplicationFeatureState(localReadiness: .ready)
+    let snapshot = emptyWorkshopSnapshot()
+    ApplicationFeatureReducer.reduce(state: &state, action: .workshopLoadStarted)
+    ApplicationFeatureReducer.reduce(state: &state, action: .workshopLoaded(snapshot))
+    ApplicationFeatureReducer.reduce(state: &state, action: .workshopSaveStarted)
+    ApplicationFeatureReducer.reduce(
+        state: &state,
+        action: .localUnavailable("Local storage failed safely.")
+    )
+
+    #expect(state.workshopPhase == .idle)
+    #expect(state.workshopSnapshot == nil)
+    #expect(state.workshopReview == nil)
+    #expect(!state.canUseWorkshop)
+}
+
+@Test
+func applicationReducerRequiresPreparedReviewBeforeQueueing() throws {
+    var state = ApplicationFeatureState(localReadiness: .ready)
+    let snapshot = emptyWorkshopSnapshot()
+    ApplicationFeatureReducer.reduce(state: &state, action: .workshopLoadStarted)
+    ApplicationFeatureReducer.reduce(state: &state, action: .workshopLoaded(snapshot))
+    ApplicationFeatureReducer.reduce(state: &state, action: .workshopQueueStarted)
+    #expect(state.workshopPhase == .ready)
+
+    let timestamp = Date(timeIntervalSince1970: 1_730_000_002)
+    let proposal = try LifeModelWorkshopDraftFactory(
+        timeZoneID: "UTC",
+        clock: { timestamp }
+    ).initialCharter()
+    let draft = try LifeModelDraftRecord(
+        draftID: servicesIdentifierForReducer(50),
+        kind: proposal.kind,
+        versionID: proposal.versionID,
+        logicalID: proposal.logicalID,
+        versionNumber: proposal.versionNumber,
+        baseVersionID: proposal.baseVersionID,
+        acceptanceMethod: proposal.acceptanceMethod,
+        document: proposal.document,
+        contentRevision: 1,
+        stateRevision: 1,
+        phase: .editing,
+        createdAt: timestamp,
+        updatedAt: timestamp
+    )
+    let review = LifeModelDraftReview(
+        draft: draft,
+        changes: [],
+        warnings: [],
+        reviewDigest: String(repeating: "a", count: 64)
+    )
+
+    ApplicationFeatureReducer.reduce(state: &state, action: .workshopReviewStarted)
+    ApplicationFeatureReducer.reduce(
+        state: &state,
+        action: .workshopReviewPrepared(review: review, snapshot: snapshot)
+    )
+    #expect(state.workshopReview == review)
+    ApplicationFeatureReducer.reduce(state: &state, action: .workshopQueueStarted)
+    #expect(state.workshopPhase == .queueing)
+    ApplicationFeatureReducer.reduce(state: &state, action: .workshopQueued(snapshot))
+    #expect(state.workshopPhase == .ready)
+    #expect(state.workshopReview == nil)
+}
+
+private func emptyWorkshopSnapshot() -> LifeModelWorkshopSnapshot {
+    LifeModelWorkshopSnapshot(
+        drafts: [],
+        acceptanceCommands: [],
+        acceptedVersions: [],
+        queueDiagnostics: LifeModelQueueDiagnostics(
+            queuedCount: 0,
+            conflictCount: 0,
+            rejectedCount: 0,
+            oldestQueuedAt: nil
+        )
+    )
 }
 
 private func servicesIdentifierForReducer(_ value: Int) throws -> UUIDv7 {
