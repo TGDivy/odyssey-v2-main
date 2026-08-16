@@ -54,6 +54,7 @@ public struct NativeLocalConfiguration: Sendable {
     public let applicationIdentifier: String
     public let applicationSupportDirectory: URL
     public let ownerActorID: String
+    public let appBuild: String
     public let keychainAccessGroup: String?
     public let featureConfigurationTrust: NativeFeatureConfigurationTrust?
 
@@ -61,6 +62,7 @@ public struct NativeLocalConfiguration: Sendable {
         applicationIdentifier: String,
         applicationSupportDirectory: URL,
         ownerActorID: String = "owner",
+        appBuild: String = "development",
         keychainAccessGroup: String? = nil,
         featureConfigurationTrust: NativeFeatureConfigurationTrust? = nil
     ) throws {
@@ -75,12 +77,16 @@ public struct NativeLocalConfiguration: Sendable {
         guard Self.isIdentifier(ownerActorID) else {
             throw NativeApplicationConfigurationError.invalidOwnerActor
         }
+        guard Self.isAppBuild(appBuild) else {
+            throw NativeApplicationConfigurationError.invalidAppVersion
+        }
         if let keychainAccessGroup, !Self.isIdentifier(keychainAccessGroup) {
             throw NativeApplicationConfigurationError.invalidKeychainAccessGroup
         }
         self.applicationIdentifier = applicationIdentifier
         self.applicationSupportDirectory = applicationSupportDirectory
         self.ownerActorID = ownerActorID
+        self.appBuild = appBuild
         self.keychainAccessGroup = keychainAccessGroup
         self.featureConfigurationTrust = featureConfigurationTrust
     }
@@ -125,6 +131,12 @@ public struct NativeLocalConfiguration: Sendable {
                     .union(CharacterSet(charactersIn: ".-_"))
                     .contains($0)
             }
+    }
+
+    private static func isAppBuild(_ value: String) -> Bool {
+        (1 ... 100).contains(value.count)
+            && value == value.trimmingCharacters(in: .whitespacesAndNewlines)
+            && value.utf8.allSatisfy { (32 ... 126).contains($0) }
     }
 }
 
@@ -231,6 +243,7 @@ public struct NativeLocalServices: Sendable {
     public let credentialVault: any CredentialVault
     public let deviceID: UUIDv7
     public let ledgerStore: SQLiteLedgerStore
+    public let productTelemetryRecorder: ProductTelemetryRecorder
     public let captureService: ManualCaptureService
     public let captureAttachmentStore: LocalCaptureAttachmentStore
     public let captureImportBuffer: LocalCaptureImportBuffer
@@ -281,10 +294,21 @@ public struct NativeLocalServices: Sendable {
                 featureConfigurationVerifier: featureConfigurationVerifier
             )
         )
+        let productTelemetryRecorder = try ProductTelemetryRecorder(
+            store: ledgerStore,
+            deviceID: deviceID,
+            appBuild: configuration.appBuild,
+            featureAssignments: {
+                try ledgerStore.resolveFeatureConfiguration(
+                    assignmentSubject: deviceID.description
+                ).assignments
+            }
+        )
         let captureService = try ManualCaptureService(
             store: ledgerStore,
             deviceID: deviceID,
-            ownerActorID: configuration.ownerActorID
+            ownerActorID: configuration.ownerActorID,
+            productTelemetryRecorder: productTelemetryRecorder
         )
         let captureAttachmentStore = try LocalCaptureAttachmentStore(
             configuration: LocalCaptureAttachmentStoreConfiguration(
@@ -366,6 +390,7 @@ public struct NativeLocalServices: Sendable {
             credentialVault: vault,
             deviceID: deviceID,
             ledgerStore: ledgerStore,
+            productTelemetryRecorder: productTelemetryRecorder,
             captureService: captureService,
             captureAttachmentStore: captureAttachmentStore,
             captureImportBuffer: captureImportBuffer,

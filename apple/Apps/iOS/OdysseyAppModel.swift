@@ -2056,7 +2056,8 @@ final class OdysseyAppModel: ObservableObject {
             applicationSupportDirectory: applicationSupport.appendingPathComponent(
                 "Odyssey",
                 isDirectory: true
-            )
+            ),
+            appBuild: try appVersion()
         )
     }
 

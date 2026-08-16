@@ -33,6 +33,7 @@ public actor ManualCaptureService {
     private let store: any LedgerStore
     private let deviceID: UUIDv7
     private let ownerActorID: String
+    private let productTelemetryRecorder: ProductTelemetryRecorder?
     private let clock: @Sendable () -> Date
     private let identifier: @Sendable () -> UUIDv7
     private let provenanceIdentifier: @Sendable () -> UUID
@@ -41,6 +42,7 @@ public actor ManualCaptureService {
         store: any LedgerStore,
         deviceID: UUIDv7,
         ownerActorID: String = "owner",
+        productTelemetryRecorder: ProductTelemetryRecorder? = nil,
         clock: @escaping @Sendable () -> Date = Date.init,
         identifier: @escaping @Sendable () -> UUIDv7 = UUIDv7.init,
         provenanceIdentifier: @escaping @Sendable () -> UUID = UUID.init
@@ -53,6 +55,7 @@ public actor ManualCaptureService {
         self.store = store
         self.deviceID = deviceID
         self.ownerActorID = ownerActorID
+        self.productTelemetryRecorder = productTelemetryRecorder
         self.clock = clock
         self.identifier = identifier
         self.provenanceIdentifier = provenanceIdentifier
@@ -68,6 +71,42 @@ public actor ManualCaptureService {
         else {
             throw ManualCaptureError.invalidClock
         }
+        let telemetryWorkflow = await productTelemetryRecorder?.beginCaptureWorkflow(
+            kind: draft.kind,
+            invokingSurface: draft.invokingSurface,
+            at: recordedAt
+        )
+        do {
+            let receipt = try await persist(
+                draft,
+                recordedAt: recordedAt,
+                capturedAt: capturedAt
+            )
+            if let telemetryWorkflow {
+                await productTelemetryRecorder?.finishCaptureWorkflow(
+                    telemetryWorkflow,
+                    outcome: .committed,
+                    exitStage: .localCommit
+                )
+            }
+            return receipt
+        } catch {
+            if let telemetryWorkflow {
+                await productTelemetryRecorder?.finishCaptureWorkflow(
+                    telemetryWorkflow,
+                    outcome: .failed,
+                    exitStage: .localCommit
+                )
+            }
+            throw error
+        }
+    }
+
+    private func persist(
+        _ draft: ManualCaptureDraft,
+        recordedAt: Date,
+        capturedAt: Date
+    ) async throws -> ManualCaptureReceipt {
         let captureID = draft.sourceCommandID ?? identifier()
         let provenanceID = provenanceIdentifier()
         let payload = CaptureOriginalPayload(
