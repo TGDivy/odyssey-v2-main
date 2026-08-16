@@ -1,0 +1,231 @@
+{
+  "$defs": {
+    "DataClass": {
+      "enum": [
+        "public",
+        "private",
+        "sensitive",
+        "highly_sensitive",
+        "operational_secret",
+        "derived_sensitive"
+      ],
+      "title": "DataClass",
+      "type": "string"
+    },
+    "ExpectedFeatureFrequency": {
+      "enum": [
+        "habitual",
+        "daily_when_relevant"
+      ],
+      "title": "ExpectedFeatureFrequency",
+      "type": "string"
+    },
+    "ProductEventDefinition": {
+      "additionalProperties": false,
+      "properties": {
+        "event_name": {
+          "$ref": "#/$defs/ProductEventName"
+        },
+        "local_only_by_default": {
+          "default": true,
+          "title": "Local Only By Default",
+          "type": "boolean"
+        },
+        "owner": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Owner",
+          "type": "string"
+        },
+        "properties": {
+          "items": {
+            "$ref": "#/$defs/ProductEventPropertyDefinition"
+          },
+          "title": "Properties",
+          "type": "array"
+        },
+        "purpose": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Purpose",
+          "type": "string"
+        },
+        "question_id": {
+          "$ref": "#/$defs/ProductQuestionID"
+        },
+        "retention_days": {
+          "maximum": 365,
+          "minimum": 1,
+          "title": "Retention Days",
+          "type": "integer"
+        },
+        "sensitivity": {
+          "$ref": "#/$defs/DataClass"
+        }
+      },
+      "required": [
+        "event_name",
+        "question_id",
+        "owner",
+        "purpose",
+        "sensitivity",
+        "retention_days",
+        "properties"
+      ],
+      "title": "ProductEventDefinition",
+      "type": "object"
+    },
+    "ProductEventName": {
+      "enum": [
+        "capture.workflow_started.v1",
+        "capture.workflow_finished.v1",
+        "capture.feedback_recorded.v1",
+        "tomorrow_map.availability_evaluated.v1",
+        "tomorrow_map.viewed.v1",
+        "tomorrow_map.session_finished.v1",
+        "tomorrow_map.feedback_recorded.v1",
+        "tomorrow_map.plan_deviation_recorded.v1"
+      ],
+      "title": "ProductEventName",
+      "type": "string"
+    },
+    "ProductEventPropertyDefinition": {
+      "additionalProperties": false,
+      "properties": {
+        "allowed_values": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Allowed Values",
+          "type": "array"
+        },
+        "maximum": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Maximum"
+        },
+        "minimum": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Minimum"
+        },
+        "name": {
+          "maxLength": 100,
+          "minLength": 1,
+          "pattern": "^[a-z0-9_]+$",
+          "title": "Name",
+          "type": "string"
+        },
+        "required": {
+          "default": true,
+          "title": "Required",
+          "type": "boolean"
+        },
+        "value_type": {
+          "$ref": "#/$defs/ProductPropertyType"
+        }
+      },
+      "required": [
+        "name",
+        "value_type"
+      ],
+      "title": "ProductEventPropertyDefinition",
+      "type": "object"
+    },
+    "ProductPropertyType": {
+      "enum": [
+        "string",
+        "boolean",
+        "integer",
+        "number"
+      ],
+      "title": "ProductPropertyType",
+      "type": "string"
+    },
+    "ProductQuestionDefinition": {
+      "additionalProperties": false,
+      "properties": {
+        "decision_use": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Decision Use",
+          "type": "string"
+        },
+        "expected_frequency": {
+          "$ref": "#/$defs/ExpectedFeatureFrequency"
+        },
+        "question_id": {
+          "$ref": "#/$defs/ProductQuestionID"
+        },
+        "statement": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Statement",
+          "type": "string"
+        }
+      },
+      "required": [
+        "question_id",
+        "statement",
+        "decision_use",
+        "expected_frequency"
+      ],
+      "title": "ProductQuestionDefinition",
+      "type": "object"
+    },
+    "ProductQuestionID": {
+      "enum": [
+        "capture_friction_v1",
+        "tomorrow_map_value_v1"
+      ],
+      "title": "ProductQuestionID",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.odyssey.local/v1/product-telemetry-registry.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "events": {
+      "items": {
+        "$ref": "#/$defs/ProductEventDefinition"
+      },
+      "title": "Events",
+      "type": "array"
+    },
+    "questions": {
+      "items": {
+        "$ref": "#/$defs/ProductQuestionDefinition"
+      },
+      "title": "Questions",
+      "type": "array"
+    },
+    "registry_version": {
+      "minimum": 1,
+      "title": "Registry Version",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "registry_version",
+    "questions",
+    "events"
+  ],
+  "title": "ProductTelemetryRegistryDocument",
+  "type": "object"
+}

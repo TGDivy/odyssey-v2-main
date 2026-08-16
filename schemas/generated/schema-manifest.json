@@ -282,7 +282,11 @@
     },
     {
       "path": "schemas/jsonschema/v1/product-event.schema.json",
-      "sha256": "d9f4ef46f4c1ff4aeea3df2cb0485186c2d47a326f41a5687ac11d0702175884"
+      "sha256": "fc3c22f1ff31412d078e2b6db10b5136830ba1768a473014ed3f45fec7dfc663"
+    },
+    {
+      "path": "schemas/jsonschema/v1/product-telemetry-registry.schema.json",
+      "sha256": "13c8b6d8306e85e22aaa7c51d92ee390a102b9b7229eda188fb1f169499696ac"
     },
     {
       "path": "schemas/jsonschema/v1/project.schema.json",
@@ -315,6 +319,10 @@
     {
       "path": "schemas/openapi/odyssey-v1.openapi.json",
       "sha256": "46909953d2dfb6b52a6ae641192b71629b6a4997cea701c72899ca8ea8252ce0"
+    },
+    {
+      "path": "schemas/product-telemetry/registry.v1.json",
+      "sha256": "4883368398681a56a202f60d2d150a248c88fe860964b3c9f9c79e02efa15fa5"
     }
   ],
   "schema_version": 1

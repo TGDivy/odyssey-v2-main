@@ -1,0 +1,389 @@
+{
+  "events": [
+    {
+      "event_name": "capture.workflow_started.v1",
+      "local_only_by_default": true,
+      "owner": "product_evaluation",
+      "properties": [
+        {
+          "allowed_values": [
+            "text",
+            "audio",
+            "image_reference",
+            "file_reference"
+          ],
+          "maximum": null,
+          "minimum": null,
+          "name": "capture_kind",
+          "required": true,
+          "value_type": "string"
+        },
+        {
+          "allowed_values": [
+            "iphone_now",
+            "iphone_global_capture",
+            "app_intent",
+            "share",
+            "widget",
+            "watch",
+            "control",
+            "mac"
+          ],
+          "maximum": null,
+          "minimum": null,
+          "name": "invoking_surface",
+          "required": true,
+          "value_type": "string"
+        }
+      ],
+      "purpose": "Mark a payload-free capture attempt denominator.",
+      "question_id": "capture_friction_v1",
+      "retention_days": 30,
+      "sensitivity": "private"
+    },
+    {
+      "event_name": "capture.workflow_finished.v1",
+      "local_only_by_default": true,
+      "owner": "product_evaluation",
+      "properties": [
+        {
+          "allowed_values": [
+            "text",
+            "audio",
+            "image_reference",
+            "file_reference"
+          ],
+          "maximum": null,
+          "minimum": null,
+          "name": "capture_kind",
+          "required": true,
+          "value_type": "string"
+        },
+        {
+          "allowed_values": [
+            "iphone_now",
+            "iphone_global_capture",
+            "app_intent",
+            "share",
+            "widget",
+            "watch",
+            "control",
+            "mac"
+          ],
+          "maximum": null,
+          "minimum": null,
+          "name": "invoking_surface",
+          "required": true,
+          "value_type": "string"
+        },
+        {
+          "allowed_values": [
+            "committed",
+            "failed",
+            "abandoned"
+          ],
+          "maximum": null,
+          "minimum": null,
+          "name": "outcome",
+          "required": true,
+          "value_type": "string"
+        },
+        {
+          "allowed_values": [
+            "entry",
+            "selection",
+            "saving",
+            "local_commit"
+          ],
+          "maximum": null,
+          "minimum": null,
+          "name": "exit_stage",
+          "required": true,
+          "value_type": "string"
+        },
+        {
+          "allowed_values": [
+            "under_1s",
+            "1_to_3s",
+            "3_to_5s",
+            "5_to_10s",
+            "10_to_30s",
+            "30s_or_more"
+          ],
+          "maximum": null,
+          "minimum": null,
+          "name": "duration_bucket",
+          "required": true,
+          "value_type": "string"
+        }
+      ],
+      "purpose": "Measure bounded capture completion, failure, or abandonment friction.",
+      "question_id": "capture_friction_v1",
+      "retention_days": 30,
+      "sensitivity": "private"
+    },
+    {
+      "event_name": "capture.feedback_recorded.v1",
+      "local_only_by_default": true,
+      "owner": "product_evaluation",
+      "properties": [
+        {
+          "allowed_values": [
+            "useful",
+            "neutral",
+            "added_friction"
+          ],
+          "maximum": null,
+          "minimum": null,
+          "name": "rating",
+          "required": true,
+          "value_type": "string"
+        },
+        {
+          "allowed_values": [
+            "fast",
+            "too_many_steps",
+            "wrong_context",
+            "bad_timing",
+            "unclear",
+            "other"
+          ],
+          "maximum": null,
+          "minimum": null,
+          "name": "reason",
+          "required": false,
+          "value_type": "string"
+        }
+      ],
+      "purpose": "Record situated usefulness or friction without capture payload.",
+      "question_id": "capture_friction_v1",
+      "retention_days": 30,
+      "sensitivity": "private"
+    },
+    {
+      "event_name": "tomorrow_map.availability_evaluated.v1",
+      "local_only_by_default": true,
+      "owner": "product_evaluation",
+      "properties": [
+        {
+          "allowed_values": [
+            "fresh",
+            "stale",
+            "missing",
+            "denied",
+            "unavailable"
+          ],
+          "maximum": null,
+          "minimum": null,
+          "name": "calendar_state",
+          "required": true,
+          "value_type": "string"
+        },
+        {
+          "allowed_values": [],
+          "maximum": null,
+          "minimum": null,
+          "name": "intentionally_absent",
+          "required": true,
+          "value_type": "boolean"
+        },
+        {
+          "allowed_values": [],
+          "maximum": 3,
+          "minimum": 0,
+          "name": "transition_count",
+          "required": true,
+          "value_type": "integer"
+        },
+        {
+          "allowed_values": [],
+          "maximum": null,
+          "minimum": null,
+          "name": "pressure_present",
+          "required": true,
+          "value_type": "boolean"
+        },
+        {
+          "allowed_values": [],
+          "maximum": null,
+          "minimum": null,
+          "name": "protected_open_present",
+          "required": true,
+          "value_type": "boolean"
+        }
+      ],
+      "purpose": "Distinguish automatic availability, degradation, and intentional absence.",
+      "question_id": "tomorrow_map_value_v1",
+      "retention_days": 30,
+      "sensitivity": "private"
+    },
+    {
+      "event_name": "tomorrow_map.viewed.v1",
+      "local_only_by_default": true,
+      "owner": "product_evaluation",
+      "properties": [
+        {
+          "allowed_values": [
+            "fresh",
+            "stale",
+            "missing",
+            "denied",
+            "unavailable"
+          ],
+          "maximum": null,
+          "minimum": null,
+          "name": "calendar_state",
+          "required": true,
+          "value_type": "string"
+        },
+        {
+          "allowed_values": [
+            "automatic_now",
+            "notification",
+            "widget"
+          ],
+          "maximum": null,
+          "minimum": null,
+          "name": "entry_point",
+          "required": true,
+          "value_type": "string"
+        }
+      ],
+      "purpose": "Record a bounded map view and its entry point.",
+      "question_id": "tomorrow_map_value_v1",
+      "retention_days": 30,
+      "sensitivity": "private"
+    },
+    {
+      "event_name": "tomorrow_map.session_finished.v1",
+      "local_only_by_default": true,
+      "owner": "product_evaluation",
+      "properties": [
+        {
+          "allowed_values": [
+            "under_1s",
+            "1_to_3s",
+            "3_to_5s",
+            "5_to_10s",
+            "10_to_30s",
+            "30s_or_more"
+          ],
+          "maximum": null,
+          "minimum": null,
+          "name": "duration_bucket",
+          "required": true,
+          "value_type": "string"
+        },
+        {
+          "allowed_values": [
+            "dismissed",
+            "feedback",
+            "backgrounded"
+          ],
+          "maximum": null,
+          "minimum": null,
+          "name": "outcome",
+          "required": true,
+          "value_type": "string"
+        }
+      ],
+      "purpose": "Measure bounded viewing effort without retaining navigation history.",
+      "question_id": "tomorrow_map_value_v1",
+      "retention_days": 30,
+      "sensitivity": "private"
+    },
+    {
+      "event_name": "tomorrow_map.feedback_recorded.v1",
+      "local_only_by_default": true,
+      "owner": "product_evaluation",
+      "properties": [
+        {
+          "allowed_values": [
+            "useful",
+            "not_useful",
+            "added_friction"
+          ],
+          "maximum": null,
+          "minimum": null,
+          "name": "rating",
+          "required": true,
+          "value_type": "string"
+        },
+        {
+          "allowed_values": [
+            "wrong_context",
+            "bad_timing",
+            "already_handled",
+            "too_intrusive",
+            "reasoning_wrong",
+            "fact_wrong",
+            "preference_changed",
+            "show_less",
+            "other"
+          ],
+          "maximum": null,
+          "minimum": null,
+          "name": "reason",
+          "required": false,
+          "value_type": "string"
+        }
+      ],
+      "purpose": "Record situated map usefulness or correction reason.",
+      "question_id": "tomorrow_map_value_v1",
+      "retention_days": 30,
+      "sensitivity": "private"
+    },
+    {
+      "event_name": "tomorrow_map.plan_deviation_recorded.v1",
+      "local_only_by_default": true,
+      "owner": "product_evaluation",
+      "properties": [
+        {
+          "allowed_values": [
+            "none",
+            "minor",
+            "material",
+            "unknown"
+          ],
+          "maximum": null,
+          "minimum": null,
+          "name": "deviation",
+          "required": true,
+          "value_type": "string"
+        },
+        {
+          "allowed_values": [
+            "helped",
+            "no_effect",
+            "added_burden",
+            "uncertain"
+          ],
+          "maximum": null,
+          "minimum": null,
+          "name": "map_influence",
+          "required": true,
+          "value_type": "string"
+        }
+      ],
+      "purpose": "Capture a next-day deviation without recording plan content.",
+      "question_id": "tomorrow_map_value_v1",
+      "retention_days": 30,
+      "sensitivity": "private"
+    }
+  ],
+  "questions": [
+    {
+      "decision_use": "Identify bounded workflow friction or abandonment without measuring generic engagement.",
+      "expected_frequency": "habitual",
+      "question_id": "capture_friction_v1",
+      "statement": "Does capture remain fast and low-friction across supported inputs without collecting captured content?"
+    },
+    {
+      "decision_use": "Decide whether to preserve, refine, suppress, or remove the bounded map surface.",
+      "expected_frequency": "daily_when_relevant",
+      "question_id": "tomorrow_map_value_v1",
+      "statement": "Does the Tomorrow Map reduce uncertainty without becoming a nightly chore?"
+    }
+  ],
+  "registry_version": 1
+}

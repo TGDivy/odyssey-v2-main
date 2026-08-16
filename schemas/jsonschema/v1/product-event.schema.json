@@ -1,9 +1,27 @@
 {
+  "$defs": {
+    "ProductEventName": {
+      "enum": [
+        "capture.workflow_started.v1",
+        "capture.workflow_finished.v1",
+        "capture.feedback_recorded.v1",
+        "tomorrow_map.availability_evaluated.v1",
+        "tomorrow_map.viewed.v1",
+        "tomorrow_map.session_finished.v1",
+        "tomorrow_map.feedback_recorded.v1",
+        "tomorrow_map.plan_deviation_recorded.v1"
+      ],
+      "title": "ProductEventName",
+      "type": "string"
+    }
+  },
   "$id": "https://schemas.odyssey.local/v1/product-event.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
   "properties": {
     "app_build": {
+      "maxLength": 100,
+      "minLength": 1,
       "title": "App Build",
       "type": "string"
     },
@@ -21,6 +39,8 @@
       "title": "Causal Parent Event Id"
     },
     "context_version": {
+      "maxLength": 100,
+      "minLength": 1,
       "title": "Context Version",
       "type": "string"
     },
@@ -35,24 +55,25 @@
       "type": "string"
     },
     "event_name": {
-      "title": "Event Name",
-      "type": "string"
+      "$ref": "#/$defs/ProductEventName"
     },
     "feature_flag_assignments": {
       "additionalProperties": {
         "type": "string"
       },
+      "maxProperties": 50,
       "title": "Feature Flag Assignments",
       "type": "object"
     },
     "local_only_flag": {
-      "default": false,
+      "default": true,
       "title": "Local Only Flag",
       "type": "boolean"
     },
     "object_id_pseudonymous": {
       "anyOf": [
         {
+          "pattern": "^[0-9a-f]{64}$",
           "type": "string"
         },
         {
@@ -65,6 +86,8 @@
     "object_type": {
       "anyOf": [
         {
+          "maxLength": 80,
+          "minLength": 1,
           "type": "string"
         },
         {
@@ -80,7 +103,23 @@
       "type": "string"
     },
     "properties_typed": {
-      "additionalProperties": true,
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "integer"
+          },
+          {
+            "type": "number"
+          }
+        ]
+      },
+      "maxProperties": 30,
       "title": "Properties Typed",
       "type": "object"
     },
@@ -103,6 +142,9 @@
       "title": "Session Id"
     },
     "surface": {
+      "maxLength": 80,
+      "minLength": 1,
+      "pattern": "^[a-z0-9_.-]+$",
       "title": "Surface",
       "type": "string"
     }
@@ -115,9 +157,7 @@
     "app_build",
     "surface",
     "event_name",
-    "context_version",
-    "feature_flag_assignments",
-    "properties_typed"
+    "context_version"
   ],
   "title": "ProductEvent",
   "type": "object"

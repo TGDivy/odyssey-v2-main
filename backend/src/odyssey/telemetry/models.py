@@ -1,11 +1,24 @@
 """Governed product telemetry and product-change contracts."""
 
 from enum import StrEnum
-from typing import Any
 
-from pydantic import AwareDatetime
+from pydantic import AwareDatetime, Field, model_validator
 
 from odyssey.domain.common import UUID7, EntityMetadata, StrictModel
+
+
+class ProductEventName(StrEnum):
+    CAPTURE_WORKFLOW_STARTED = "capture.workflow_started.v1"
+    CAPTURE_WORKFLOW_FINISHED = "capture.workflow_finished.v1"
+    CAPTURE_FEEDBACK_RECORDED = "capture.feedback_recorded.v1"
+    TOMORROW_MAP_AVAILABILITY_EVALUATED = "tomorrow_map.availability_evaluated.v1"
+    TOMORROW_MAP_VIEWED = "tomorrow_map.viewed.v1"
+    TOMORROW_MAP_SESSION_FINISHED = "tomorrow_map.session_finished.v1"
+    TOMORROW_MAP_FEEDBACK_RECORDED = "tomorrow_map.feedback_recorded.v1"
+    TOMORROW_MAP_PLAN_DEVIATION_RECORDED = "tomorrow_map.plan_deviation_recorded.v1"
+
+
+ProductPropertyValue = str | bool | int | float
 
 
 class ProductEvent(StrictModel):
@@ -14,16 +27,42 @@ class ProductEvent(StrictModel):
     received_at: AwareDatetime
     session_id: UUID7 | None = None
     device_id: UUID7
-    app_build: str
-    surface: str
-    event_name: str
-    object_type: str | None = None
-    object_id_pseudonymous: str | None = None
-    context_version: str
-    feature_flag_assignments: dict[str, str]
-    properties_typed: dict[str, Any]
+    app_build: str = Field(min_length=1, max_length=100)
+    surface: str = Field(min_length=1, max_length=80, pattern=r"^[a-z0-9_.-]+$")
+    event_name: ProductEventName
+    object_type: str | None = Field(default=None, min_length=1, max_length=80)
+    object_id_pseudonymous: str | None = Field(
+        default=None,
+        pattern=r"^[0-9a-f]{64}$",
+    )
+    context_version: str = Field(min_length=1, max_length=100)
+    feature_flag_assignments: dict[str, str] = Field(default_factory=dict, max_length=50)
+    properties_typed: dict[str, ProductPropertyValue] = Field(default_factory=dict, max_length=30)
     causal_parent_event_id: UUID7 | None = None
-    local_only_flag: bool = False
+    local_only_flag: bool = True
+
+    @model_validator(mode="after")
+    def validate_event(self) -> "ProductEvent":
+        if self.received_at < self.occurred_at:
+            raise ValueError("received_at cannot precede occurred_at")
+        for key, value in self.feature_flag_assignments.items():
+            if not _valid_token(key, maximum=100) or not _valid_token(value, maximum=100):
+                raise ValueError("feature flag assignments must use bounded tokens")
+        from odyssey.telemetry.registry import validate_product_event
+
+        validate_product_event(self.event_name, self.properties_typed)
+        return self
+
+
+def _valid_token(value: str, *, maximum: int) -> bool:
+    return (
+        1 <= len(value) <= maximum
+        and value == value.strip()
+        and all(
+            character.isascii() and (character.isalnum() or character in "._-")
+            for character in value
+        )
+    )
 
 
 class ProductChangeStatus(StrEnum):

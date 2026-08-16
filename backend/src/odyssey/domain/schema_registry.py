@@ -37,6 +37,7 @@ from odyssey.evidence.experiments import ExperimentResult, Hypothesis, PersonalE
 from odyssey.evidence.models import ClaimAppraisal, EvidenceClaim, EvidencePack, EvidenceSource
 from odyssey.intent.models import Intent, Intervention, InterventionOpportunity
 from odyssey.telemetry.models import ProductChangeProposal, ProductEvent
+from odyssey.telemetry.registry import ProductTelemetryRegistryDocument
 
 SCHEMA_MODELS: dict[str, type[BaseModel]] = {
     "action": Action,
@@ -78,6 +79,7 @@ SCHEMA_MODELS: dict[str, type[BaseModel]] = {
     "project": Project,
     "product-change-proposal": ProductChangeProposal,
     "product-event": ProductEvent,
+    "product-telemetry-registry": ProductTelemetryRegistryDocument,
     "provenance": Provenance,
     "recommendation": Recommendation,
     "relationship-assertion": RelationshipAssertion,
