@@ -54,6 +54,37 @@ public struct HealthLocalSnapshot: Sendable {
     }
 }
 
+public struct HealthImportOverview: Sendable {
+    public let observedAt: Date
+    public let capability: HealthImportCapability
+    public let permission: IntegrationPermissionState
+    public let sampleCountByKind: [HealthSampleKind: Int]
+    public let newestSourceTimestamp: Date?
+
+    public init(
+        observedAt: Date,
+        capability: HealthImportCapability,
+        permission: IntegrationPermissionState,
+        sampleCountByKind: [HealthSampleKind: Int],
+        newestSourceTimestamp: Date?
+    ) throws {
+        guard observedAt.timeIntervalSinceReferenceDate.isFinite,
+              newestSourceTimestamp?.timeIntervalSinceReferenceDate.isFinite ?? true
+        else {
+            throw HealthImportError.invalidClock
+        }
+        self.observedAt = observedAt
+        self.capability = capability
+        self.permission = permission
+        self.sampleCountByKind = sampleCountByKind
+        self.newestSourceTimestamp = newestSourceTimestamp
+    }
+
+    public var totalSampleCount: Int {
+        sampleCountByKind.values.reduce(0, +)
+    }
+}
+
 public actor HealthImportCoordinator {
     private let importer: any IncrementalHealthImporting
     private let store: any IntegrationLocalRecordStoring
@@ -174,6 +205,40 @@ public actor HealthImportCoordinator {
             kind: kind,
             samples: samples,
             cursor: try stored.cursor.map(HealthImportCursor.init(data:))
+        )
+    }
+
+    public func overview(
+        observedAt: Date = Date()
+    ) async throws -> HealthImportOverview {
+        let capability = await importer.capability()
+        let permission: IntegrationPermissionState
+        if capability.availability == .available,
+           !capability.supportedKinds.isEmpty
+        {
+            permission = await importer.authorizationState(
+                for: capability.supportedKinds
+            )
+        } else {
+            permission = .unavailable
+        }
+        var sampleCountByKind = [HealthSampleKind: Int]()
+        var newestSourceTimestamp: Date?
+        for kind in HealthSampleKind.allCases {
+            let snapshot = try await localSnapshot(for: kind)
+            sampleCountByKind[kind] = snapshot.samples.count
+            if let newest = snapshot.samples.map(\.endDate).max(),
+               newestSourceTimestamp.map({ newest > $0 }) ?? true
+            {
+                newestSourceTimestamp = newest
+            }
+        }
+        return try HealthImportOverview(
+            observedAt: observedAt,
+            capability: capability,
+            permission: permission,
+            sampleCountByKind: sampleCountByKind,
+            newestSourceTimestamp: newestSourceTimestamp
         )
     }
 

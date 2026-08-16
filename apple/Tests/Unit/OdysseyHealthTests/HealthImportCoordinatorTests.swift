@@ -62,6 +62,7 @@ func healthImportCoordinatorPersistsCanonicalPagesAndAnchoredCursors() async thr
     let second = try await coordinator.importChanges(for: .heartRate, limit: 100)
     let third = try await coordinator.importChanges(for: .heartRate, limit: 100)
     let snapshot = try await coordinator.localSnapshot(for: .heartRate)
+    let overview = try await coordinator.overview(observedAt: coordinatorDate)
 
     #expect(first.insertedCount == 1)
     #expect(first.duplicateCount == 1)
@@ -73,6 +74,10 @@ func healthImportCoordinatorPersistsCanonicalPagesAndAnchoredCursors() async thr
     #expect(third.cursorAdvanced)
     #expect(snapshot.samples == [sample])
     #expect(snapshot.cursor == thirdCursor)
+    #expect(overview.permission == .authorized)
+    #expect(overview.sampleCountByKind[.heartRate] == 1)
+    #expect(overview.totalSampleCount == 1)
+    #expect(overview.newestSourceTimestamp == sample.endDate)
 }
 
 @Test
