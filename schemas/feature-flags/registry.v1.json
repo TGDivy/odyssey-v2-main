@@ -1,0 +1,45 @@
+{
+  "flags": [
+    {
+      "allowed_variants": [
+        "enabled",
+        "disabled"
+      ],
+      "default_variant": "enabled",
+      "key": "product_telemetry.capture_question",
+      "owner": "product_evaluation",
+      "purpose": "Kill switch for the governed payload-free capture question."
+    },
+    {
+      "allowed_variants": [
+        "enabled",
+        "disabled"
+      ],
+      "default_variant": "enabled",
+      "key": "product_telemetry.tomorrow_map_question",
+      "owner": "product_evaluation",
+      "purpose": "Kill switch for the governed Tomorrow Map value question."
+    },
+    {
+      "allowed_variants": [
+        "enabled",
+        "disabled"
+      ],
+      "default_variant": "enabled",
+      "key": "product_telemetry.weekly_review",
+      "owner": "product_evaluation",
+      "purpose": "Kill switch for local weekly product review generation."
+    },
+    {
+      "allowed_variants": [
+        "enabled",
+        "disabled"
+      ],
+      "default_variant": "disabled",
+      "key": "intervention.proactive_notifications",
+      "owner": "intervention_policy",
+      "purpose": "Edition gate that keeps proactive notifications disabled by default."
+    }
+  ],
+  "registry_version": 1
+}

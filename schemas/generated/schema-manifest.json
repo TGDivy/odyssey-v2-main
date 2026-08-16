@@ -133,6 +133,10 @@
       "sha256": "60eef1f74616c327baec205ef5a9ab09af5bff48e2ee8247f5fa53e595a67f21"
     },
     {
+      "path": "schemas/feature-flags/registry.v1.json",
+      "sha256": "2fe306cbf2bd2f3cc69b480fbd107d379d96732869b0f48abd0580da5265b80b"
+    },
+    {
       "path": "schemas/jsonschema/v1/action.schema.json",
       "sha256": "e1910699209060a1be74430c11f1b22b21c59b42f612aeeec94354b6c232ef4e"
     },
@@ -227,6 +231,14 @@
     {
       "path": "schemas/jsonschema/v1/experiment-result.schema.json",
       "sha256": "be76c0f4b758e1058754562730aac31140af3ece3d77c342de33c1d51b22e16d"
+    },
+    {
+      "path": "schemas/jsonschema/v1/feature-configuration-envelope.schema.json",
+      "sha256": "f4c1f002a2074a6489f669461fdfa683d57112c237636bc4fb497f15354f9290"
+    },
+    {
+      "path": "schemas/jsonschema/v1/feature-configuration-payload.schema.json",
+      "sha256": "c9a1707d8710db540e99d70893ade6eec924a6cc37b7aac068e48ef8a2089f0c"
     },
     {
       "path": "schemas/jsonschema/v1/golden-replay-set.schema.json",

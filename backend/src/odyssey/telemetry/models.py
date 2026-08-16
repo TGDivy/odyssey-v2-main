@@ -88,3 +88,62 @@ class ProductChangeProposal(StrictModel):
     experiment_plan: str
     rollback: str
     status: ProductChangeStatus
+
+
+class FeatureFlagKey(StrEnum):
+    CAPTURE_TELEMETRY_QUESTION = "product_telemetry.capture_question"
+    TOMORROW_MAP_TELEMETRY_QUESTION = "product_telemetry.tomorrow_map_question"
+    WEEKLY_PRODUCT_REVIEW = "product_telemetry.weekly_review"
+    PROACTIVE_NOTIFICATIONS = "intervention.proactive_notifications"
+
+
+class FeatureFlagRule(StrictModel):
+    key: FeatureFlagKey
+    variant: str = Field(min_length=1, max_length=100, pattern=r"^[a-z0-9_.-]+$")
+    rollout_basis_points: int = Field(ge=0, le=10_000)
+    assignment_salt: str = Field(min_length=1, max_length=100, pattern=r"^[A-Za-z0-9_.-]+$")
+
+
+class FeatureConfigurationPayload(StrictModel):
+    schema_version: int = Field(default=1, ge=1, le=1)
+    configuration_id: UUID7
+    version: int = Field(ge=1)
+    environment: str = Field(
+        min_length=1,
+        max_length=30,
+        pattern=r"^(local|development|staging|production|test)$",
+    )
+    audience: str = Field(
+        min_length=3,
+        max_length=255,
+        pattern=r"^[A-Za-z0-9][A-Za-z0-9.-]+[A-Za-z0-9]$",
+    )
+    issued_at: AwareDatetime
+    not_before: AwareDatetime
+    expires_at: AwareDatetime
+    flags: tuple[FeatureFlagRule, ...] = Field(max_length=50)
+
+    @model_validator(mode="after")
+    def validate_configuration(self) -> "FeatureConfigurationPayload":
+        if self.not_before < self.issued_at:
+            raise ValueError("not_before cannot precede issued_at")
+        if self.expires_at <= self.not_before:
+            raise ValueError("expires_at must follow not_before")
+        keys = [rule.key for rule in self.flags]
+        if len(set(keys)) != len(keys):
+            raise ValueError("feature flag rules must be unique by key")
+        from odyssey.telemetry.feature_flags import FEATURE_FLAG_REGISTRY
+
+        definitions = {definition.key: definition for definition in FEATURE_FLAG_REGISTRY}
+        for rule in self.flags:
+            if rule.variant not in definitions[rule.key].allowed_variants:
+                raise ValueError(f"unsupported variant for {rule.key.value}")
+        return self
+
+
+class FeatureConfigurationEnvelope(StrictModel):
+    schema_version: int = Field(default=1, ge=1, le=1)
+    key_id: str = Field(min_length=1, max_length=100, pattern=r"^[A-Za-z0-9_.-]+$")
+    payload_base64: str = Field(min_length=4, max_length=90_000)
+    payload_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    signature_base64: str = Field(min_length=4, max_length=200)

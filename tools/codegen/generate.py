@@ -12,6 +12,7 @@ from odyssey.config import Environment, Settings
 from odyssey.domain.events import EVENT_DEFINITIONS, event_json_schema
 from odyssey.domain.schema_registry import SCHEMA_MODELS
 from odyssey.main import create_app
+from odyssey.telemetry.feature_flags import FEATURE_FLAG_REGISTRY
 from odyssey.telemetry.registry import PRODUCT_TELEMETRY_REGISTRY
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
@@ -22,6 +23,7 @@ EVENT_REGISTRY_PATH = REPOSITORY_ROOT / "schemas" / "events" / "registry.v1.json
 PRODUCT_TELEMETRY_REGISTRY_PATH = (
     REPOSITORY_ROOT / "schemas" / "product-telemetry" / "registry.v1.json"
 )
+FEATURE_FLAG_REGISTRY_PATH = REPOSITORY_ROOT / "schemas" / "feature-flags" / "registry.v1.json"
 MANIFEST_PATH = REPOSITORY_ROOT / "schemas" / "generated" / "schema-manifest.json"
 
 
@@ -64,6 +66,21 @@ def generated_artifacts() -> dict[Path, bytes]:
     )
     artifacts[PRODUCT_TELEMETRY_REGISTRY_PATH] = serialize(
         PRODUCT_TELEMETRY_REGISTRY.model_dump(mode="json")
+    )
+    artifacts[FEATURE_FLAG_REGISTRY_PATH] = serialize(
+        {
+            "registry_version": 1,
+            "flags": [
+                {
+                    "key": definition.key.value,
+                    "owner": definition.owner,
+                    "purpose": definition.purpose,
+                    "default_variant": definition.default_variant,
+                    "allowed_variants": list(definition.allowed_variants),
+                }
+                for definition in FEATURE_FLAG_REGISTRY
+            ],
+        }
     )
 
     manifest_entries = []

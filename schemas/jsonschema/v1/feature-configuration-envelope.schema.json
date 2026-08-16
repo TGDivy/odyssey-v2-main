@@ -1,0 +1,46 @@
+{
+  "$id": "https://schemas.odyssey.local/v1/feature-configuration-envelope.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "key_id": {
+      "maxLength": 100,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.-]+$",
+      "title": "Key Id",
+      "type": "string"
+    },
+    "payload_base64": {
+      "maxLength": 90000,
+      "minLength": 4,
+      "title": "Payload Base64",
+      "type": "string"
+    },
+    "payload_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Payload Sha256",
+      "type": "string"
+    },
+    "schema_version": {
+      "default": 1,
+      "maximum": 1,
+      "minimum": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "signature_base64": {
+      "maxLength": 200,
+      "minLength": 4,
+      "title": "Signature Base64",
+      "type": "string"
+    }
+  },
+  "required": [
+    "key_id",
+    "payload_base64",
+    "payload_sha256",
+    "signature_base64"
+  ],
+  "title": "FeatureConfigurationEnvelope",
+  "type": "object"
+}

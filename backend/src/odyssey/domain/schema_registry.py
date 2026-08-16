@@ -36,7 +36,12 @@ from odyssey.evaluation.contracts import (
 from odyssey.evidence.experiments import ExperimentResult, Hypothesis, PersonalExperiment
 from odyssey.evidence.models import ClaimAppraisal, EvidenceClaim, EvidencePack, EvidenceSource
 from odyssey.intent.models import Intent, Intervention, InterventionOpportunity
-from odyssey.telemetry.models import ProductChangeProposal, ProductEvent
+from odyssey.telemetry.models import (
+    FeatureConfigurationEnvelope,
+    FeatureConfigurationPayload,
+    ProductChangeProposal,
+    ProductEvent,
+)
 from odyssey.telemetry.registry import ProductTelemetryRegistryDocument
 
 SCHEMA_MODELS: dict[str, type[BaseModel]] = {
@@ -64,6 +69,8 @@ SCHEMA_MODELS: dict[str, type[BaseModel]] = {
     "eval-corpus-manifest": EvalCorpusManifest,
     "eval-rubric-set": EvalRubricSet,
     "experiment-result": ExperimentResult,
+    "feature-configuration-envelope": FeatureConfigurationEnvelope,
+    "feature-configuration-payload": FeatureConfigurationPayload,
     "hypothesis": Hypothesis,
     "golden-replay-set": GoldenReplaySet,
     "intent": Intent,
