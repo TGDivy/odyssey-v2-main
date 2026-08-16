@@ -151,6 +151,16 @@ public struct NowStateCorrection: Codable, Hashable, Sendable {
         self.expiresAt = expiresAt
     }
 
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        try self.init(
+            state: values.decode(NowState.self, forKey: .state),
+            reason: values.decode(NowStateCorrectionReason.self, forKey: .reason),
+            createdAt: values.decode(Date.self, forKey: .createdAt),
+            expiresAt: values.decode(Date.self, forKey: .expiresAt)
+        )
+    }
+
     public func isActive(at date: Date) -> Bool {
         date.timeIntervalSinceReferenceDate.isFinite
             && date >= createdAt.addingTimeInterval(-60)

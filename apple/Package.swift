@@ -80,6 +80,7 @@ let package = Package(
                 "OdysseyData",
                 "OdysseyExtensionBridge",
                 "OdysseyHealth",
+                "OdysseyIntelligence",
                 "OdysseyLocation",
                 "OdysseySync",
                 "OdysseyWeather",
@@ -88,7 +89,7 @@ let package = Package(
         ),
         .target(
             name: "OdysseyExtensionBridge",
-            dependencies: ["OdysseyDomain"],
+            dependencies: ["OdysseyDomain", "OdysseyIntelligence"],
             path: "Packages/OdysseyExtensionBridge/Sources/OdysseyExtensionBridge"
         ),
         .target(
@@ -175,6 +176,7 @@ let package = Package(
                 "OdysseyExtensionBridge",
                 "OdysseyHealth",
                 "OdysseyIntegrations",
+                "OdysseyIntelligence",
                 "OdysseyLocation",
                 "OdysseySync",
                 "OdysseyWeather",
@@ -218,7 +220,11 @@ let package = Package(
         ),
         .testTarget(
             name: "OdysseyExtensionBridgeTests",
-            dependencies: ["OdysseyExtensionBridge", "OdysseyDomain"],
+            dependencies: [
+                "OdysseyExtensionBridge",
+                "OdysseyDomain",
+                "OdysseyIntelligence",
+            ],
             path: "Tests/Unit/OdysseyExtensionBridgeTests"
         ),
     ]
