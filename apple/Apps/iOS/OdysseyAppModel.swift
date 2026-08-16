@@ -10,6 +10,7 @@ import OdysseyDomain
 import OdysseyExtensionBridge
 import OdysseyHealth
 import OdysseySync
+import OdysseyTelemetry
 import OdysseyWatchConnectivity
 import UIKit
 
@@ -32,6 +33,7 @@ final class OdysseyAppModel: ObservableObject {
     @Published private(set) var state = ApplicationFeatureState()
     @Published private(set) var foodHealthAuthorization: FoodHealthAuthorizationState = .unavailable
     @Published private(set) var foodHealthMessage: String?
+    @Published private(set) var foodWarmPathMeasurement: WarmPathMeasurement?
     @Published private(set) var extensionCommandMessage: String?
     @Published private(set) var extensionPresentationRequest: ExtensionCommandPresentation?
 
@@ -43,12 +45,17 @@ final class OdysseyAppModel: ObservableObject {
     private var extensionCommandQueue: ExtensionCommandQueue?
     private var extensionCommandProcessor: ExtensionCommandProcessor?
     private var watchCommandReceiver: PhoneWatchCommandReceiver?
+    private let telemetryRecorder: any TelemetryRecording
 
     #if canImport(HealthKit)
     private let foodHealthCoordinator = FoodHealthWriteCoordinator(
         writer: HealthKitFoodWriter()
     )
     #endif
+
+    init(telemetryRecorder: any TelemetryRecording = NoOpTelemetryRecorder()) {
+        self.telemetryRecorder = telemetryRecorder
+    }
 
     var captureImportBuffer: LocalCaptureImportBuffer? {
         localServices?.captureImportBuffer
@@ -80,6 +87,7 @@ final class OdysseyAppModel: ObservableObject {
         extensionCommandQueue = nil
         extensionCommandProcessor = nil
         watchCommandReceiver = nil
+        foodWarmPathMeasurement = nil
         extensionCommandMessage = nil
         extensionPresentationRequest = nil
 
@@ -375,6 +383,37 @@ final class OdysseyAppModel: ObservableObject {
 
     func dismissFoodStatus() {
         apply(.foodDismissed)
+    }
+
+    func beginFoodWarmPath(
+        surface: WarmPathSurface,
+        correlationID: UUID
+    ) -> WarmPathTimingToken? {
+        foodWarmPathMeasurement = nil
+        return try? WarmPathTimer.start(
+            workflow: .foodQuickLog,
+            surface: surface,
+            initialInteractionCount: 1,
+            correlationID: correlationID
+        )
+    }
+
+    func completeFoodWarmPath(_ token: WarmPathTimingToken) {
+        guard let measurement = try? WarmPathTimer.finish(
+            token,
+            outcome: .committed,
+            additionalInteractionCount: 1
+        ) else { return }
+        foodWarmPathMeasurement = measurement
+        let recorder = telemetryRecorder
+        let signal = measurement.technicalSignal
+        Task {
+            await recorder.record(signal)
+        }
+    }
+
+    func dismissFoodWarmPathMeasurement() {
+        foodWarmPathMeasurement = nil
     }
 
     var hasFoodHealthWriteCandidates: Bool {

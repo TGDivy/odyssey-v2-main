@@ -1,6 +1,7 @@
 import Foundation
 import OdysseyApplication
 import OdysseyDomain
+import OdysseyTelemetry
 import SwiftUI
 import UIKit
 
@@ -12,6 +13,11 @@ struct FoodQuickLogView: View {
     @State private var isCreatingPreset = false
     @State private var selectedOccurrence: FoodOccurrenceSelection?
     @State private var confirmsHealthAuthorization = false
+    @State private var activeWarmPathToken: WarmPathTimingToken?
+
+    init(warmPathToken: WarmPathTimingToken?) {
+        _activeWarmPathToken = State(initialValue: warmPathToken)
+    }
 
     private var snapshot: FoodQuickLogSnapshot? {
         model.state.foodSnapshot
@@ -46,6 +52,7 @@ struct FoodQuickLogView: View {
                         Text(message)
                     } actions: {
                         Button("Try Again") {
+                            abandonWarmPath()
                             Task { await model.refreshFoodQuickLog() }
                         }
                     }
@@ -62,11 +69,15 @@ struct FoodQuickLogView: View {
             )
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") { dismiss() }
-                        .disabled(isBusy)
+                    Button("Close") {
+                        abandonWarmPath()
+                        dismiss()
+                    }
+                    .disabled(isBusy)
                 }
                 ToolbarItem(placement: .primaryAction) {
                     Button {
+                        abandonWarmPath()
                         isCreatingPreset = true
                     } label: {
                         Label("New Preset", systemImage: "plus")
@@ -76,6 +87,11 @@ struct FoodQuickLogView: View {
             }
             .task {
                 await model.refreshFoodQuickLog()
+            }
+            .onChange(of: searchText) { oldValue, newValue in
+                if oldValue != newValue {
+                    abandonWarmPath()
+                }
             }
             .sheet(isPresented: $isCreatingPreset) {
                 FoodPresetEditorView()
@@ -116,14 +132,21 @@ struct FoodQuickLogView: View {
                     } description: {
                         Text("Create a reusable serving before logging it. Presets stay available offline.")
                     } actions: {
-                        Button("Create Preset") { isCreatingPreset = true }
+                        Button("Create Preset") {
+                            abandonWarmPath()
+                            isCreatingPreset = true
+                        }
                             .buttonStyle(.borderedProminent)
                     }
                 }
             } else if searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 Section {
                     ForEach(snapshot.rankedPresets, id: \.preset.metadata.id) { ranked in
-                        quickLogButton(ranked.preset, reason: reasonText(ranked))
+                        quickLogButton(
+                            ranked.preset,
+                            reason: reasonText(ranked),
+                            isRankedWarmPath: true
+                        )
                     }
                 } header: {
                     Text("Likely Now")
@@ -139,7 +162,11 @@ struct FoodQuickLogView: View {
                             .foregroundStyle(.secondary)
                     } else {
                         ForEach(visiblePresets, id: \.metadata.id) { preset in
-                            quickLogButton(preset, reason: nil)
+                            quickLogButton(
+                                preset,
+                                reason: nil,
+                                isRankedWarmPath: false
+                            )
                         }
                     }
                 }
@@ -151,6 +178,7 @@ struct FoodQuickLogView: View {
                 Section {
                     ForEach(snapshot.recentOccurrences, id: \.metadata.id) { occurrence in
                         Button {
+                            abandonWarmPath()
                             selectedOccurrence = FoodOccurrenceSelection(
                                 occurrence: occurrence
                             )
@@ -168,7 +196,10 @@ struct FoodQuickLogView: View {
                 }
             }
         }
-        .refreshable { await model.refreshFoodQuickLog() }
+        .refreshable {
+            abandonWarmPath()
+            await model.refreshFoodQuickLog()
+        }
     }
 
     private var appleHealthSection: some View {
@@ -178,17 +209,20 @@ struct FoodQuickLogView: View {
                 Label("Nutrient writes authorized", systemImage: "heart.fill")
                     .foregroundStyle(.green)
                 Button("Reconcile Odyssey Logs") {
+                    abandonWarmPath()
                     Task { await model.reconcileFoodHealthWrites() }
                 }
                 .disabled(isBusy)
             case .notDetermined:
                 Button("Enable Nutrient Writes") {
+                    abandonWarmPath()
                     confirmsHealthAuthorization = true
                 }
                 .disabled(!model.hasFoodHealthWriteCandidates || isBusy)
             case .denied:
                 Label("Nutrient writes not authorized", systemImage: "heart.slash")
                 Button("Review Health Settings") {
+                    abandonWarmPath()
                     if let settings = URL(string: UIApplication.openSettingsURLString) {
                         openURL(settings)
                     }
@@ -202,6 +236,7 @@ struct FoodQuickLogView: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                 Button("Dismiss Health Status") {
+                    abandonWarmPath()
                     model.dismissFoodHealthMessage()
                 }
             }
@@ -212,11 +247,26 @@ struct FoodQuickLogView: View {
         }
     }
 
-    private func quickLogButton(_ preset: FoodPreset, reason: String?) -> some View {
+    private func quickLogButton(
+        _ preset: FoodPreset,
+        reason: String?,
+        isRankedWarmPath: Bool
+    ) -> some View {
         Button {
+            if !isRankedWarmPath {
+                abandonWarmPath()
+            }
             Task {
                 if await model.logFood(preset: preset) {
+                    if isRankedWarmPath,
+                       let token = activeWarmPathToken
+                    {
+                        model.completeFoodWarmPath(token)
+                        activeWarmPathToken = nil
+                    }
                     dismiss()
+                } else if isRankedWarmPath {
+                    abandonWarmPath()
                 }
             }
         } label: {
@@ -245,6 +295,10 @@ struct FoodQuickLogView: View {
         .disabled(isBusy)
         .accessibilityLabel("Log one serving of \(preset.name)")
         .accessibilityHint("Saves locally before synchronization")
+    }
+
+    private func abandonWarmPath() {
+        activeWarmPathToken = nil
     }
 
     private func reasonText(_ ranked: RankedFoodPreset) -> String {

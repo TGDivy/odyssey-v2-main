@@ -3,6 +3,7 @@ import OdysseyApplication
 import OdysseyDomain
 import OdysseyIntelligence
 import OdysseySync
+import OdysseyTelemetry
 import SwiftUI
 import UIKit
 import UniformTypeIdentifiers
@@ -16,9 +17,16 @@ private enum PrimarySpace: Hashable {
 
 private enum RootSheet: Identifiable {
     case capture
-    case food
+    case food(WarmPathTimingToken?)
 
-    var id: Self { self }
+    var id: String {
+        switch self {
+        case .capture:
+            "capture"
+        case .food:
+            "food"
+        }
+    }
 }
 
 struct RootView: View {
@@ -54,19 +62,22 @@ struct RootView: View {
             case .capture:
                 CaptureSheet()
                     .environmentObject(model)
-            case .food:
-                FoodQuickLogView()
+            case let .food(warmPathToken):
+                FoodQuickLogView(warmPathToken: warmPathToken)
                     .environmentObject(model)
             }
         }
         .onChange(of: model.extensionPresentationRequest, initial: true) {
             _, request in
             guard let request else { return }
-            switch request {
+            switch request.kind {
             case .capture:
                 presentCapture()
             case .food:
-                presentFoodLog()
+                presentFoodLog(
+                    surface: request.invokingSurface.warmPathSurface,
+                    correlationID: request.commandID.rawValue
+                )
             }
             model.consumeExtensionPresentationRequest()
         }
@@ -75,7 +86,10 @@ struct RootView: View {
     private var tabs: some View {
         TabView(selection: $selection) {
             NavigationStack {
-                NowView(openCapture: presentCapture, openFood: presentFoodLog)
+                NowView(
+                    openCapture: presentCapture,
+                    openFood: { presentFoodLog() }
+                )
             }
             .tabItem { Label("Now", systemImage: "location.fill") }
             .tag(PrimarySpace.now)
@@ -100,7 +114,7 @@ struct RootView: View {
         }
         .overlay(alignment: .bottomTrailing) {
             Menu {
-                Button(action: presentFoodLog) {
+                Button(action: { presentFoodLog() }) {
                     Label("Log Food", systemImage: "fork.knife")
                 }
                 Button(action: presentCapture) {
@@ -125,14 +139,35 @@ struct RootView: View {
         activeSheet = .capture
     }
 
-    private func presentFoodLog() {
+    private func presentFoodLog(
+        surface: WarmPathSurface = .iPhone,
+        correlationID: UUID = UUID()
+    ) {
         model.dismissFoodStatus()
-        activeSheet = .food
+        activeSheet = .food(model.beginFoodWarmPath(
+            surface: surface,
+            correlationID: correlationID
+        ))
     }
 
     private func resumeExtensionPresentations() {
         Task {
             await model.processPendingExtensionCommands()
+        }
+    }
+}
+
+private extension ExtensionInvokingSurface {
+    var warmPathSurface: WarmPathSurface {
+        switch self {
+        case .appIntent:
+            .appIntent
+        case .control:
+            .control
+        case .widget:
+            .widget
+        case .watch:
+            .watch
         }
     }
 }
@@ -885,6 +920,25 @@ private struct NowView: View {
                     .foregroundStyle(.secondary)
                 }
 
+                if let measurement = model.foodWarmPathMeasurement {
+                    Button {
+                        model.dismissFoodWarmPathMeasurement()
+                    } label: {
+                        Label(
+                            foodWarmPathStatus(measurement),
+                            systemImage: measurement.meetsTarget
+                                ? "timer.circle.fill"
+                                : "timer.circle"
+                        )
+                        .font(.subheadline)
+                        .foregroundStyle(
+                            measurement.meetsTarget ? Color.green : Color.secondary
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityHint("Dismisses this food quick-log timing result.")
+                }
+
                 if let message = model.extensionCommandMessage {
                     Button {
                         model.dismissExtensionCommandMessage()
@@ -901,6 +955,18 @@ private struct NowView: View {
             .padding()
         }
         .navigationTitle("Now")
+    }
+
+    private func foodWarmPathStatus(_ measurement: WarmPathMeasurement) -> String {
+        let seconds = (measurement.durationMilliseconds / 1_000).formatted(
+            .number.precision(.fractionLength(1))
+        )
+        let interactionLabel = measurement.interactionCount == 1
+            ? "interaction"
+            : "interactions"
+        let target = measurement.meetsTarget ? "target met" : "target missed"
+        return "Food quick log: \(seconds) s, \(measurement.interactionCount) "
+            + "\(interactionLabel), \(target)"
     }
 }
 
