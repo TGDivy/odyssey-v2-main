@@ -107,7 +107,7 @@ let package = Package(
         ),
         .target(
             name: "OdysseyLocation",
-            dependencies: ["OdysseyDomain"],
+            dependencies: ["OdysseyDomain", "OdysseyIntegrations"],
             path: "Packages/OdysseyLocation/Sources/OdysseyLocation"
         ),
         .target(
@@ -188,6 +188,11 @@ let package = Package(
             name: "OdysseyCalendarTests",
             dependencies: ["OdysseyCalendar", "OdysseyDomain", "OdysseyIntegrations"],
             path: "Tests/Unit/OdysseyCalendarTests"
+        ),
+        .testTarget(
+            name: "OdysseyLocationTests",
+            dependencies: ["OdysseyLocation", "OdysseyIntegrations"],
+            path: "Tests/Unit/OdysseyLocationTests"
         ),
         .testTarget(
             name: "OdysseyWeatherTests",
