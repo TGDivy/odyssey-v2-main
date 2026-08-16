@@ -42,6 +42,8 @@ struct WorkshopView: View {
     var body: some View {
         Form {
             workshopStateSection
+            deviceCapabilitySection
+            integrationHealthSection
             lifeModelSection(.charter)
             lifeModelSection(.lifeStage)
             lifeModelSection(.season)
@@ -205,6 +207,92 @@ struct WorkshopView: View {
             .foregroundStyle(.secondary)
         } header: {
             Text("Reviewed Life Model")
+        }
+    }
+
+    private var deviceCapabilitySection: some View {
+        Section("Device Capability Matrix") {
+            if let matrix = model.deviceCapabilityMatrix {
+                LabeledContent("Evaluated device", value: matrix.device.ownerDisplayName)
+                ForEach(matrix.capabilities, id: \.capability) { status in
+                    LabeledContent(status.capability.ownerDisplayName) {
+                        VStack(alignment: .trailing, spacing: 2) {
+                            Text(status.availability.ownerDisplayName)
+                            Text(status.permission.ownerDisplayName)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            } else {
+                Text("Capability inspection is unavailable until local services open.")
+                    .foregroundStyle(.secondary)
+            }
+            Text(
+                "This matrix evaluates the adapters and permissions on this device. "
+                    + "Calendar write and significant/background Location remain "
+                    + "disabled by policy rather than inferred from the OS version."
+            )
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+        }
+    }
+
+    private var integrationHealthSection: some View {
+        Section("Integration Health Catalog") {
+            if let catalog = model.integrationHealthCatalog {
+                ForEach(IntegrationConnector.allCases, id: \.self) { connector in
+                    if let snapshot = catalog.snapshot(for: connector) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Text(connector.ownerDisplayName)
+                                Spacer()
+                                Text(snapshot.operationalState.ownerDisplayName)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Text("Contributes: \(snapshot.contribution.ownerDisplayName)")
+                                .font(.caption)
+                            Text(
+                                "Permission: \(snapshot.permission.ownerDisplayName) · "
+                                    + "Rejected: \(snapshot.rejectedRecordCount) · "
+                                    + "Rate limit: \(snapshot.rateLimitState.ownerDisplayName)"
+                            )
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            if let credentialExpiresAt = snapshot.credentialExpiresAt {
+                                Text(
+                                    "Credential expires: "
+                                        + credentialExpiresAt.formatted(
+                                            date: .abbreviated,
+                                            time: .shortened
+                                        )
+                                )
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            } else {
+                                Text("Credential expiry: Not applicable")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    } else {
+                        LabeledContent(
+                            connector.ownerDisplayName,
+                            value: "Status unavailable"
+                        )
+                    }
+                }
+            } else {
+                Text("Integration health is unavailable until local services open.")
+                    .foregroundStyle(.secondary)
+            }
+            Text(
+                "Detailed freshness, source lag, schema, and revocation controls remain "
+                    + "in each connector section below. No first-party connector shown "
+                    + "here stores an OAuth refresh token."
+            )
+            .font(.footnote)
+            .foregroundStyle(.secondary)
         }
     }
 

@@ -69,6 +69,39 @@ final class OdysseyAppModel: ObservableObject {
         localServices?.captureImportBuffer
     }
 
+    var deviceCapabilityMatrix: DeviceCapabilityMatrix? {
+        try? NativeIntegrationCapabilityMatrix.make(
+            device: UIDevice.current.userInterfaceIdiom == .pad ? .iPad : .iPhone,
+            health: healthContextState.overview,
+            healthNutrientWritePermission: foodHealthIntegrationPermission,
+            calendar: calendarContextState.overview,
+            weather: weatherContextState.overview,
+            location: locationContextState.overview
+        )
+    }
+
+    var integrationHealthCatalog: IntegrationHealthCatalog? {
+        try? IntegrationHealthCatalog(snapshots: [
+            healthContextState.integrationHealth,
+            calendarContextState.integrationHealth,
+            weatherContextState.integrationHealth,
+            locationContextState.integrationHealth,
+        ].compactMap { $0 })
+    }
+
+    private var foodHealthIntegrationPermission: IntegrationPermissionState {
+        switch foodHealthAuthorization {
+        case .unavailable:
+            .unavailable
+        case .notDetermined:
+            .notDetermined
+        case .denied:
+            .denied
+        case .authorized:
+            .authorized
+        }
+    }
+
     func verifiedCaptureContentURL(
         for reference: CaptureAttachmentReference
     ) async throws -> URL {
