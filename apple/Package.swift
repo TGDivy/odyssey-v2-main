@@ -84,6 +84,7 @@ let package = Package(
                 "OdysseyIntelligence",
                 "OdysseyLocation",
                 "OdysseySync",
+                "OdysseyTelemetry",
                 "OdysseyWeather",
             ],
             path: "Packages/OdysseyApplication/Sources/OdysseyApplication"
@@ -181,6 +182,7 @@ let package = Package(
                 "OdysseyIntelligence",
                 "OdysseyLocation",
                 "OdysseySync",
+                "OdysseyTelemetry",
                 "OdysseyWeather",
             ],
             path: "Tests/Unit/OdysseyApplicationTests"
