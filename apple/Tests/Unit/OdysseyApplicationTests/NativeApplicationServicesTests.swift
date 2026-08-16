@@ -175,6 +175,8 @@ func remoteServicesComposeAuthTokenTransportAndOfflineDiagnostics() async throws
     #expect(diagnostics.operationsQueued == 0)
     #expect(diagnostics.schemaCompatibility == .unknown)
     #expect(lifeModelDiagnostics.queuedCount == 0)
+    #expect(remote.featureConfigurationTransport == nil)
+    #expect(remote.featureConfigurationRefreshCoordinator == nil)
 }
 
 private actor ServicesMemoryVault: CredentialVault {

@@ -7,6 +7,7 @@ import OdysseyHealth
 import OdysseyIntelligence
 import OdysseyLocation
 import OdysseySync
+import OdysseyTelemetry
 import OdysseyWeather
 
 public enum NativeApplicationConfigurationError: Error, Equatable, Sendable {
@@ -19,6 +20,7 @@ public enum NativeApplicationConfigurationError: Error, Equatable, Sendable {
     case placeholderRemoteHost
     case insecureRemoteHost
     case invalidAppVersion
+    case featureConfigurationVerificationUnavailable
 }
 
 extension NativeApplicationConfigurationError: LocalizedError {
@@ -42,6 +44,8 @@ extension NativeApplicationConfigurationError: LocalizedError {
             "Plain HTTP is allowed only for a loopback development server."
         case .invalidAppVersion:
             "The app version is missing or invalid."
+        case .featureConfigurationVerificationUnavailable:
+            "Feature configuration trust is set, but no Ed25519 verifier is available."
         }
     }
 }
@@ -51,12 +55,14 @@ public struct NativeLocalConfiguration: Sendable {
     public let applicationSupportDirectory: URL
     public let ownerActorID: String
     public let keychainAccessGroup: String?
+    public let featureConfigurationTrust: NativeFeatureConfigurationTrust?
 
     public init(
         applicationIdentifier: String,
         applicationSupportDirectory: URL,
         ownerActorID: String = "owner",
-        keychainAccessGroup: String? = nil
+        keychainAccessGroup: String? = nil,
+        featureConfigurationTrust: NativeFeatureConfigurationTrust? = nil
     ) throws {
         guard Self.isIdentifier(applicationIdentifier) else {
             throw NativeApplicationConfigurationError.invalidApplicationIdentifier
@@ -76,6 +82,7 @@ public struct NativeLocalConfiguration: Sendable {
         self.applicationSupportDirectory = applicationSupportDirectory
         self.ownerActorID = ownerActorID
         self.keychainAccessGroup = keychainAccessGroup
+        self.featureConfigurationTrust = featureConfigurationTrust
     }
 
     public var databaseURL: URL {
@@ -125,6 +132,42 @@ public enum NativeDeploymentEnvironment: String, Codable, CaseIterable, Hashable
     case development
     case staging
     case production
+}
+
+public enum NativeFeatureConfigurationTrustError: Error, Equatable, Sendable {
+    case invalidKeyID
+    case invalidPublicKey
+}
+
+public struct NativeFeatureConfigurationTrust: Sendable {
+    public let keyID: String
+    public let environment: NativeDeploymentEnvironment
+    let publicKey: Data
+
+    public init(
+        keyID: String,
+        publicKeyBase64: String,
+        environment: NativeDeploymentEnvironment
+    ) throws {
+        guard (1 ... 100).contains(keyID.count),
+              keyID.unicodeScalars.allSatisfy({
+                  $0.isASCII
+                      && (CharacterSet.alphanumerics.contains($0)
+                          || "._-".unicodeScalars.contains($0))
+              })
+        else {
+            throw NativeFeatureConfigurationTrustError.invalidKeyID
+        }
+        guard let publicKey = Data(base64Encoded: publicKeyBase64),
+              publicKey.count == 32,
+              publicKey.base64EncodedString() == publicKeyBase64
+        else {
+            throw NativeFeatureConfigurationTrustError.invalidPublicKey
+        }
+        self.keyID = keyID
+        self.environment = environment
+        self.publicKey = publicKey
+    }
 }
 
 public struct NativeRemoteConfiguration: Sendable {
@@ -184,6 +227,7 @@ public struct NativeRemoteConfiguration: Sendable {
 }
 
 public struct NativeLocalServices: Sendable {
+    public let applicationIdentifier: String
     public let credentialVault: any CredentialVault
     public let deviceID: UUIDv7
     public let ledgerStore: SQLiteLedgerStore
@@ -202,6 +246,7 @@ public struct NativeLocalServices: Sendable {
     public let lifeModelWorkshopService: LifeModelWorkshopService
     public let nowExperienceService: NowExperienceService
     public let attachmentRecoveryState: LocalCaptureAttachmentRecoveryState
+    public let featureConfigurationTrust: NativeFeatureConfigurationTrust?
 
     public static func bootstrap(
         configuration: NativeLocalConfiguration
@@ -218,14 +263,22 @@ public struct NativeLocalServices: Sendable {
         healthImporter: (any IncrementalHealthImporting)? = nil,
         calendarAdapter: (any CalendarContextProviding)? = nil,
         locationAdapter: (any LocationContextProviding)? = nil,
-        weatherAdapter: (any WeatherContextProviding)? = nil
+        weatherAdapter: (any WeatherContextProviding)? = nil,
+        featureConfigurationSignatureVerifier: (
+            any FeatureConfigurationSignatureVerifying
+        )? = nil
     ) async throws -> Self {
         let deviceID = try await vault.loadOrCreateDeviceID()
+        let featureConfigurationVerifier = try makeFeatureConfigurationVerifier(
+            configuration: configuration,
+            signatureVerifier: featureConfigurationSignatureVerifier
+        )
         let ledgerStore = try SQLiteLedgerStore(
             configuration: SQLiteLedgerConfiguration(
                 databaseURL: configuration.databaseURL,
                 deviceID: deviceID,
-                preMigrationBackupDirectory: configuration.preMigrationBackupDirectory
+                preMigrationBackupDirectory: configuration.preMigrationBackupDirectory,
+                featureConfigurationVerifier: featureConfigurationVerifier
             )
         )
         let captureService = try ManualCaptureService(
@@ -309,6 +362,7 @@ public struct NativeLocalServices: Sendable {
         )
         let nowExperienceService = NowExperienceService(store: ledgerStore)
         return Self(
+            applicationIdentifier: configuration.applicationIdentifier,
             credentialVault: vault,
             deviceID: deviceID,
             ledgerStore: ledgerStore,
@@ -329,8 +383,38 @@ public struct NativeLocalServices: Sendable {
             attachmentRecoveryState: await attachmentRecoveryState(
                 store: captureAttachmentStore,
                 ledgerStore: ledgerStore
-            )
+            ),
+            featureConfigurationTrust: configuration.featureConfigurationTrust
         )
+    }
+
+    private static func makeFeatureConfigurationVerifier(
+        configuration: NativeLocalConfiguration,
+        signatureVerifier: (any FeatureConfigurationSignatureVerifying)?
+    ) throws -> FeatureConfigurationVerifier? {
+        guard let trust = configuration.featureConfigurationTrust else {
+            return nil
+        }
+        if let signatureVerifier {
+            return try FeatureConfigurationVerifier(
+                expectedKeyID: trust.keyID,
+                publicKey: trust.publicKey,
+                expectedEnvironment: trust.environment.featureConfigurationEnvironment,
+                expectedAudience: configuration.applicationIdentifier,
+                signatureVerifier: signatureVerifier
+            )
+        }
+        #if canImport(CryptoKit)
+        return try FeatureConfigurationVerifier(
+            expectedKeyID: trust.keyID,
+            publicKey: trust.publicKey,
+            expectedEnvironment: trust.environment.featureConfigurationEnvironment,
+            expectedAudience: configuration.applicationIdentifier,
+            signatureVerifier: CryptoKitEd25519SignatureVerifier()
+        )
+        #else
+        throw NativeApplicationConfigurationError.featureConfigurationVerificationUnavailable
+        #endif
     }
 
     private static func attachmentRecoveryState(
@@ -424,12 +508,19 @@ public struct NativeRemoteServices: Sendable {
     public let syncCoordinator: DurableSyncCoordinator
     public let lifeModelTransport: URLSessionLifeModelTransport
     public let lifeModelAcceptanceCoordinator: LifeModelAcceptanceCoordinator
+    public let featureConfigurationTransport: URLSessionFeatureConfigurationTransport?
+    public let featureConfigurationRefreshCoordinator: FeatureConfigurationRefreshCoordinator?
     private let credentialVault: any CredentialVault
 
     public init(
         localServices: NativeLocalServices,
         configuration: NativeRemoteConfiguration
     ) throws {
+        if let trust = localServices.featureConfigurationTrust,
+           trust.environment != configuration.environment
+        {
+            throw NativeApplicationConfigurationError.invalidRemoteEnvironment
+        }
         let authClient = try URLSessionAuthClient(
             configuration: URLSessionAuthClientConfiguration(
                 baseURL: configuration.baseURL,
@@ -463,6 +554,24 @@ public struct NativeRemoteServices: Sendable {
             store: localServices.ledgerStore,
             transport: lifeModelTransport
         )
+        let featureConfigurationTransport: URLSessionFeatureConfigurationTransport?
+        let featureConfigurationRefreshCoordinator: FeatureConfigurationRefreshCoordinator?
+        if localServices.featureConfigurationTrust != nil {
+            let transport = try URLSessionFeatureConfigurationTransport(
+                configuration: configuration,
+                tokenProvider: tokenSession
+            )
+            featureConfigurationTransport = transport
+            featureConfigurationRefreshCoordinator = FeatureConfigurationRefreshCoordinator(
+                cache: localServices.ledgerStore,
+                transport: transport,
+                audience: localServices.applicationIdentifier,
+                assignmentSubject: localServices.deviceID.description
+            )
+        } else {
+            featureConfigurationTransport = nil
+            featureConfigurationRefreshCoordinator = nil
+        }
         self.configuration = configuration
         self.authClient = authClient
         self.tokenSession = tokenSession
@@ -470,6 +579,8 @@ public struct NativeRemoteServices: Sendable {
         self.syncCoordinator = syncCoordinator
         self.lifeModelTransport = lifeModelTransport
         self.lifeModelAcceptanceCoordinator = lifeModelAcceptanceCoordinator
+        self.featureConfigurationTransport = featureConfigurationTransport
+        self.featureConfigurationRefreshCoordinator = featureConfigurationRefreshCoordinator
         credentialVault = localServices.credentialVault
     }
 
@@ -482,5 +593,18 @@ public struct NativeRemoteServices: Sendable {
             tokenSession: tokenSession,
             authorizer: authorizer
         )
+    }
+}
+
+private extension NativeDeploymentEnvironment {
+    var featureConfigurationEnvironment: FeatureConfigurationEnvironment {
+        switch self {
+        case .development:
+            .development
+        case .staging:
+            .staging
+        case .production:
+            .production
+        }
     }
 }
