@@ -12,8 +12,8 @@ personal data.
 As of 2026-08-16, repository validation proves the credential-free contracts;
 it does not prove an owner deployment:
 
-- The current backend baseline passes 213 tests at 86.79% coverage. Schema
-  generation verifies 76 artifacts, and OpenTofu 1.10.6 validates all five
+- The current backend baseline passes 214 tests at 86.67% coverage. Schema
+  generation verifies 78 artifacts, and OpenTofu 1.10.6 validates all five
   mocked plans including encrypted-export wiring. Run the complete
   cross-platform `make verify` again from the release commit before deployment.
 - OpenTofu 1.10.6 and Google provider 7.44.0 were separately validated against
@@ -24,7 +24,7 @@ it does not prove an owner deployment:
   environment.
 - No Apple-platform package build, Xcode archive, signing operation, TestFlight
   upload, or physical-device test has been performed. The portable Swift
-  package has been compiled and its 110 deterministic tests have run under the
+  package has been compiled and its 111 deterministic tests have run under the
   official Linux Swift 6.1 toolchain; that is not Apple-platform validation.
 - The cloud model remains `deterministic`. Adding a model-provider key alone
   enables nothing; no evaluated cloud-model adapter is implemented.
@@ -47,10 +47,11 @@ it does not prove an owner deployment:
   manual sync, integrity verification, projection rebuild, and an
   opportunistic app-refresh entry. None of those Apple-platform paths has been
   Xcode-built or device-tested.
-  Portable simple food-preset values, atomic local create/revise/archive, and
-  deterministic context/frequency ranking also exist, but durable meal
-  occurrences, quick-log UI, HealthKit writes, cross-stack food-event proof, and
-  live ranking experiments do not.
+  Portable simple food-preset values, atomic local create/revise/archive,
+  registered create/revise event schemas, deterministic context/frequency
+  ranking, and native-shaped server merge/pull regressions also exist. Durable
+  meal occurrences, quick-log UI, HealthKit writes, authenticated physical
+  two-device food convergence, and live ranking experiments do not.
   The device/refresh Keychain vault, in-memory access-token refresh session,
   native Apple ceremony, and auth HTTP exchange are implemented as package
   boundaries. Recovery UI, server-side device-revocation UI, and physical

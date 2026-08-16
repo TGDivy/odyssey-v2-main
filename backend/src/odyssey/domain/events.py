@@ -61,6 +61,18 @@ EVENT_DEFINITIONS: tuple[EventDefinition, ...] = (
         purpose="Append-only owner review or correction of an interpretation",
     ),
     EventDefinition(
+        "food_preset.created.v1",
+        "food_preset",
+        ("food_preset_id",),
+        purpose="Owner-created reusable food or drink preset",
+    ),
+    EventDefinition(
+        "food_preset.revised.v1",
+        "food_preset",
+        ("food_preset_id", "change"),
+        purpose="Optimistic food preset revision or archive",
+    ),
+    EventDefinition(
         "observation.normalized.v1",
         "observation",
         ("observation_id", "source_record_id"),

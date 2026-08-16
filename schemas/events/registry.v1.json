@@ -20,6 +20,18 @@
       "schema": "schemas/events/v1/capture.interpretation_reviewed.v1.schema.json"
     },
     {
+      "aggregate_type": "food_preset",
+      "event_type": "food_preset.created.v1",
+      "purpose": "Owner-created reusable food or drink preset",
+      "schema": "schemas/events/v1/food_preset.created.v1.schema.json"
+    },
+    {
+      "aggregate_type": "food_preset",
+      "event_type": "food_preset.revised.v1",
+      "purpose": "Optimistic food preset revision or archive",
+      "schema": "schemas/events/v1/food_preset.revised.v1.schema.json"
+    },
+    {
       "aggregate_type": "observation",
       "event_type": "observation.normalized.v1",
       "purpose": "Normalized source-linked observation",

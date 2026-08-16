@@ -343,6 +343,137 @@ def test_domain_merge_policies_preserve_meaning(tmp_path: Path) -> None:
     asyncio.run(scenario())
 
 
+def test_native_food_preset_metadata_allows_only_disjoint_semantic_merge(
+    tmp_path: Path,
+) -> None:
+    async def scenario() -> None:
+        database = Database(f"sqlite+aiosqlite:///{tmp_path / 'native-food-sync.sqlite'}")
+        async with database.engine.begin() as connection:
+            await connection.run_sync(Base.metadata.create_all)
+        service = SyncService()
+        iphone = new_uuid7()
+        mac = new_uuid7()
+        watch = new_uuid7()
+        preset = new_uuid7()
+        provenance_id = new_uuid7()
+        created_at = datetime(2026, 8, 16, 8, tzinfo=UTC)
+
+        def metadata(revision: int, revised_at: datetime) -> dict[str, JsonValue]:
+            return {
+                "id": str(preset),
+                "schema_version": 1,
+                "created_at": created_at.isoformat(),
+                "created_by": {"actor_type": "user", "actor_id": "owner"},
+                "last_revised_at": revised_at.isoformat(),
+                "revision": revision,
+                "sensitivity": "private",
+                "provenance_id": str(provenance_id),
+            }
+
+        create = sync_operation(
+            sequence=1,
+            entity_type="food_preset",
+            entity_id=preset,
+            mutation=SyncMutationType.CREATE,
+            payload={
+                "metadata": metadata(1, created_at),
+                "name": "Porridge",
+                "serving_description": "1 bowl",
+                "aliases": [],
+            },
+            created_at=created_at,
+        )
+        async with database.sessions() as session, session.begin():
+            created = await service.push(
+                session,
+                request=push_request(iphone, "c_0", create),
+                batch_idempotency_key="native-food-create",
+                server_time=created_at,
+            )
+        assert created.next_cursor == "c_1"
+
+        mac_revised_at = created_at + timedelta(hours=2)
+        mac_update = sync_operation(
+            sequence=1,
+            entity_type="food_preset",
+            entity_id=preset,
+            mutation=SyncMutationType.UPDATE,
+            payload={
+                "metadata": metadata(2, mac_revised_at),
+                "aliases": ["Warm oats"],
+            },
+            base_revision=1,
+            created_at=mac_revised_at,
+        )
+        async with database.sessions() as session, session.begin():
+            mac_result = await service.push(
+                session,
+                request=push_request(mac, "c_1", mac_update),
+                batch_idempotency_key="native-food-mac-alias",
+                server_time=mac_revised_at,
+            )
+        assert mac_result.accepted[0].merge_result == "optimistic_update"
+
+        iphone_revised_at = created_at + timedelta(hours=1)
+        iphone_update = sync_operation(
+            sequence=2,
+            entity_type="food_preset",
+            entity_id=preset,
+            mutation=SyncMutationType.UPDATE,
+            payload={
+                "metadata": metadata(2, iphone_revised_at),
+                "name": "Overnight oats",
+            },
+            base_revision=1,
+            created_at=iphone_revised_at,
+        )
+        async with database.sessions() as session, session.begin():
+            iphone_result = await service.push(
+                session,
+                request=push_request(iphone, "c_1", iphone_update),
+                batch_idempotency_key="native-food-iphone-name",
+                server_time=mac_revised_at + timedelta(minutes=1),
+            )
+        assert iphone_result.accepted[0].merge_result == "disjoint_field_merge"
+        assert iphone_result.accepted[0].canonical_revision == 3
+
+        async with database.sessions() as session:
+            canonical = await session.get(CanonicalEntityRecord, ("food_preset", preset))
+            pulled = await service.pull(session, cursor="c_0", limit=10)
+        assert canonical is not None
+        assert canonical.document["name"] == "Overnight oats"
+        assert canonical.document["aliases"] == ["Warm oats"]
+        assert canonical.document["serving_description"] == "1 bowl"
+        assert canonical.document["metadata"]["revision"] == 3
+        assert canonical.document["metadata"]["last_revised_at"] == mac_revised_at.isoformat()
+        assert pulled.changes[-1].payload == canonical.document
+
+        overlapping = sync_operation(
+            sequence=1,
+            entity_type="food_preset",
+            entity_id=preset,
+            mutation=SyncMutationType.UPDATE,
+            payload={
+                "metadata": metadata(2, created_at + timedelta(minutes=30)),
+                "name": "Conflicting oats",
+            },
+            base_revision=1,
+            created_at=created_at + timedelta(minutes=30),
+        )
+        async with database.sessions() as session, session.begin():
+            conflict = await service.push(
+                session,
+                request=push_request(watch, "c_1", overlapping),
+                batch_idempotency_key="native-food-overlap",
+                server_time=mac_revised_at + timedelta(minutes=2),
+            )
+        assert conflict.conflicts[0].code == "OVERLAPPING_FIELD_EDITS"
+        assert conflict.conflicts[0].conflicting_fields == ("name",)
+        await database.dispose()
+
+    asyncio.run(scenario())
+
+
 def test_batch_idempotency_key_rejects_different_content(tmp_path: Path) -> None:
     async def scenario() -> None:
         database = Database(f"sqlite+aiosqlite:///{tmp_path / 'batch-key.sqlite'}")

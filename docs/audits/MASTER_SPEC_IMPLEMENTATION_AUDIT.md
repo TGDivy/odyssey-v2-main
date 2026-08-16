@@ -48,7 +48,7 @@ deployment, external account configuration, or physical-device behavior.
 | §22 data architecture | `partial` | append-only ledger, projections, provenance contracts, streaming SHA-256, bounded protected provider-import buffering, protected opaque local attachment manifests plus tested filesystem/ledger handoff and reconciliation, encrypted owner export/import foundations, accepted life-model history and 17 migrations | Attachment tombstone/retention lifecycle, complete semantic services, selective memory, redaction and scale budgets. |
 | §23 backend architecture | `partial` | FastAPI modular monolith, Postgres/SQLite support, worker/outbox, auth/sync/attachments, accepted `/v1/seasons/*` commands/history and deterministic context assembly | Remaining domain modules and Appendix B routes, queues/workflows and operational SLO evidence. |
 | §24 AI/model architecture | `contract-only` | model-run schema | Provider-neutral router, tool boundaries, prompt defense, eval gates, budget and rollback control. |
-| §25 offline/synchronization | `verified` | server sync service, simulated clients, conflicts, native GRDB queue/coordinator, convergence tests | Xcode/device multi-device proof remains owner-only. |
+| §25 offline/synchronization | `verified` | server sync service, simulated clients, conflicts, native GRDB queue/coordinator, convergence tests, and native-shaped food-preset disjoint/overlap merge plus pull-materialization regressions | Xcode/device multi-device proof remains owner-only. |
 | §26 notification/background | `partial` | background refresh/widget/intent targets plus deterministic C.1/B.6 expiry, pause, burden and delivery-state policy | Local scheduling, rendered redaction, receipts/outcomes and physical-device tests. |
 | §27 observability | `partial` | structured payload-safe logging, OpenTelemetry runtime, alerts/IaC, record trace | Deploy collectors/dashboards and prove external alert delivery. |
 | §28 product telemetry/self-improvement | `contract-only` | product-event/change-proposal contracts and runtime redaction | Declared-question registry, approved metrics, proposal review, counterexamples, rollback experiments. |
@@ -58,7 +58,7 @@ deployment, external account configuration, or physical-device behavior.
 | §32 failure modes/pre-mortem | `partial` | kill switches, retry/conflict diagnostics, incident/recovery runbooks | Regression scenarios for each severe failure and owner drills. |
 | §33 technology choices | `documented` | master specification, ADR 0001, lockfiles, OpenTofu and XcodeGen manifests | Add ADRs whenever implementation departs from selected architecture. |
 | §34 repository architecture | `verified` | monorepo layout, portable paths, package/infra/docs/tool boundaries | Keep directory contract synchronized as editions are added. |
-| §35 testing strategy | `partial` | 213 backend tests pass at 86.79% coverage, 110 portable Swift 6.1 tests pass, and deterministic policy golden replay plus schema/fixture/IaC checks pass in this Linux snapshot | Clear repository-wide formatter drift; historical/model, UI, performance, broader fault, Apple integration and live recovery suites remain. |
+| §35 testing strategy | `partial` | 214 backend tests pass at 86.67% coverage, 111 portable Swift 6.1 tests pass, and deterministic policy golden replay plus schema/fixture/IaC checks pass in this Linux snapshot | Clear repository-wide formatter drift; historical/model, UI, performance, broader fault, Apple integration and live recovery suites remain. |
 | §36 deployment architecture | `implemented` | GCP OpenTofu, deployment workflow examples, migration/canary/rollback and handoff docs | Owner provisions accounts, imports secrets, deploys, validates alerts/backups/restore and signs apps. |
 | §37 development environments | `verified` | lockfiles, Compose, environment diagnostics, `make verify`, Mac-only skip reporting | Fresh personal Mac proof is owner-only. |
 | §38 roadmap | `partial` | Edition 0 substrate and iPhone capture/auth/sync slice | Edition 1–4 product loops and milestone acceptance artifacts remain. |
@@ -72,7 +72,7 @@ deployment, external account configuration, or physical-device behavior.
 | §47 implementation-agent handoff | `partial` | README, assumptions, architecture docs, runbooks, detailed owner handoff | Maintain final requirement ledger and unresolved credential/manual-step register. |
 | §48 scenario stress tests | `partial` | all 20 scenarios encoded as strict synthetic §29.2 cases with frozen context, data scope, acceptable/unacceptable outputs, evidence, authority, rubrics and provenance | Execute and grade applicable model/product/Apple surfaces; retain owner-only historical regressions privately. |
 | Appendix A domain contracts | `verified` | Pydantic contracts and generated JSON Schemas | Behavioral validation still belongs to each owning section above. |
-| Appendix B API/events | `verified` | error/auth/capture/sync/attachment/system routes, B.4–B.8 behavioral APIs, B.9 encrypted asynchronous signed/resumable owner exports, and immutable event registry | Preserve contract compatibility as product surfaces consume the APIs. |
+| Appendix B API/events | `verified` | error/auth/capture/sync/attachment/system routes, B.4–B.8 behavioral APIs, B.9 encrypted asynchronous signed/resumable owner exports, and immutable event registry including food-preset create/revise | Preserve contract compatibility as product surfaces consume the APIs. |
 | Appendix C policies | `verified` | C.1–C.7 are versioned deterministic pure policies with focused boundary/replay-style automated tests; C.5 is disabled by default | Cross-policy golden scenarios remain tracked under §29 rather than policy implementation. |
 | Appendix D sources | `documented` | cited research and official-source register | Record source-version/update policy in evidence implementation. |
 | Appendix E traceability/definition of done | `partial` | this audit plus master traceability table | Close every unchecked E.2 row with automated or owner evidence. |
@@ -162,12 +162,12 @@ personal state or complete the longitudinal protocol.
 
 At this snapshot:
 
-- The current full backend run reports 213 tests passing at 86.79% coverage.
+- The current full backend run reports 214 tests passing at 86.67% coverage.
   Full Ruff lint and strict mypy pass across 138 source files; all changed Python
   files are format-clean. The repository-wide formatter gate still finds 16
   pre-existing drifts outside this slice, so the aggregate verification script
   stops before its remaining stages.
-- Schema generation verifies 76 deterministic artifacts, synthetic-history
+- Schema generation verifies 78 deterministic artifacts, synthetic-history
   generation verifies three artifacts, the evaluation corpus replays 20 cases
   through eight rubrics and six golden adapters, and the GCP structural checker
   verifies 88 resources and 29 required artifacts.
@@ -175,13 +175,14 @@ At this snapshot:
   mocked plans, including encrypted-export secret, storage, IAM and worker
   wiring across seventeen migrations. OpenTofu is unavailable for a current
   rerun in this environment.
-- The complete portable Swift package reports 110 tests passing under the
+- The complete portable Swift package reports 111 tests passing under the
   official Swift 6.1 release toolchain in a local Ubuntu container. This includes
   typed Workshop/editor/reducer coverage, deterministic Season map, durable
   source-linked capture interpretation, protected local attachment storage and
   filesystem/ledger recovery, bounded protected provider-import buffering and
-  its durable handoff, atomic food-preset lifecycle and deterministic ranking,
-  streaming SHA-256 known answers, and temporal/acronym codec regressions.
+  its durable handoff, atomic food-preset lifecycle, deterministic ranking and
+  canonical merge materialization, streaming SHA-256 known answers, and
+  temporal/acronym codec regressions.
 - iOS sources, including guarded voice and selected-only photo/file capture,
   passed Swift parser/structure validation and `apple/project.yml` passed YAML
   structure checks; SwiftUI, PhotosUI and AVFoundation still require Xcode

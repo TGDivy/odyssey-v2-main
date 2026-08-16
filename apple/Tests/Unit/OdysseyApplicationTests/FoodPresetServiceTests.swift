@@ -187,6 +187,101 @@ func foodPresetServiceRejectsNoopInvalidClockAndInvalidDraftWithoutMutation() as
     #expect(try await service.preset(id: created.preset.metadata.id) == created.preset)
 }
 
+@Test
+func foodPresetServiceDecodesServerNormalizedDisjointMergeAfterPull() async throws {
+    let fixture = try FoodPresetServiceFixture()
+    defer { fixture.remove() }
+    let presetID = try foodServiceIdentifier(901)
+    let originDeviceID = try foodServiceIdentifier(902)
+    let createdAt = "2026-08-16T08:00:00+00:00"
+    let firstRevision = try serverFoodPresetDocument(
+        presetID: presetID,
+        revision: 1,
+        createdAt: createdAt,
+        revisedAt: createdAt,
+        name: "Porridge",
+        aliases: []
+    )
+    let secondRevision = try serverFoodPresetDocument(
+        presetID: presetID,
+        revision: 2,
+        createdAt: createdAt,
+        revisedAt: "2026-08-16T10:00:00+00:00",
+        name: "Porridge",
+        aliases: ["Warm oats"]
+    )
+    let mergedRevision = try serverFoodPresetDocument(
+        presetID: presetID,
+        revision: 3,
+        createdAt: createdAt,
+        revisedAt: "2026-08-16T10:00:00+00:00",
+        name: "Overnight oats",
+        aliases: ["Warm oats"]
+    )
+    let changes = [
+        RemoteSyncChange(
+            changeID: 1,
+            canonicalRevision: 1,
+            entityType: FoodPresetService.entityType,
+            entityID: presetID,
+            mutationType: .create,
+            payload: firstRevision,
+            tombstone: false,
+            deletionEpoch: nil,
+            mergeResult: "created",
+            originDeviceID: originDeviceID,
+            originOperationID: try foodServiceIdentifier(910),
+            serverReceivedAt: foodServiceCreatedAt
+        ),
+        RemoteSyncChange(
+            changeID: 2,
+            canonicalRevision: 2,
+            entityType: FoodPresetService.entityType,
+            entityID: presetID,
+            mutationType: .update,
+            payload: secondRevision,
+            tombstone: false,
+            deletionEpoch: nil,
+            mergeResult: "optimistic_update",
+            originDeviceID: originDeviceID,
+            originOperationID: try foodServiceIdentifier(911),
+            serverReceivedAt: foodServiceRevisedAt
+        ),
+        RemoteSyncChange(
+            changeID: 3,
+            canonicalRevision: 3,
+            entityType: FoodPresetService.entityType,
+            entityID: presetID,
+            mutationType: .update,
+            payload: mergedRevision,
+            tombstone: false,
+            deletionEpoch: nil,
+            mergeResult: "disjoint_field_merge",
+            originDeviceID: originDeviceID,
+            originOperationID: try foodServiceIdentifier(912),
+            serverReceivedAt: foodServiceArchivedAt
+        ),
+    ]
+
+    let report = try await fixture.store.applyPullPage(RemoteSyncPage(
+        changes: changes,
+        nextCursor: "c_3",
+        hasMore: false,
+        serverSchemaVersion: 1,
+        completedAt: foodServiceArchivedAt
+    ))
+    let presets = try await fixture.service(at: foodServiceArchivedAt).activePresets()
+
+    #expect(report.remoteCommitCount == 3)
+    #expect(report.finalCursor == "c_3")
+    #expect(presets.count == 1)
+    #expect(presets[0].metadata.id == presetID)
+    #expect(presets[0].metadata.revision == 3)
+    #expect(presets[0].name == "Overnight oats")
+    #expect(presets[0].aliases == ["Warm oats"])
+    #expect(presets[0].nutrients == nil)
+}
+
 private struct FoodPresetServiceFixture {
     let directory: URL
     let store: SQLiteLedgerStore
@@ -224,4 +319,35 @@ private func foodServiceIdentifier(_ value: Int) throws -> UUIDv7 {
     return try UUIDv7(
         validating: UUID(uuidString: "018f0000-0000-7000-8000-\(suffix)")!
     )
+}
+
+private func serverFoodPresetDocument(
+    presetID: UUIDv7,
+    revision: Int,
+    createdAt: String,
+    revisedAt: String,
+    name: String,
+    aliases: [String]
+) throws -> Data {
+    let metadata: [String: JSONValue] = [
+        "id": .string(presetID.description),
+        "schema_version": .number(Double(FoodPreset.currentSchemaVersion)),
+        "created_at": .string(createdAt),
+        "created_by": .object([
+            "actor_type": .string("user"),
+            "actor_id": .string("owner"),
+        ]),
+        "last_revised_at": .string(revisedAt),
+        "revision": .number(Double(revision)),
+        "sensitivity": .string("private"),
+        "provenance_id": .string("00000000-0000-4000-8000-000000000900"),
+    ]
+    let document: [String: JSONValue] = [
+        "metadata": .object(metadata),
+        "name": .string(name),
+        "serving_description": .string("1 bowl"),
+        "aliases": .array(aliases.map(JSONValue.string)),
+        "nutrients": .null,
+    ]
+    return try SyncJSONCoding.makeEncoder().encode(document)
 }

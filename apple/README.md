@@ -130,6 +130,10 @@ provenance, emits changed-field sync updates, and prevents tombstone
 resurrection. It has no durable meal occurrence service, native quick-log
 surface, HealthKit write, or experiment assignment yet. See
 [`docs/architecture/food-presets.md`](../docs/architecture/food-presets.md).
+Generated event contracts now register create/revise payloads. A backend
+native-document test normalizes mechanical metadata during disjoint merges, and
+a portable pull-persistence test decodes the resulting canonical revision;
+overlapping owner fields remain explicit conflicts.
 
 `LocalCaptureAttachmentStore` now supplies the protected local object boundary
 needed by voice/photo/file capture. It copies files through a bounded stream,
@@ -191,7 +195,7 @@ swift test --package-path apple
 ../tools/apple/generate-project.sh
 ```
 
-The portable package currently reports 110 tests passing under the official
+The portable package currently reports 111 tests passing under the official
 Swift 6.1 release toolchain on Linux. That result does not type-check SwiftUI or
 replace the required Xcode, simulator, accessibility, signing, and device runs.
 

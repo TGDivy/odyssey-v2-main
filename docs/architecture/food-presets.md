@@ -101,18 +101,21 @@ domain content fails closed before it reaches ranking.
 
 This slice does **not** provide meal occurrence storage, a quick-log UI,
 HealthKit writes, a cross-stack domain-event consumer, or a live experiment
-assignment. The local event names still require backend registry/schema
-registration, and partial food-preset merge behavior still requires a native
-document regression before cross-device convergence is claimed. Those follow in
-separate event-registry, meal ledger, native UI, permission, and integration
-slices. In particular, the presence of optional nutrient values does not
-authorize HealthKit access or write anything to Apple Health.
+assignment. Generated schemas now register both preset event names. Backend
+integration proves that native-shaped disjoint edits normalize mechanical
+metadata and converge while overlapping owner fields remain conflicts; a
+portable pull-persistence regression proves the resulting canonical document is
+still a valid `FoodPreset`. No authenticated physical two-device run has been
+performed, so live convergence remains owner evidence. Meal ledger, native UI,
+permission, and integration slices remain. In particular, the presence of
+optional nutrient values does not authorize HealthKit access or write anything
+to Apple Health.
 
-Ten focused tests cover value validation, time-zone-aware context derivation,
+Eleven focused tests cover value validation, time-zone-aware context derivation,
 both ranking strategies, threshold behavior, deterministic ordering, excluded
 history, idempotent deduplication, fail-closed identity handling, atomic preset
 lifecycle commits, partial/null sync payloads, optimistic revision, and
-tombstones. The full portable Swift package reports 110 tests passing under the
-official Swift 6.1 Linux toolchain. This does not type-check SwiftUI or prove
-Xcode, HealthKit, signing, simulator, accessibility, or physical-device
-behavior.
+tombstones, including server-normalized pull materialization. The full portable
+Swift package reports 111 tests passing under the official Swift 6.1 Linux
+toolchain. This does not type-check SwiftUI or prove Xcode, HealthKit, signing,
+simulator, accessibility, or physical-device behavior.

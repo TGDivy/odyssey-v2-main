@@ -60,6 +60,26 @@ PERMISSION_ENTITY_TYPES = {"permission", "standing_authorization"}
 DECISION_CHOICE_ENTITY_TYPES = {"choice", "decision_choice"}
 EXTERNAL_MIRROR_ENTITY_TYPES = {"external_mirror"}
 
+FOOD_PRESET_METADATA_REQUIRED_FIELDS = {
+    "id",
+    "schema_version",
+    "created_at",
+    "created_by",
+    "last_revised_at",
+    "revision",
+    "sensitivity",
+    "provenance_id",
+}
+FOOD_PRESET_METADATA_ALLOWED_FIELDS = FOOD_PRESET_METADATA_REQUIRED_FIELDS | {"tombstoned_at"}
+FOOD_PRESET_METADATA_IMMUTABLE_FIELDS = {
+    "id",
+    "schema_version",
+    "created_at",
+    "created_by",
+    "sensitivity",
+    "provenance_id",
+}
+
 PERMISSION_RESTRICTION = {
     "authorized": 0,
     "limited": 1,
@@ -129,6 +149,90 @@ def operation_idempotency_key(operation: SyncOperationInput) -> str:
 
 def utc_instant(value: datetime) -> datetime:
     return value if value.tzinfo is not None else value.replace(tzinfo=UTC)
+
+
+def aware_iso_instant(value: Any) -> datetime | None:
+    if not isinstance(value, str):
+        return None
+    try:
+        parsed = datetime.fromisoformat(value)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        return None
+    return parsed
+
+
+def normalized_food_preset_metadata(
+    *,
+    base_document: dict[str, Any],
+    current_document: dict[str, Any],
+    incoming_document: dict[str, Any],
+    entity_id: UUID,
+    base_revision: int | None,
+    current_revision: int,
+    next_revision: int,
+) -> dict[str, Any] | None:
+    base_metadata = base_document.get("metadata")
+    current_metadata = current_document.get("metadata")
+    incoming_metadata = incoming_document.get("metadata")
+    if (
+        not isinstance(base_metadata, dict)
+        or not isinstance(current_metadata, dict)
+        or not isinstance(incoming_metadata, dict)
+    ):
+        return None
+    metadata_values = (base_metadata, current_metadata, incoming_metadata)
+    if not all(
+        set(metadata) >= FOOD_PRESET_METADATA_REQUIRED_FIELDS
+        and set(metadata) <= FOOD_PRESET_METADATA_ALLOWED_FIELDS
+        for metadata in metadata_values
+    ):
+        return None
+    if base_revision is None:
+        return None
+    if any(
+        base_metadata[field] != current_metadata[field]
+        or base_metadata[field] != incoming_metadata[field]
+        for field in FOOD_PRESET_METADATA_IMMUTABLE_FIELDS
+    ):
+        return None
+    if base_metadata["id"] != str(entity_id):
+        return None
+    revisions = (
+        base_metadata["revision"],
+        current_metadata["revision"],
+        incoming_metadata["revision"],
+    )
+    if any(type(value) is not int for value in revisions):
+        return None
+    if revisions != (base_revision, current_revision, base_revision + 1):
+        return None
+    if any(metadata.get("tombstoned_at") is not None for metadata in metadata_values):
+        return None
+    created_at = aware_iso_instant(base_metadata["created_at"])
+    base_revised_at = aware_iso_instant(base_metadata["last_revised_at"])
+    current_revised_at = aware_iso_instant(current_metadata["last_revised_at"])
+    incoming_revised_at = aware_iso_instant(incoming_metadata["last_revised_at"])
+    if (
+        created_at is None
+        or base_revised_at is None
+        or current_revised_at is None
+        or incoming_revised_at is None
+    ):
+        return None
+    revised_instants = (base_revised_at, current_revised_at, incoming_revised_at)
+    if any(value < created_at for value in revised_instants):
+        return None
+    normalized = dict(current_metadata)
+    normalized["revision"] = next_revision
+    normalized["last_revised_at"] = (
+        incoming_metadata["last_revised_at"]
+        if incoming_revised_at > current_revised_at
+        else current_metadata["last_revised_at"]
+    )
+    normalized.pop("tombstoned_at", None)
+    return normalized
 
 
 def changed_fields(base: dict[str, Any], value: dict[str, Any]) -> set[str]:
@@ -469,6 +573,14 @@ class SyncService:
             )
 
         next_revision = current.canonical_revision + 1
+        if operation.entity_type in FOOD_PRESET_ENTITY_TYPES:
+            return await self.merge_food_preset(
+                session,
+                operation=operation,
+                current=current,
+                next_revision=next_revision,
+            )
+
         if operation.base_revision == current.canonical_revision:
             document = current.document | dict(operation.payload)
             return MergeDecision(
@@ -533,41 +645,6 @@ class SyncService:
                 merge_result="stale_external_source_revision_ignored",
             )
 
-        if operation.entity_type in FOOD_PRESET_ENTITY_TYPES:
-            base_document = await self.document_at_revision(
-                session,
-                entity_type=operation.entity_type,
-                entity_id=operation.entity_id,
-                revision=operation.base_revision,
-            )
-            if base_document is not None:
-                current_changes = changed_fields(base_document, current.document)
-                incoming_changes = changed_fields(
-                    base_document,
-                    base_document | dict(operation.payload),
-                )
-                overlap = current_changes & incoming_changes
-                if not overlap:
-                    document = current.document | dict(operation.payload)
-                    return MergeDecision(
-                        outcome="accepted",
-                        document=document,
-                        field_versions=field_versions_for_update(
-                            current.field_versions, operation.payload, next_revision
-                        ),
-                        canonical_revision=next_revision,
-                        merge_result="disjoint_field_merge",
-                    )
-                conflicting_fields = tuple(sorted(overlap))
-            else:
-                conflicting_fields = tuple(sorted(operation.payload))
-            return self.preserved_conflict(
-                current,
-                code="OVERLAPPING_FIELD_EDITS",
-                message="Food preset edits overlap and require review.",
-                fields=conflicting_fields,
-            )
-
         if operation.entity_type in NORMATIVE_ENTITY_TYPES:
             return self.preserved_conflict(
                 current,
@@ -587,6 +664,80 @@ class SyncService:
             code="BASE_REVISION_CONFLICT",
             message="The canonical entity changed after the operation base revision.",
             fields=tuple(sorted(operation.payload)),
+        )
+
+    async def merge_food_preset(
+        self,
+        session: AsyncSession,
+        *,
+        operation: SyncOperationInput,
+        current: CanonicalEntityRecord,
+        next_revision: int,
+    ) -> MergeDecision:
+        base_document = await self.document_at_revision(
+            session,
+            entity_type=operation.entity_type,
+            entity_id=operation.entity_id,
+            revision=operation.base_revision,
+        )
+        if base_document is None:
+            return self.preserved_conflict(
+                current,
+                code="FOOD_PRESET_BASE_UNAVAILABLE",
+                message="The food preset base revision is unavailable for safe merging.",
+                fields=tuple(sorted(operation.payload)),
+            )
+        incoming_document = base_document | dict(operation.payload)
+        current_changes = changed_fields(base_document, current.document)
+        incoming_changes = changed_fields(base_document, incoming_document)
+        overlap = current_changes & incoming_changes
+        normalized_metadata: dict[str, Any] | None = None
+        documents_have_metadata = any(
+            "metadata" in document
+            for document in (base_document, current.document, incoming_document)
+        )
+        if documents_have_metadata:
+            normalized_metadata = normalized_food_preset_metadata(
+                base_document=base_document,
+                current_document=current.document,
+                incoming_document=incoming_document,
+                entity_id=operation.entity_id,
+                base_revision=operation.base_revision,
+                current_revision=current.canonical_revision,
+                next_revision=next_revision,
+            )
+            if normalized_metadata is None:
+                return self.preserved_conflict(
+                    current,
+                    code="INVALID_FOOD_PRESET_METADATA",
+                    message="Food preset revision metadata is inconsistent.",
+                    fields=("metadata",),
+                )
+            overlap.discard("metadata")
+        if overlap:
+            return self.preserved_conflict(
+                current,
+                code="OVERLAPPING_FIELD_EDITS",
+                message="Food preset edits overlap and require review.",
+                fields=tuple(sorted(overlap)),
+            )
+        document = current.document | dict(operation.payload)
+        changed_payload = dict(operation.payload)
+        if normalized_metadata is not None:
+            document["metadata"] = normalized_metadata
+            changed_payload["metadata"] = normalized_metadata
+        return MergeDecision(
+            outcome="accepted",
+            document=document,
+            field_versions=field_versions_for_update(
+                current.field_versions, changed_payload, next_revision
+            ),
+            canonical_revision=next_revision,
+            merge_result=(
+                "optimistic_update"
+                if operation.base_revision == current.canonical_revision
+                else "disjoint_field_merge"
+            ),
         )
 
     @staticmethod

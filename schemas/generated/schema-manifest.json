@@ -2,7 +2,7 @@
   "artifacts": [
     {
       "path": "schemas/events/registry.v1.json",
-      "sha256": "8e1972dcc40eb106f91c5e806d4c00d2752e10d30ad6103a7a34eefac5ffddf0"
+      "sha256": "7391a4eac7d82c717476e8f25243e6096b50b52ba2e34d80c60da8882267d9e7"
     },
     {
       "path": "schemas/events/v1/action.status_changed.v1.schema.json",
@@ -59,6 +59,14 @@
     {
       "path": "schemas/events/v1/experiment.assignment_created.v1.schema.json",
       "sha256": "2a5ed390cccf3ad082f1605178e0bfdc69781e6f6997bcc470f4ca943f7e2cb0"
+    },
+    {
+      "path": "schemas/events/v1/food_preset.created.v1.schema.json",
+      "sha256": "11ca073865fe24d7cd19a1fe64752d81189b354c9b74685b6ad0bcb0776b0b54"
+    },
+    {
+      "path": "schemas/events/v1/food_preset.revised.v1.schema.json",
+      "sha256": "de3d76f9b3db0223702880657d98535d94a8305d39dc0ebcd8b6ee7ecfead60a"
     },
     {
       "path": "schemas/events/v1/hypothesis.proposed.v1.schema.json",
