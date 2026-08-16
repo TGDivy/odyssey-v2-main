@@ -323,6 +323,15 @@ private struct CaptureDetailView: View {
                 .foregroundStyle(.secondary)
             }
 
+            let audioReferences = capture.attachments.filter { $0.kind == .audio }
+            if !audioReferences.isEmpty {
+                Section("Voice Playback") {
+                    ForEach(audioReferences, id: \.attachmentID) { reference in
+                        CaptureAudioPlaybackView(reference: reference)
+                    }
+                }
+            }
+
             Section("Current Interpretation") {
                 CaptureInterpretationBadge(capture: capture)
                 Text(currentInterpretationExplanation(capture))
@@ -480,6 +489,140 @@ private struct CaptureDetailView: View {
         case .dismissed:
             "Dismissal was appended; the original capture remains unchanged."
         }
+    }
+}
+
+private struct CaptureAudioPlaybackView: View {
+    @Environment(\.scenePhase) private var scenePhase
+    @EnvironmentObject private var model: OdysseyAppModel
+    @StateObject private var player = CaptureAudioPlayer()
+    @State private var loadTask: Task<Void, Never>?
+    @State private var loadRequestID: UUID?
+
+    let reference: CaptureAttachmentReference
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Button(action: playbackAction) {
+                    Label(playbackTitle, systemImage: playbackSystemImage)
+                }
+                .disabled(player.state == .loading)
+
+                if player.state == .playing || player.state == .paused {
+                    Button("Stop", role: .destructive) {
+                        stopPlayback()
+                    }
+                }
+            }
+
+            if player.duration > 0 {
+                ProgressView(
+                    value: min(player.elapsed, player.duration),
+                    total: player.duration
+                )
+                Text(
+                    "\(playbackTime(player.elapsed)) of "
+                        + playbackTime(player.duration)
+                )
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(.secondary)
+            }
+
+            if case let .failed(message) = player.state {
+                Label(message, systemImage: "exclamationmark.triangle")
+                    .font(.footnote)
+                    .foregroundStyle(.red)
+            }
+
+            Text(
+                "Playback opens only the hash-verified local attachment. "
+                    + "It does not upload or interpret the recording."
+            )
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase != .active {
+                stopPlayback()
+            }
+        }
+        .onDisappear(perform: stopPlayback)
+    }
+
+    private var playbackTitle: String {
+        switch player.state {
+        case .loading:
+            "Verifying…"
+        case .playing:
+            "Pause"
+        case .paused:
+            "Resume"
+        case .finished:
+            "Play Again"
+        case .idle, .failed:
+            "Play Voice Capture"
+        }
+    }
+
+    private var playbackSystemImage: String {
+        switch player.state {
+        case .loading:
+            "checkmark.shield"
+        case .playing:
+            "pause.fill"
+        case .paused, .finished, .idle, .failed:
+            "play.fill"
+        }
+    }
+
+    private func playbackAction() {
+        switch player.state {
+        case .playing:
+            player.pause()
+        case .paused:
+            player.resume()
+        case .idle, .finished, .failed:
+            startPlayback()
+        case .loading:
+            break
+        }
+    }
+
+    private func startPlayback() {
+        stopPlayback()
+        player.beginLoading()
+        let requestID = UUID()
+        loadRequestID = requestID
+        loadTask = Task {
+            do {
+                let url = try await model.verifiedCaptureContentURL(for: reference)
+                try Task.checkCancellation()
+                guard loadRequestID == requestID else { return }
+                player.playVerifiedContent(at: url)
+            } catch is CancellationError {
+                return
+            } catch {
+                guard loadRequestID == requestID else { return }
+                player.fail("The local voice capture failed integrity verification.")
+            }
+            if loadRequestID == requestID {
+                loadRequestID = nil
+                loadTask = nil
+            }
+        }
+    }
+
+    private func stopPlayback() {
+        loadRequestID = nil
+        loadTask?.cancel()
+        loadTask = nil
+        player.stop()
+    }
+
+    private func playbackTime(_ interval: TimeInterval) -> String {
+        let seconds = max(0, Int(interval.rounded(.down)))
+        return String(format: "%d:%02d", seconds / 60, seconds % 60)
     }
 }
 

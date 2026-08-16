@@ -61,6 +61,17 @@ final class OdysseyAppModel: ObservableObject {
         localServices?.captureImportBuffer
     }
 
+    func verifiedCaptureContentURL(
+        for reference: CaptureAttachmentReference
+    ) async throws -> URL {
+        guard let localServices else {
+            throw CaptureReviewApplicationError.localDataUnavailable
+        }
+        return try await localServices.captureAttachmentStore.verifiedContentURL(
+            for: reference
+        )
+    }
+
     static var backgroundRefreshIdentifier: String {
         if let configured = Bundle.main.object(
             forInfoDictionaryKey: "ODYSSEY_BACKGROUND_REFRESH_IDENTIFIER"
