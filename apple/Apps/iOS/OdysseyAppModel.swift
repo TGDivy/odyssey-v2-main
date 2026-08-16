@@ -10,6 +10,20 @@ import OdysseyDomain
 import OdysseySync
 import UIKit
 
+private enum CaptureReviewApplicationError: Error, LocalizedError {
+    case localDataUnavailable
+    case unexpectedDeferral(CaptureInterpretationDeferralReason)
+
+    var errorDescription: String? {
+        switch self {
+        case .localDataUnavailable:
+            "Local capture history is not available yet."
+        case let .unexpectedDeferral(reason):
+            "The owner review was not recorded because it was deferred: \(reason.rawValue)."
+        }
+    }
+}
+
 @MainActor
 final class OdysseyAppModel: ObservableObject {
     @Published private(set) var state = ApplicationFeatureState()
@@ -135,6 +149,28 @@ final class OdysseyAppModel: ObservableObject {
 
     func dismissCaptureStatus() {
         apply(.captureDismissed)
+    }
+
+    func refreshCaptureArchive() async {
+        refreshRecentCaptures()
+        await refreshDiagnostics()
+    }
+
+    func reviewCapture(
+        captureID: UUIDv7,
+        draft: CaptureInterpretationReviewDraft
+    ) async throws {
+        guard let localServices else {
+            throw CaptureReviewApplicationError.localDataUnavailable
+        }
+        let result = try await localServices.captureInterpretationService.review(
+            captureID: captureID,
+            draft: draft
+        )
+        if case let .deferred(reason) = result {
+            throw CaptureReviewApplicationError.unexpectedDeferral(reason)
+        }
+        await refreshAfterCaptureMutation()
     }
 
     func enrollWithApple() async {
@@ -469,16 +505,20 @@ final class OdysseyAppModel: ObservableObject {
                 using: DeterministicCaptureInterpreter()
             )
             guard case .recorded = result else { return }
-            refreshRecentCaptures()
-            await refreshDiagnostics()
-            scheduleBackgroundRefresh()
-            if state.canSynchronize {
-                Task { [weak self] in
-                    await self?.synchronize()
-                }
-            }
+            await refreshAfterCaptureMutation()
         } catch {
             return
+        }
+    }
+
+    private func refreshAfterCaptureMutation() async {
+        refreshRecentCaptures()
+        await refreshDiagnostics()
+        scheduleBackgroundRefresh()
+        if state.canSynchronize {
+            Task { [weak self] in
+                await self?.synchronize()
+            }
         }
     }
 

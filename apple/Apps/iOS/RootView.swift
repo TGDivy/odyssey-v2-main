@@ -1,5 +1,8 @@
+import Foundation
 import OdysseyApplication
+import OdysseyDomain
 import OdysseyIntelligence
+import OdysseySync
 import SwiftUI
 import UIKit
 
@@ -101,32 +104,682 @@ private struct ArchiveView: View {
                 )
             } else {
                 List(model.state.recentCaptures, id: \.metadata.id) { capture in
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(captureTitle(capture))
-                            .lineLimit(3)
-                        Text(capture.capturedAt.formatted(date: .abbreviated, time: .shortened))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                    NavigationLink(value: capture.metadata.id) {
+                        CaptureArchiveRow(capture: capture)
                     }
-                    .accessibilityElement(children: .combine)
                 }
             }
         }
         .navigationTitle("Archive")
+        .navigationDestination(for: UUIDv7.self) { captureID in
+            CaptureDetailView(captureID: captureID)
+        }
+        .refreshable { await model.refreshCaptureArchive() }
+    }
+}
+
+private struct CaptureArchiveRow: View {
+    let capture: CaptureRecord
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(captureTitle(capture))
+                .lineLimit(3)
+            HStack(alignment: .center) {
+                Text(capture.capturedAt.formatted(date: .abbreviated, time: .shortened))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer(minLength: 12)
+                CaptureInterpretationBadge(capture: capture)
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
+private struct CaptureDetailView: View {
+    @EnvironmentObject private var model: OdysseyAppModel
+    @State private var isCorrectionPresented = false
+    @State private var confirmsDismissal = false
+    @State private var correctedCategory = CaptureReviewCategory.note
+    @State private var pendingReviewDraft: CaptureInterpretationReviewDraft?
+    @State private var isReviewing = false
+    @State private var reviewMessage: String?
+    @State private var reviewFailure: String?
+
+    let captureID: UUIDv7
+
+    private var capture: CaptureRecord? {
+        model.state.recentCaptures.first { $0.metadata.id == captureID }
     }
 
-    private func captureTitle(_ capture: CaptureRecord) -> String {
-        switch capture.originalPayload.kind {
-        case .text:
-            String(capture.originalPayload.contentOrObjectRef.prefix(500))
-        case .audio:
-            "Audio capture"
-        case .imageReference:
-            "Image capture"
-        case .fileReference:
-            "File capture"
-        case .structuredQuickAction:
-            "Quick capture"
+    var body: some View {
+        Group {
+            if let capture {
+                captureList(capture)
+            } else {
+                ContentUnavailableView {
+                    Label("Capture unavailable", systemImage: "tray")
+                } description: {
+                    Text("Refresh the local Archive to load this capture again.")
+                } actions: {
+                    Button("Refresh") {
+                        Task { await model.refreshCaptureArchive() }
+                    }
+                }
+            }
+        }
+        .navigationTitle("Capture")
+        .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $isCorrectionPresented) {
+            CaptureCategoryCorrectionView(initialCategory: correctedCategory) { category in
+                submitReview(
+                    disposition: .corrected,
+                    replacementValues: ["capture_type": .string(category.rawValue)]
+                )
+            }
+        }
+        .confirmationDialog(
+            "Dismiss this interpretation?",
+            isPresented: $confirmsDismissal,
+            titleVisibility: .visible
+        ) {
+            Button("Dismiss Interpretation", role: .destructive) {
+                submitReview(disposition: .dismissed)
+            }
+            Button("Keep Interpretation", role: .cancel) {}
+        } message: {
+            Text(
+                "The original capture and every earlier interpretation remain unchanged. "
+                    + "Dismissal appends a new owner-reviewed version."
+            )
+        }
+        .alert(
+            "Review not saved",
+            isPresented: Binding(
+                get: { reviewFailure != nil },
+                set: { presented in
+                    if !presented {
+                        reviewFailure = nil
+                    }
+                }
+            )
+        ) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(reviewFailure ?? "The owner review was not saved.")
+        }
+    }
+
+    private func captureList(_ capture: CaptureRecord) -> some View {
+        List {
+            Section("Original Capture · Immutable") {
+                Text(originalPayloadDescription(capture))
+                    .textSelection(.enabled)
+                LabeledContent("Kind", value: payloadKindTitle(capture.originalPayload.kind))
+                LabeledContent(
+                    "Captured",
+                    value: capture.capturedAt.formatted(date: .long, time: .standard)
+                )
+                LabeledContent("Source", value: capture.initialContext.invokingSurface.rawValue)
+                LabeledContent("Timezone", value: capture.initialContext.timeZoneID)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Content hash")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text(capture.originalPayload.contentHash)
+                        .font(.caption.monospaced())
+                        .textSelection(.enabled)
+                }
+                Text(
+                    "Owner review never edits this payload. It appends a source-linked "
+                        + "interpretation version instead."
+                )
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+            }
+
+            Section("Current Interpretation") {
+                CaptureInterpretationBadge(capture: capture)
+                Text(currentInterpretationExplanation(capture))
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+
+            if capture.interpretationVersions.isEmpty {
+                Section("Interpretation History") {
+                    Text("No interpretation version has been appended yet.")
+                        .foregroundStyle(.secondary)
+                }
+            } else {
+                ForEach(
+                    Array(capture.interpretationVersions.enumerated()),
+                    id: \.element.id
+                ) { entry in
+                    Section(versionSectionTitle(entry.element, index: entry.offset)) {
+                        CaptureInterpretationVersionView(version: entry.element)
+                    }
+                }
+            }
+
+            ownerReviewSection(capture)
+        }
+        .refreshable { await model.refreshCaptureArchive() }
+    }
+
+    @ViewBuilder
+    private func ownerReviewSection(_ capture: CaptureRecord) -> some View {
+        Section("Owner Review") {
+            Text(
+                "Accept, correct, or dismiss only the latest interpretation. Each choice is "
+                    + "durable and leaves earlier versions inspectable."
+            )
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+
+            if let reviewMessage {
+                Label(reviewMessage, systemImage: "checkmark.circle")
+                    .foregroundStyle(.green)
+            }
+
+            if isReviewing {
+                ProgressView("Saving owner review locally…")
+            }
+
+            if let latest = capture.interpretationVersions.last {
+                if canAccept(latest) {
+                    Button {
+                        submitReview(disposition: .accepted)
+                    } label: {
+                        Label("Accept Inferred Fields", systemImage: "checkmark.seal")
+                    }
+                    .disabled(isReviewing)
+                }
+
+                Button {
+                    presentCategoryCorrection(latest)
+                } label: {
+                    Label("Correct Category", systemImage: "square.and.pencil")
+                }
+                .disabled(isReviewing)
+
+                if latest.status != .dismissed {
+                    Button(role: .destructive) {
+                        confirmsDismissal = true
+                    } label: {
+                        Label("Dismiss Interpretation", systemImage: "xmark.circle")
+                    }
+                    .disabled(isReviewing)
+                }
+            } else {
+                Text("Review actions appear after interpretation completes.")
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private func canAccept(_ version: CaptureInterpretationVersion) -> Bool {
+        version.status != .dismissed
+            && !version.proposedFields.isEmpty
+            && version.ownerReviewDisposition == nil
+    }
+
+    private func presentCategoryCorrection(_ version: CaptureInterpretationVersion) {
+        if let field = version.proposedFields["capture_type"],
+           case let .string(value) = field.value,
+           let category = CaptureReviewCategory(rawValue: value)
+        {
+            correctedCategory = category
+        } else {
+            correctedCategory = .note
+        }
+        isCorrectionPresented = true
+    }
+
+    private func submitReview(
+        disposition: CaptureInterpretationReviewDisposition,
+        replacementValues: [String: JSONValue] = [:]
+    ) {
+        guard let capture,
+              let target = capture.interpretationVersions.last,
+              !isReviewing
+        else { return }
+
+        let draft: CaptureInterpretationReviewDraft
+        do {
+            if let pendingReviewDraft,
+               pendingReviewDraft.targetInterpretationVersionID == target.id,
+               pendingReviewDraft.expectedCaptureRevision == capture.metadata.revision,
+               pendingReviewDraft.disposition == disposition,
+               pendingReviewDraft.replacementValues == replacementValues,
+               pendingReviewDraft.note == nil
+            {
+                draft = pendingReviewDraft
+            } else {
+                draft = try CaptureInterpretationReviewDraft(
+                    targetInterpretationVersionID: target.id,
+                    expectedCaptureRevision: capture.metadata.revision,
+                    disposition: disposition,
+                    replacementValues: replacementValues
+                )
+            }
+        } catch {
+            reviewFailure = error.localizedDescription
+            return
+        }
+
+        pendingReviewDraft = draft
+        reviewMessage = nil
+        reviewFailure = nil
+        isReviewing = true
+        Task {
+            defer { isReviewing = false }
+            do {
+                try await model.reviewCapture(captureID: captureID, draft: draft)
+                pendingReviewDraft = nil
+                reviewMessage = reviewSuccessMessage(disposition)
+            } catch {
+                reviewFailure = error.localizedDescription
+                await model.refreshCaptureArchive()
+            }
+        }
+    }
+
+    private func reviewSuccessMessage(
+        _ disposition: CaptureInterpretationReviewDisposition
+    ) -> String {
+        switch disposition {
+        case .accepted:
+            "Accepted fields were appended as owner-reviewed history."
+        case .corrected:
+            "The corrected category was appended as owner-reviewed history."
+        case .dismissed:
+            "Dismissal was appended; the original capture remains unchanged."
+        }
+    }
+}
+
+private struct CaptureInterpretationVersionView: View {
+    let version: CaptureInterpretationVersion
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                CaptureInterpretationBadge(version: version)
+                Spacer(minLength: 12)
+                Text(version.createdAt.formatted(date: .abbreviated, time: .shortened))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            LabeledContent("Status", value: interpretationStatusTitle(version.status))
+            LabeledContent(
+                "Interpreter",
+                value: "\(version.interpreter) · \(version.interpreterVersion)"
+            )
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Version ID")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text(version.id.description)
+                    .font(.caption.monospaced())
+                    .textSelection(.enabled)
+            }
+
+            if let superseded = version.supersedesInterpretationVersionID {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Supersedes")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text(superseded.description)
+                        .font(.caption.monospaced())
+                        .textSelection(.enabled)
+                }
+            }
+
+            if version.proposedFields.isEmpty {
+                Text("This version intentionally contains no interpreted fields.")
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(version.proposedFields.keys.sorted(), id: \.self) { name in
+                    if let field = version.proposedFields[name] {
+                        CaptureInterpretedFieldView(name: name, field: field)
+                    }
+                }
+            }
+
+            if let note = version.ownerReviewNote {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Owner note")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text(note)
+                        .textSelection(.enabled)
+                }
+            }
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+private struct CaptureInterpretedFieldView: View {
+    let name: String
+    let field: CaptureInterpretedField
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(captureFieldTitle(name))
+                .font(.subheadline.weight(.semibold))
+            Text(captureJSONDescription(field.value))
+                .textSelection(.enabled)
+            Text("Sources")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            ForEach(field.sourceSpanRefs, id: \.self) { source in
+                Text(source)
+                    .font(.caption.monospaced())
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
+            }
+        }
+        .padding(10)
+        .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
+    }
+}
+
+private struct CaptureInterpretationBadge: View {
+    private let title: String
+    private let systemImage: String
+    private let color: Color
+
+    init(capture: CaptureRecord) {
+        let presentation: (title: String, systemImage: String, color: Color)
+        if let latest = capture.interpretationVersions.last {
+            presentation = interpretationPresentation(
+                status: latest.status,
+                disposition: latest.ownerReviewDisposition
+            )
+        } else {
+            presentation = interpretationPresentation(
+                status: capture.interpretationStatus,
+                disposition: nil
+            )
+        }
+        title = presentation.title
+        systemImage = presentation.systemImage
+        color = presentation.color
+    }
+
+    init(version: CaptureInterpretationVersion) {
+        let presentation = interpretationPresentation(
+            status: version.status,
+            disposition: version.ownerReviewDisposition
+        )
+        title = presentation.title
+        systemImage = presentation.systemImage
+        color = presentation.color
+    }
+
+    var body: some View {
+        Label(title, systemImage: systemImage)
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(color)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(color.opacity(0.14), in: Capsule())
+    }
+}
+
+private enum CaptureReviewCategory: String, CaseIterable, Identifiable {
+    case note
+    case food
+    case caffeine
+    case alcohol
+    case decision
+    case commitment
+    case observation
+    case symptom
+    case outcome
+    case personMoment = "person_moment"
+    case idea
+    case quickAction = "quick_action"
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .note:
+            "Note"
+        case .food:
+            "Food"
+        case .caffeine:
+            "Caffeine"
+        case .alcohol:
+            "Alcohol"
+        case .decision:
+            "Decision"
+        case .commitment:
+            "Commitment"
+        case .observation:
+            "Observation"
+        case .symptom:
+            "Symptom"
+        case .outcome:
+            "Outcome"
+        case .personMoment:
+            "Person Moment"
+        case .idea:
+            "Idea"
+        case .quickAction:
+            "Quick Action"
+        }
+    }
+}
+
+private struct CaptureCategoryCorrectionView: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var selection: CaptureReviewCategory
+
+    let apply: (CaptureReviewCategory) -> Void
+
+    init(
+        initialCategory: CaptureReviewCategory,
+        apply: @escaping (CaptureReviewCategory) -> Void
+    ) {
+        _selection = State(initialValue: initialCategory)
+        self.apply = apply
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Correct Category") {
+                    Picker("Category", selection: $selection) {
+                        ForEach(CaptureReviewCategory.allCases) { category in
+                            Text(category.title).tag(category)
+                        }
+                    }
+                }
+                Section {
+                    Text(
+                        "Saving appends an owner-corrected interpretation. The original capture "
+                            + "and inferred version remain unchanged and inspectable."
+                    )
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                }
+            }
+            .navigationTitle("Correct Category")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        apply(selection)
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+private func captureTitle(_ capture: CaptureRecord) -> String {
+    switch capture.originalPayload.kind {
+    case .text:
+        String(capture.originalPayload.contentOrObjectRef.prefix(500))
+    case .audio:
+        "Audio capture"
+    case .imageReference:
+        "Image capture"
+    case .fileReference:
+        "File capture"
+    case .structuredQuickAction:
+        "Quick capture"
+    }
+}
+
+private func originalPayloadDescription(_ capture: CaptureRecord) -> String {
+    switch capture.originalPayload.kind {
+    case .text, .structuredQuickAction:
+        capture.originalPayload.contentOrObjectRef
+    case .audio:
+        "Protected audio reference: \(capture.originalPayload.contentOrObjectRef)"
+    case .imageReference:
+        "Protected image reference: \(capture.originalPayload.contentOrObjectRef)"
+    case .fileReference:
+        "Protected file reference: \(capture.originalPayload.contentOrObjectRef)"
+    }
+}
+
+private func payloadKindTitle(_ kind: CapturePayloadKind) -> String {
+    switch kind {
+    case .text:
+        "Text"
+    case .audio:
+        "Audio"
+    case .imageReference:
+        "Image Reference"
+    case .fileReference:
+        "File Reference"
+    case .structuredQuickAction:
+        "Structured Quick Action"
+    }
+}
+
+private func currentInterpretationExplanation(_ capture: CaptureRecord) -> String {
+    guard let latest = capture.interpretationVersions.last else {
+        return "The original capture is durable. Interpretation can finish asynchronously."
+    }
+    switch latest.ownerReviewDisposition {
+    case .some(.accepted):
+        return "The latest fields were explicitly accepted by the owner."
+    case .some(.corrected):
+        return "The latest fields include an explicit owner correction."
+    case .some(.dismissed):
+        return "The latest interpretation was dismissed without changing the original capture."
+    case .none:
+        switch latest.status {
+        case .interpreted:
+            return "These fields are inferred and are not owner-reviewed canonical observations."
+        case .needsClarification:
+            return "Interpretation needs clarification before any field can be relied on."
+        case .failed:
+            return "Interpretation failed; the immutable original capture is still available."
+        case .dismissed:
+            return "This non-owner interpretation version is marked dismissed."
+        case .pending, .processing:
+            return "Interpretation has not produced a durable result yet."
+        }
+    }
+}
+
+private func versionSectionTitle(
+    _ version: CaptureInterpretationVersion,
+    index: Int
+) -> String {
+    let kind: String
+    if version.ownerReviewDisposition != nil {
+        kind = "Owner Review"
+    } else if version.status == .interpreted {
+        kind = "Inferred"
+    } else {
+        kind = "Interpretation"
+    }
+    return "\(kind) Version \(index + 1)"
+}
+
+private func interpretationPresentation(
+    status: CaptureInterpretationStatus,
+    disposition: CaptureInterpretationReviewDisposition?
+) -> (title: String, systemImage: String, color: Color) {
+    if let disposition {
+        switch disposition {
+        case .accepted:
+            return ("Owner Accepted", "checkmark.seal.fill", .green)
+        case .corrected:
+            return ("Owner Corrected", "pencil.circle.fill", .blue)
+        case .dismissed:
+            return ("Owner Dismissed", "xmark.circle.fill", .secondary)
+        }
+    }
+    switch status {
+    case .pending, .processing:
+        return ("Pending", "clock", .secondary)
+    case .needsClarification:
+        return ("Needs Review", "questionmark.circle", .orange)
+    case .interpreted:
+        return ("Inferred", "sparkles", .orange)
+    case .failed:
+        return ("Interpretation Failed", "exclamationmark.triangle", .red)
+    case .dismissed:
+        return ("Dismissed", "xmark.circle", .secondary)
+    }
+}
+
+private func interpretationStatusTitle(_ status: CaptureInterpretationStatus) -> String {
+    switch status {
+    case .pending:
+        "Pending"
+    case .processing:
+        "Processing"
+    case .needsClarification:
+        "Needs Clarification"
+    case .interpreted:
+        "Interpreted"
+    case .failed:
+        "Failed"
+    case .dismissed:
+        "Dismissed"
+    }
+}
+
+private func captureFieldTitle(_ name: String) -> String {
+    name.split(separator: "_")
+        .map { $0.prefix(1).uppercased() + $0.dropFirst() }
+        .joined(separator: " ")
+}
+
+private func captureJSONDescription(_ value: JSONValue) -> String {
+    switch value {
+    case let .string(string):
+        string
+    case let .number(number):
+        number.formatted(.number.precision(.fractionLength(0 ... 6)))
+    case let .bool(boolean):
+        boolean ? "Yes" : "No"
+    case .null:
+        "None"
+    case .array, .object:
+        if let data = try? SyncJSONCoding.makeEncoder().encode(value),
+           let text = String(data: data, encoding: .utf8)
+        {
+            text
+        } else {
+            "Structured value"
         }
     }
 }

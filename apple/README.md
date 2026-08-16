@@ -106,12 +106,17 @@ deterministic fallback, and atomically appends `capture.interpreted.v1`, advance
 the projection, and queues sync. It recognizes only explicit owner-written
 prefixes, treats other text as an unstructured note, and leaves media pending
 rather than inventing content. Bootstrap and opportunistic app refresh rescan
-pending captures. Provider-backed interpretation and correction UI remain. See
+pending captures. Provider-backed interpretation remains unavailable. See
 [`docs/architecture/capture-interpretation.md`](../docs/architecture/capture-interpretation.md).
 The same cross-stack contract now defines stable append-only owner acceptance,
 correction, and dismissal lineage. The local service enforces latest-version and
 optimistic-revision review, atomically records the result and sync update, and
-preserves every prior version; the Archive review UI follows separately.
+preserves every prior version. The iPhone Archive resolves detail navigation by
+capture ID, renders the immutable source payload and every inferred or
+owner-reviewed version with exact source references, and exposes explicit
+Accept, Correct Category, and Dismiss actions. A failed UI retry retains the
+same review-version ID for the same content; a successful local review refreshes
+Archive/diagnostics, schedules background work, and triggers sync separately.
 
 `NativeLocalServices` opens the stable Keychain device identity, protected
 Application Support database, migration-backup directory, and capture service

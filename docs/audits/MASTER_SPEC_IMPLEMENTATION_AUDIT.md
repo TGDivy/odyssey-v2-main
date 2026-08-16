@@ -40,8 +40,8 @@ deployment, external account configuration, or physical-device behavior.
 | §14 scientific evidence | `partial` | source/claim/appraisal contracts plus B.8 deterministic quality-filtered citation retrieval, counterevidence search, applicability, explicit uncertainty and immutable query replay | Curated ingestion/appraisal workflow, source update/retraction jobs, broader synthesis and evidence UI. |
 | §15 score philosophy | `partial` | Constitution prohibits universal Life Score/people ranking; optional C.5 qualitative day-alignment policy is disabled by default, non-scalar, coverage/exception/comparison guarded and canonical-history independent | Owner-approved experiment flag, product surface and longitudinal harm/usefulness evaluation only if deliberately enabled. |
 | §16 AI philosophy | `contract-only` | provider-neutral model-run contract plus durable coalesced native capture-interpreter boundary and conservative explicit-prefix fallback | Capability router, provider execution, structured fallbacks, refusal/uncertainty, model-run provenance, evaluations and rollback. |
-| §17 trust and agency | `partial` | deterministic authority policy, B.7 append-only recommendation correction, and stable/idempotent capture-interpretation accept/correct/dismiss commits | Capture review UI, Trust Center, future correction retrieval, revocation UI and autonomous-action audit UI. |
-| §18 experience architecture | `partial` | iPhone quiet Now, capture, Archive, typed reviewed life-model Workshop, accepted Season landscape/plain-language Map, sync/repair surfaces and deterministic guilt-free re-entry surface contract | Tomorrow Map, rendered re-entry, decision/evidence flows, Xcode accessibility and complete platform depth. |
+| §17 trust and agency | `partial` | deterministic authority policy, B.7 append-only recommendation correction, and source-inspectable stable/idempotent Archive accept/correct/dismiss review | Trust Center, future correction retrieval, revocation UI and autonomous-action audit UI. |
+| §18 experience architecture | `partial` | iPhone quiet Now, capture, forensic capture-detail Archive, typed reviewed life-model Workshop, accepted Season landscape/plain-language Map, sync/repair surfaces and deterministic guilt-free re-entry surface contract | Tomorrow Map, rendered re-entry, decision/evidence flows, Xcode accessibility and complete platform depth. |
 | §19 visual and art direction | `partial` | calm SwiftUI/Canvas regional prototype, deterministic qualitative paths/terrain/landmarks, complete plain-language alternative, native shells and shared assets | Theme tokens, richer prototype, atlas/world states, snapshots, Xcode accessibility and dogfood proof. |
 | §20 Apple ecosystem | `partial` | iOS/Watch/macOS shells, widgets/intents/share targets, portable data/auth/sync packages | Real HealthKit/EventKit/location/watch/widget adapters and Xcode/device validation. |
 | §21 integrations | `deferred` | entitlements and adapter seams only | Implement consented adapters incrementally; keep OAuth/webhooks/provider credentials disabled. |
@@ -86,7 +86,7 @@ deployment, external account configuration, or physical-device behavior.
 | 0.3 cloud core/sync | `verified` | Auth, sync, attachments, conflicts and convergence/fault tests exist; live cloud proof is owner-only. |
 | 0.4 durability/observability | `implemented` | Tools/runbooks/IaC exist; isolated live restore and external alert evidence are owner-only. |
 | 1.1 Charter/Season Workshop | `implemented` | Server acceptance/history/context loop, typed local draft ledger/editors, editable seed, semantic review ceremony, immutable native history, frozen outgoing summaries, optional retrospectives, explicit successor flow, offline queue, authenticated delivery, terminal conflict guidance and accepted-history-only plain/Canvas map exist; Xcode/accessibility and two-device proof remain owner-only. |
-| 1.2 capture/personal library | `partial` | Offline durable text capture, local Archive, source-linked interpretation versions, coalesced async execution, atomic derivative/outbox commit, restart recovery, conservative fallback and optimistic append-only owner accept/correct/dismiss commits exist; review UI, voice/media, provider interpretation, food/quick logging and HealthKit write remain. |
+| 1.2 capture/personal library | `partial` | Offline durable text capture, local source-inspectable Archive review, source-linked interpretation versions, coalesced async execution, atomic derivative/outbox commit, restart recovery, conservative fallback and optimistic append-only owner accept/correct/dismiss commits exist; voice/media, provider interpretation, food/quick logging and HealthKit write remain. |
 | 1.3 Apple context adapters | `missing` | Targets/seams exist without real incremental HealthKit/calendar/location adapters. |
 | 1.4 Now/Tomorrow Map v1 | `partial` | Quiet Now, C.7 re-entry policy and immutable deterministic model-free server context assembly exist; Tomorrow Map and rendered re-entry do not. |
 | 1.5 telemetry/review | `contract-only` | Schemas exist; declared questions and product review loop do not. |
@@ -98,7 +98,7 @@ deployment, external account configuration, or physical-device behavior.
 | 3.1 evidence library | `partial` | Contracts and B.8 deterministic scoped scientific/personal query with immutable replay exist; ingestion, appraisal review, update jobs and UI remain. |
 | 3.2 N-of-1 laboratory | `partial` | Contracts and conservative C.6 pattern-promotion gate exist; experiment execution, analysis, replication and review loops remain. |
 | 3.3 training/nutrition depth | `deferred` | No unsafe or unsupported guidance is enabled. |
-| 3.4 archive v1 | `contract-only` | Episode/chapter contracts and raw capture list only. |
+| 3.4 archive v1 | `partial` | Episode/chapter contracts plus a forensic immutable capture/interpretation lineage surface exist; temporal episodes, chapters, eras, search and synthesis remain. |
 | 3.5 relationship memory | `contract-only` | Conservative person/relationship contracts only. |
 | 4 meta-learning/expressive world | `deferred` | Correctly sequenced after proved lower editions. |
 
@@ -115,7 +115,7 @@ personal state or complete the longitudinal protocol.
 | No universal Life Score or people ranking | `repo` | `verified` | Constitution and implementation omit both. |
 | Guilt-free re-entry | `repo` | `partial` | C.7 guarantees at most three current changes, one question, stale expiry, clean options, backlog suppression and no absence penalty; native rendering remains. |
 | Two-line proactive copy | `repo` | `missing` | No enabled proactive copy pipeline or lint. |
-| Offline local capture | `repo` | `verified` | Atomic portable/native capture tests pass. |
+| Offline local capture | `repo` | `verified` | Atomic portable/native capture and append-only owner-review tests pass; the iPhone forensic review surface is parser-validated. |
 | Two-device convergence | `repo` | `verified` | Simulated backend/native convergence and conflict tests. |
 | Migration fixtures | `repo` | `partial` | Current migrations test; full historical fixture matrix absent. |
 | Intelligible owner export | `repo` | `verified` | B.9 emits signed passphrase-encrypted JSONL/CSV/Markdown ZIPs with optional raw attachments, explicit credential exclusions, immutable transition audit, retry-safe outbox processing, byte-range download, and owner verification CLI; live cloud drill remains owner-only. |

@@ -33,7 +33,8 @@ The resulting `CaptureInterpretationVersion` has explicit
 optional bounded note. Accepted and corrected results remain interpreted;
 dismissal is a distinct terminal meaning and cannot retain proposed fields.
 The cross-stack contract rejects self-supersession, unbound review metadata,
-empty corrections, and incoherent status/disposition combinations.
+fieldless acceptance or correction, and incoherent status/disposition
+combinations.
 
 `CaptureInterpretationService.review` enforces an optimistic capture revision
 and requires the reviewed version to remain latest. A stable review-version ID
@@ -42,8 +43,19 @@ Acceptance copies the reviewed fields, correction applies explicit replacements,
 and both clear the review-required proposal flag; dismissal retains no proposed
 fields. Each result atomically appends `capture.interpretation_reviewed.v1`,
 advances the same capture projection, and queues its sync update while preserving
-all earlier versions and the original payload. The Archive correction surface is
-implemented separately rather than overloading analytics feedback.
+all earlier versions and the original payload. This correction is durable domain
+semantics rather than analytics feedback.
+
+The iPhone Archive navigates by stable capture ID and reads the refreshed local
+projection. Its detail surface renders the immutable original payload, hash and
+context; every inferred and owner-reviewed version; supersession IDs; proposed
+values; and each field's exact source references. Inferred, owner-accepted,
+owner-corrected and owner-dismissed states have distinct labels. Accept, Correct
+Category and Dismiss always target the latest version. The view retains one
+review-version ID while retrying identical content, refreshes Archive and local
+diagnostics after a commit, schedules best-effort background work, and starts
+sync separately when enrollment permits. No network response gates the local
+review result.
 
 ## Adapter boundary
 
@@ -87,5 +99,6 @@ receipt. A crash before the atomic derivative commit therefore returns to the
 pending state on the next run; there is no durable half-interpreted state.
 
 This slice does not claim provider-backed interpretation, automatic provider
-retry policy, media transcription, normalized observations, or correction UI.
-Those remain later Milestone 1.2 layers.
+retry policy, media transcription, or normalized observations. Those remain
+later Milestone 1.2 layers. The SwiftUI surface is parser-validated here and
+still requires owner Xcode, accessibility and device validation.

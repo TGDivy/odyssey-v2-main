@@ -91,7 +91,10 @@ does not infer tasks or facts from ordinary notes, and safely leaves media
 pending. Successful derivatives append a registered event and projection/outbox
 update atomically; startup and background refresh recover pending work. Owner
 acceptance, correction, and dismissal append a new lineage-bound version with
-optimistic review rather than editing an inference in place. See
+optimistic review rather than editing an inference in place. The iPhone Archive
+opens captures by stable ID, keeps inferred and owner-reviewed states visibly
+distinct, exposes every field's source reference and immutable version lineage,
+and provides explicit Accept, Correct Category, and Dismiss actions. See
 [`docs/architecture/capture-interpretation.md`](docs/architecture/capture-interpretation.md).
 
 ## Accepted orientation state
