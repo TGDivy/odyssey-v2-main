@@ -24,7 +24,7 @@ func localApplicationStatePersistsReplacesAndRemovesHashVerifiedDocuments() thro
 
     #expect(first.documentSHA256 != second.documentSHA256)
     #expect(try fixture.store.localApplicationState(for: "now_experience") == second)
-    #expect(try fixture.store.integrityReport().schemaVersion == 6)
+    #expect(try fixture.store.integrityReport().schemaVersion == SQLiteLedgerStore.currentSchemaVersion)
     #expect(try fixture.store.removeLocalApplicationState(for: "now_experience"))
     #expect(!(try fixture.store.removeLocalApplicationState(for: "now_experience")))
     #expect(try fixture.store.localApplicationState(for: "now_experience") == nil)

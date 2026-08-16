@@ -36,6 +36,7 @@ extension SQLiteLedgerStore {
         try verifyLifeModelStorage()
         try verifyLocalApplicationState()
         try verifyProductTelemetryStorage()
+        try verifyFeatureConfigurationCache()
 
         return LedgerIntegrityReport(
             schemaVersion: Self.currentSchemaVersion,
@@ -53,6 +54,9 @@ extension SQLiteLedgerStore {
             ),
             cachedLifeModelVersionCount: Int(
                 try connection.scalarInt("SELECT COUNT(*) FROM life_model_remote_versions")
+            ),
+            cachedFeatureConfigurationCount: Int(
+                try connection.scalarInt("SELECT COUNT(*) FROM verified_feature_configuration_cache")
             ),
             checkedAt: configuration.clock()
         )
@@ -107,6 +111,7 @@ extension SQLiteLedgerStore {
                 deviceID: configuration.deviceID,
                 preMigrationBackupDirectory: destination.deletingLastPathComponent(),
                 busyTimeoutMilliseconds: configuration.busyTimeoutMilliseconds,
+                featureConfigurationVerifier: configuration.featureConfigurationVerifier,
                 clock: configuration.clock
             )
         )
@@ -194,6 +199,7 @@ extension SQLiteLedgerStore {
             "life_model_remote_versions_no_update",
             "life_model_remote_versions_no_delete",
             "product_telemetry_events_no_update",
+            "verified_feature_configuration_no_rollback",
             "entity_projections_search_insert",
             "entity_projections_search_update",
             "entity_projections_search_delete",

@@ -1,12 +1,14 @@
 import Foundation
 import GRDB
 import OdysseyDomain
+import OdysseyTelemetry
 
 public struct SQLiteLedgerConfiguration: Sendable {
     public let databaseURL: URL
     public let deviceID: UUIDv7
     public let preMigrationBackupDirectory: URL?
     public let busyTimeoutMilliseconds: Int
+    public let featureConfigurationVerifier: FeatureConfigurationVerifier?
     public let clock: @Sendable () -> Date
 
     public init(
@@ -14,12 +16,14 @@ public struct SQLiteLedgerConfiguration: Sendable {
         deviceID: UUIDv7,
         preMigrationBackupDirectory: URL? = nil,
         busyTimeoutMilliseconds: Int = 5_000,
+        featureConfigurationVerifier: FeatureConfigurationVerifier? = nil,
         clock: @escaping @Sendable () -> Date = Date.init
     ) {
         self.databaseURL = databaseURL
         self.deviceID = deviceID
         self.preMigrationBackupDirectory = preMigrationBackupDirectory
         self.busyTimeoutMilliseconds = busyTimeoutMilliseconds
+        self.featureConfigurationVerifier = featureConfigurationVerifier
         self.clock = clock
     }
 }
@@ -33,7 +37,7 @@ public final class SQLiteLedgerStore:
     OwnerExporter,
     LocalBackupProvider
 {
-    public static let currentSchemaVersion = 6
+    public static let currentSchemaVersion = 7
     public static let maximumSyncPayloadBytes = 256 * 1_024
     public static let maximumProjectionPayloadBytes = 1_024 * 1_024
 

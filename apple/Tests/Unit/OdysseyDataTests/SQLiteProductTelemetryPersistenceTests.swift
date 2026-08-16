@@ -31,7 +31,7 @@ func productTelemetryDefaultsOffThenPersistsEnabledEventsIdempotently() throws {
     #expect(summary.retainedEventCount == 1)
     #expect(summary.oldestEventAt == telemetryPersistenceDate)
     #expect(summary.nextExpiryAt == telemetryPersistenceDate.addingTimeInterval(7 * 86_400))
-    #expect(try fixture.store.integrityReport().schemaVersion == 6)
+    #expect(try fixture.store.integrityReport().schemaVersion == SQLiteLedgerStore.currentSchemaVersion)
 }
 
 @Test

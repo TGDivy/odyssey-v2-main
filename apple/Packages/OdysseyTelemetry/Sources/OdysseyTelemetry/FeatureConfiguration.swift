@@ -336,10 +336,11 @@ public enum FeatureConfigurationVerificationError: Error, Equatable, Sendable {
 }
 
 public struct FeatureConfigurationVerifier: Sendable {
-    private let expectedKeyID: String
+    public let expectedKeyID: String
+    public let expectedEnvironment: FeatureConfigurationEnvironment
+    public let expectedAudience: String
+
     private let publicKey: Data
-    private let expectedEnvironment: FeatureConfigurationEnvironment
-    private let expectedAudience: String
     private let signatureVerifier: any FeatureConfigurationSignatureVerifying
 
     public init(
@@ -369,6 +370,19 @@ public struct FeatureConfigurationVerifier: Sendable {
         guard validDate(date) else {
             throw FeatureConfigurationVerificationError.invalidClock
         }
+        let decoded = try verifyAuthenticity(of: envelope)
+        guard date >= decoded.notBefore else {
+            throw FeatureConfigurationVerificationError.notYetActive
+        }
+        guard date < decoded.expiresAt else {
+            throw FeatureConfigurationVerificationError.expired
+        }
+        return decoded
+    }
+
+    public func verifyAuthenticity(
+        of envelope: FeatureConfigurationEnvelope
+    ) throws -> FeatureConfigurationPayload {
         guard envelope.keyID == expectedKeyID else {
             throw FeatureConfigurationVerificationError.keyIDMismatch
         }
@@ -407,12 +421,6 @@ public struct FeatureConfigurationVerifier: Sendable {
         }
         guard decoded.audience == expectedAudience else {
             throw FeatureConfigurationVerificationError.audienceMismatch
-        }
-        guard date >= decoded.notBefore else {
-            throw FeatureConfigurationVerificationError.notYetActive
-        }
-        guard date < decoded.expiresAt else {
-            throw FeatureConfigurationVerificationError.expired
         }
         return decoded
     }

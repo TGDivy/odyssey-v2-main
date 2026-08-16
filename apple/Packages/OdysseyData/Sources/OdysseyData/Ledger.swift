@@ -294,6 +294,7 @@ public struct LedgerIntegrityReport: Codable, Hashable, Sendable {
     public let remoteChangeReceiptCount: Int
     public let lifeModelCommandCount: Int
     public let cachedLifeModelVersionCount: Int
+    public let cachedFeatureConfigurationCount: Int
     public let checkedAt: Date
 
     public init(
@@ -305,6 +306,7 @@ public struct LedgerIntegrityReport: Codable, Hashable, Sendable {
         remoteChangeReceiptCount: Int,
         lifeModelCommandCount: Int,
         cachedLifeModelVersionCount: Int,
+        cachedFeatureConfigurationCount: Int,
         checkedAt: Date
     ) {
         self.schemaVersion = schemaVersion
@@ -315,6 +317,7 @@ public struct LedgerIntegrityReport: Codable, Hashable, Sendable {
         self.remoteChangeReceiptCount = remoteChangeReceiptCount
         self.lifeModelCommandCount = lifeModelCommandCount
         self.cachedLifeModelVersionCount = cachedLifeModelVersionCount
+        self.cachedFeatureConfigurationCount = cachedFeatureConfigurationCount
         self.checkedAt = checkedAt
     }
 }

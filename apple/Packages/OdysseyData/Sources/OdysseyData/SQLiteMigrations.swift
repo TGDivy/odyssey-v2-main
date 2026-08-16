@@ -68,6 +68,15 @@ extension SQLiteLedgerStore {
                 appliedAt: clock()
             )
         }
+        migrator.registerMigration(
+            "v7-verified-feature-configuration",
+            foreignKeyChecks: .immediate
+        ) { database in
+            try applyVersionSeven(
+                SQLiteSession(database: database),
+                appliedAt: clock()
+            )
+        }
         return migrator
     }
 
@@ -789,6 +798,52 @@ extension SQLiteLedgerStore {
         try migration.bind([.text(SQLiteValueCodec.dateString(appliedAt))])
         _ = try migration.step()
         try connection.execute("PRAGMA user_version = 6")
+    }
+
+    private static func applyVersionSeven(
+        _ connection: SQLiteSession,
+        appliedAt: Date
+    ) throws {
+        try connection.execute(
+            """
+            CREATE TABLE verified_feature_configuration_cache (
+                singleton INTEGER PRIMARY KEY CHECK (singleton = 1),
+                environment TEXT NOT NULL
+                    CHECK (environment IN ('local', 'development', 'staging', 'production', 'test')),
+                audience TEXT NOT NULL CHECK (length(audience) BETWEEN 3 AND 255),
+                configuration_id TEXT NOT NULL CHECK (length(configuration_id) = 36),
+                version INTEGER NOT NULL CHECK (version >= 1),
+                key_id TEXT NOT NULL CHECK (length(key_id) BETWEEN 1 AND 100),
+                envelope_document BLOB NOT NULL
+                    CHECK (length(envelope_document) BETWEEN 1 AND 100000),
+                envelope_sha256 TEXT NOT NULL CHECK (length(envelope_sha256) = 64),
+                payload_sha256 TEXT NOT NULL CHECK (length(payload_sha256) = 64),
+                issued_at TEXT NOT NULL,
+                not_before TEXT NOT NULL,
+                expires_at TEXT NOT NULL,
+                verified_at TEXT NOT NULL,
+                CHECK (not_before >= issued_at),
+                CHECK (expires_at > not_before),
+                CHECK (verified_at >= issued_at)
+            ) STRICT;
+
+            CREATE TRIGGER verified_feature_configuration_no_rollback
+            BEFORE UPDATE ON verified_feature_configuration_cache
+            WHEN NEW.version <= OLD.version
+            BEGIN
+                SELECT RAISE(ABORT, 'verified feature configuration cannot roll back');
+            END;
+            """
+        )
+        let migration = try connection.statement(
+            """
+            INSERT INTO schema_migrations (version, name, applied_at)
+            VALUES (7, 'verified signed feature configuration cache', ?)
+            """
+        )
+        try migration.bind([.text(SQLiteValueCodec.dateString(appliedAt))])
+        _ = try migration.step()
+        try connection.execute("PRAGMA user_version = 7")
     }
 
     private static func backupTimestamp(_ date: Date) -> String {
