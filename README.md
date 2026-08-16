@@ -117,6 +117,18 @@ uploaded, opened by interpretation, or remotely restorable. Playback, Xcode,
 accessibility, and physical-device validation follow. See
 [`docs/architecture/local-capture-attachments.md`](docs/architecture/local-capture-attachments.md).
 
+## Food preset ranking foundation
+
+The portable domain layer now defines simple owner-authored food presets with
+explicit serving text, aliases, and optional source-labeled values for kcal,
+protein grams, caffeine milligrams, and alcohol grams. A versioned pure ranker
+orders active presets from a 90-day usage window using repeated coarse local
+context, recent and total frequency, recency, and stable lexical/UUID ties; its
+frequency-only fallback uses the same auditable outputs. This slice has no
+durable preset or meal storage, quick-log UI, HealthKit write, recipe/restaurant
+model, or live experiment assignment. See
+[`docs/architecture/food-presets.md`](docs/architecture/food-presets.md).
+
 ## Accepted orientation state
 
 Owner-authenticated commands under `/v1/seasons/*` now append immutable

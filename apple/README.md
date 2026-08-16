@@ -118,6 +118,16 @@ Accept, Correct Category, and Dismiss actions. A failed UI retry retains the
 same review-version ID for the same content; a successful local review refreshes
 Archive/diagnostics, schedules background work, and triggers sync separately.
 
+The first food-capture foundation is portable and deliberately narrow.
+`OdysseyDomain` validates simple owner-defined presets, aliases, servings, and
+optional source-labeled nutrient values with explicit units.
+`OdysseyApplication` provides versioned deterministic context/frequency and
+frequency-only ranking over coarse time-zone-aware local context, bounded
+lookback windows, explainable counts, and stable ties. It has no durable preset
+or meal service, native quick-log surface, HealthKit write, or experiment
+assignment yet. See
+[`docs/architecture/food-presets.md`](../docs/architecture/food-presets.md).
+
 `LocalCaptureAttachmentStore` now supplies the protected local object boundary
 needed by voice/photo/file capture. It copies files through a bounded stream,
 hashes the copied bytes incrementally, records no source filename or absolute
@@ -178,7 +188,7 @@ swift test --package-path apple
 ../tools/apple/generate-project.sh
 ```
 
-The portable package currently reports 100 tests passing under the official
+The portable package currently reports 107 tests passing under the official
 Swift 6.1 release toolchain on Linux. That result does not type-check SwiftUI or
 replace the required Xcode, simulator, accessibility, signing, and device runs.
 
