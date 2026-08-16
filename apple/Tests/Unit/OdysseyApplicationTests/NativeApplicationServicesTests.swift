@@ -2,6 +2,8 @@ import Foundation
 import OdysseyApplication
 import OdysseyAuth
 import OdysseyDomain
+import OdysseyHealth
+import OdysseyIntegrations
 import Testing
 
 @Test
@@ -20,7 +22,15 @@ func localServicesUseStableCredentialIdentityAndApplicationSupportLayout() async
 
     let services = try await NativeLocalServices.bootstrap(
         configuration: configuration,
-        vault: vault
+        vault: vault,
+        healthImporter: SyntheticHealthImportAdapter(
+            capability: HealthImportCapability(
+                availability: .available,
+                supportedKinds: [.workout]
+            ),
+            initialPermission: .notDetermined,
+            authorizationAfterRequest: .partial
+        )
     )
     let receipt = try await services.captureService.record(
         .text(
@@ -36,6 +46,7 @@ func localServicesUseStableCredentialIdentityAndApplicationSupportLayout() async
     )
 
     #expect(services.deviceID == deviceID)
+    #expect(await services.healthImportCoordinator.capability().supportedKinds == [.workout])
     #expect(configuration.databaseURL.lastPathComponent == "odyssey.sqlite")
     #expect(configuration.databaseURL.path.contains("/Data/"))
     #expect(configuration.preMigrationBackupDirectory.path.hasSuffix("/Backups/Migrations"))

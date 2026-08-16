@@ -2,6 +2,7 @@ import Foundation
 import OdysseyAuth
 import OdysseyData
 import OdysseyDomain
+import OdysseyHealth
 import OdysseySync
 
 public enum NativeApplicationConfigurationError: Error, Equatable, Sendable {
@@ -189,6 +190,7 @@ public struct NativeLocalServices: Sendable {
     public let captureInterpretationService: CaptureInterpretationService
     public let foodPresetService: FoodPresetService
     public let foodOccurrenceService: FoodOccurrenceService
+    public let healthImportCoordinator: HealthImportCoordinator
     public let lifeModelWorkshopService: LifeModelWorkshopService
     public let attachmentRecoveryState: LocalCaptureAttachmentRecoveryState
 
@@ -203,7 +205,8 @@ public struct NativeLocalServices: Sendable {
 
     public static func bootstrap(
         configuration: NativeLocalConfiguration,
-        vault: any CredentialVault
+        vault: any CredentialVault,
+        healthImporter: (any IncrementalHealthImporting)? = nil
     ) async throws -> Self {
         let deviceID = try await vault.loadOrCreateDeviceID()
         let ledgerStore = try SQLiteLedgerStore(
@@ -243,6 +246,16 @@ public struct NativeLocalServices: Sendable {
             store: ledgerStore,
             ownerActorID: configuration.ownerActorID
         )
+        let resolvedHealthImporter: any IncrementalHealthImporting
+        if let healthImporter {
+            resolvedHealthImporter = healthImporter
+        } else {
+            resolvedHealthImporter = SystemHealthImportAdapter.make()
+        }
+        let healthImportCoordinator = HealthImportCoordinator(
+            importer: resolvedHealthImporter,
+            store: ledgerStore
+        )
         let lifeModelWorkshopService = try LifeModelWorkshopService(
             store: ledgerStore,
             deviceID: deviceID,
@@ -259,6 +272,7 @@ public struct NativeLocalServices: Sendable {
             captureInterpretationService: captureInterpretationService,
             foodPresetService: foodPresetService,
             foodOccurrenceService: foodOccurrenceService,
+            healthImportCoordinator: healthImportCoordinator,
             lifeModelWorkshopService: lifeModelWorkshopService,
             attachmentRecoveryState: await attachmentRecoveryState(
                 store: captureAttachmentStore,

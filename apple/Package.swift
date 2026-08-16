@@ -77,6 +77,7 @@ let package = Package(
                 "OdysseyDomain",
                 "OdysseyData",
                 "OdysseyExtensionBridge",
+                "OdysseyHealth",
                 "OdysseySync",
             ],
             path: "Packages/OdysseyApplication/Sources/OdysseyApplication"
@@ -162,6 +163,8 @@ let package = Package(
                 "OdysseyData",
                 "OdysseyDomain",
                 "OdysseyExtensionBridge",
+                "OdysseyHealth",
+                "OdysseyIntegrations",
                 "OdysseySync",
             ],
             path: "Tests/Unit/OdysseyApplicationTests"
