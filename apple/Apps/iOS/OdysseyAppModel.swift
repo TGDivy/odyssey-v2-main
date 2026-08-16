@@ -10,6 +10,7 @@ import OdysseyDomain
 import OdysseyExtensionBridge
 import OdysseyHealth
 import OdysseySync
+import OdysseyWatchConnectivity
 import UIKit
 
 private enum CaptureReviewApplicationError: Error, LocalizedError {
@@ -41,6 +42,7 @@ final class OdysseyAppModel: ObservableObject {
     private var isDrainingExtensionCommands = false
     private var extensionCommandQueue: ExtensionCommandQueue?
     private var extensionCommandProcessor: ExtensionCommandProcessor?
+    private var watchCommandReceiver: PhoneWatchCommandReceiver?
 
     #if canImport(HealthKit)
     private let foodHealthCoordinator = FoodHealthWriteCoordinator(
@@ -77,6 +79,7 @@ final class OdysseyAppModel: ObservableObject {
         workshopDraftFactory = nil
         extensionCommandQueue = nil
         extensionCommandProcessor = nil
+        watchCommandReceiver = nil
         extensionCommandMessage = nil
         extensionPresentationRequest = nil
 
@@ -97,7 +100,15 @@ final class OdysseyAppModel: ObservableObject {
                 foodOccurrenceService: local.foodOccurrenceService
             )
             do {
-                extensionCommandQueue = try makeExtensionCommandQueue()
+                let queue = try makeExtensionCommandQueue()
+                extensionCommandQueue = queue
+                if let receiver = PhoneWatchCommandReceiver(commandQueue: queue) {
+                    receiver.onCommandAccepted = { [weak self] in
+                        await self?.processPendingExtensionCommands()
+                    }
+                    watchCommandReceiver = receiver
+                    receiver.activate()
+                }
             } catch {
                 extensionCommandMessage =
                     "Extension quick capture is unavailable until the App Group is configured."
@@ -234,7 +245,9 @@ final class OdysseyAppModel: ObservableObject {
         guard localServices != nil, state.localReadiness == .ready else { return }
         apply(.foodLoadStarted)
         do {
-            apply(.foodLoaded(try await foodQuickLogSnapshot(at: Date())))
+            let snapshot = try await foodQuickLogSnapshot(at: Date())
+            apply(.foodLoaded(snapshot))
+            publishWatchFoodSnapshot(snapshot)
             await refreshFoodHealthAuthorization()
         } catch let error as LocalizedError {
             apply(.foodFailed(
@@ -767,6 +780,15 @@ final class OdysseyAppModel: ObservableObject {
         )
     }
 
+    private func publishWatchFoodSnapshot(_ snapshot: FoodQuickLogSnapshot) {
+        guard let watchCommandReceiver,
+              let projected = try? WatchFoodPresetSnapshotProjector.project(snapshot)
+        else {
+            return
+        }
+        try? watchCommandReceiver.publish(foodSnapshot: projected)
+    }
+
     private var foodHealthNutrientKinds: Set<FoodHealthNutrientKind> {
         var kinds = Set<FoodHealthNutrientKind>()
         for preset in state.foodSnapshot?.activePresets ?? [] {
@@ -900,10 +922,13 @@ final class OdysseyAppModel: ObservableObject {
     private func completeFoodMutation(_ success: FoodQuickLogSuccess) async {
         let fallback = state.foodSnapshot
         do {
-            apply(.foodMutationSucceeded(success, try await foodQuickLogSnapshot(at: Date())))
+            let snapshot = try await foodQuickLogSnapshot(at: Date())
+            apply(.foodMutationSucceeded(success, snapshot))
+            publishWatchFoodSnapshot(snapshot)
         } catch {
             if let fallback {
                 apply(.foodMutationSucceeded(success, fallback))
+                publishWatchFoodSnapshot(fallback)
             } else {
                 apply(.foodFailed(
                     "The food change was saved, but the local library could not be refreshed."

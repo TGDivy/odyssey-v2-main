@@ -37,8 +37,8 @@ recover interrupted claims after restart. For ledger mutations, the command
 UUID is also the created entity and sync-operation identity. A replay after a
 crash therefore verifies and accepts the matching projection rather than
 creating a second capture or food occurrence. A conflicting projection is
-quarantined. Malformed and
-permanently invalid files move to `rejected` instead of blocking later work;
+quarantined. Malformed and permanently invalid files move to `rejected` instead
+of blocking later work;
 transient storage failures return the claim and stop that drain pass.
 
 Directories and files use owner-only POSIX modes, Apple Data Protection through
@@ -73,8 +73,12 @@ and refreshes the relevant local views only after commit. Missing or invalid App
 Group configuration disables only extension handoff and leaves direct local
 capture available.
 
-Watch transport remains unwired. Watch has a separate device filesystem; it
-must forward the same command contract through WatchConnectivity or direct
-authenticated sync, not assume the iPhone App Group is shared across devices.
-No Xcode extension, Siri, background-execution, WidgetKit/Control Center, or
-physical Watch behavior is claimed from Linux parser tests.
+Watch now persists text/food commands in a separate protected Application
+Support outbox, attempts immediate WatchConnectivity delivery, falls back to a
+system background transfer, and removes a command only after an iPhone handoff
+receipt with the same UUID. The iPhone publishes an expiring four-preset food
+snapshot through application context. It still does not share App Group storage
+with Watch. See
+[`watch-quick-capture.md`](watch-quick-capture.md). No Xcode extension, Siri,
+background-execution, WidgetKit/Control Center, or physical Watch behavior is
+claimed from Linux parser tests.

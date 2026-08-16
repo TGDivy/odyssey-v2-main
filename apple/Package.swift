@@ -17,6 +17,10 @@ let package = Package(
         .library(name: "OdysseyAuth", targets: ["OdysseyAuth"]),
         .library(name: "OdysseyApplication", targets: ["OdysseyApplication"]),
         .library(name: "OdysseyExtensionBridge", targets: ["OdysseyExtensionBridge"]),
+        .library(
+            name: "OdysseyWatchConnectivity",
+            targets: ["OdysseyWatchConnectivity"]
+        ),
         .library(name: "OdysseyHealth", targets: ["OdysseyHealth"]),
         .library(name: "OdysseyCalendar", targets: ["OdysseyCalendar"]),
         .library(name: "OdysseyLocation", targets: ["OdysseyLocation"]),
@@ -79,6 +83,11 @@ let package = Package(
             name: "OdysseyExtensionBridge",
             dependencies: ["OdysseyDomain"],
             path: "Packages/OdysseyExtensionBridge/Sources/OdysseyExtensionBridge"
+        ),
+        .target(
+            name: "OdysseyWatchConnectivity",
+            dependencies: ["OdysseyDomain", "OdysseyExtensionBridge"],
+            path: "Packages/OdysseyWatchConnectivity/Sources/OdysseyWatchConnectivity"
         ),
         .target(
             name: "OdysseyHealth",

@@ -63,8 +63,10 @@ it does not prove an owner deployment:
   ranked sheet, and the iPhone drains at startup, foreground activation, and
   opportunistic background refresh. Generic widget buttons and Control Center
   controls route to the private Capture/Food sheets through five-minute commands
-  and never log hidden values. These sources are parser-validated only. Watch
-  transport is not wired, so Watch quick capture must not be claimed.
+  and never log hidden values. The Watch source now persists text/food commands
+  locally, uses immediate/background WatchConnectivity with UUID receipts, and
+  consumes an expiring four-preset iPhone snapshot. These sources are
+  parser-validated only; no paired-device behavior may be claimed yet.
   The device/refresh Keychain vault, in-memory access-token refresh session,
   native Apple ceremony, and auth HTTP exchange are implemented as package
   boundaries. Recovery UI, server-side device-revocation UI, and physical
@@ -1199,6 +1201,16 @@ Do not enter real owner data. Then execute this staged flow:
    never screenshots or real health values.
 16. Background the app and retain the app-refresh scheduling/debug evidence. Do
    not claim timing guarantees; the OS may defer or cancel the task.
+17. On a paired disposable Watch, open Food on iPhone to publish synthetic ranked
+   presets. Disconnect phone reachability, save one synthetic Watch note and one
+   synthetic food command, and confirm both report pending without waiting.
+   Force-quit/relaunch Watch and confirm pending commands survive. Reconnect;
+   confirm pending reaches zero only after iPhone acceptance and each mutation
+   appears exactly once in iPhone history/outbox. Repeat across a phone
+   force-quit and a background transfer. Confirm preset labels are private in the
+   Watch app, stale choices disable, and no complication/notification exposes
+   them. Retain synthetic UUID/count/timing evidence only; an accepted Watch
+   receipt is not proof of cloud sync or HealthKit completion.
 
 Follow `docs/architecture/authentication.md` for the matching backend and token
 invariants. Local credential removal in Workshop is not server revocation; use

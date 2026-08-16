@@ -15,7 +15,7 @@ permission to use the corresponding data or perform an external action.
 | Significant location | iOS | Enable location background mode only after owner review | Broad, sparse context; no continuous precise history | Calendar/timezone/manual place context |
 | Siri/App Intents | iOS intents | Enable Siri entitlement | Bounded text queues through the App Group; food opens the private in-app ranking surface | Standard in-app capture |
 | Widgets/controls | widget extension | Embed and sign with shared group | Render cached state with explicit freshness; generic actions route to private in-app sheets | Main app remains fully usable |
-| Watch | watchOS app | Register companion bundle and HealthKit capability | Offline quick actions queue locally | iPhone capture path |
+| Watch | watchOS app | Register companion bundle and HealthKit capability | Text/food commands persist locally and use receipt-bound WatchConnectivity; ranked presets expire | Pending commands remain on Watch; full iPhone capture path remains available |
 | Associated domains | iOS | Replace placeholder domain and host AASA file | Only verified HTTPS links | Universal links open in browser |
 | Photos | iOS | Add usage description | User-selected references only | Archive without photo enrichment |
 | Foundation Models | supported Apple targets | No cloud credential; availability-gated | Optional rendering/enrichment, never canonical mutation | Deterministic local or evaluated cloud fallback |

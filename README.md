@@ -166,7 +166,9 @@ acknowledgment replays without duplicate mutation. The food shortcut opens the
 private in-app ranking surface rather than exposing preset names to system
 suggestions. Generic widget and Control Center actions use the same bridge to
 open private Capture/Food sheets without logging hidden values; stale routes
-expire after five minutes. Watch transport remains. See
+expire after five minutes. Watch now persists notes and ranked-preset food
+commands locally, transfers them through immediate/background WatchConnectivity,
+and waits for a UUID-matched iPhone handoff receipt before removal. See
 [`docs/architecture/extension-quick-capture.md`](docs/architecture/extension-quick-capture.md).
 
 ## Accepted orientation state

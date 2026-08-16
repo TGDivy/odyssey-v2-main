@@ -83,6 +83,8 @@ targets:
       - package: OdysseyPackages
         product: OdysseyExtensionBridge
       - package: OdysseyPackages
+        product: OdysseyWatchConnectivity
+      - package: OdysseyPackages
         product: OdysseyHealth
       - package: OdysseyPackages
         product: OdysseyIntelligence
@@ -122,9 +124,13 @@ targets:
       - package: OdysseyPackages
         product: OdysseyDomain
       - package: OdysseyPackages
+        product: OdysseyExtensionBridge
+      - package: OdysseyPackages
         product: OdysseyDesignSystem
       - package: OdysseyPackages
         product: OdysseyTelemetry
+      - package: OdysseyPackages
+        product: OdysseyWatchConnectivity
 
   Odyssey-macOS:
     type: application
