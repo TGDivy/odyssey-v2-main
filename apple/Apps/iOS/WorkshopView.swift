@@ -6,6 +6,7 @@ import OdysseyDomain
 import OdysseyHealth
 import OdysseyIntegrations
 import OdysseySync
+import OdysseyWeather
 import SwiftUI
 
 private enum WorkshopEditorRoute: Identifiable {
@@ -27,11 +28,13 @@ private enum WorkshopEditorRoute: Identifiable {
 
 struct WorkshopView: View {
     @EnvironmentObject private var model: OdysseyAppModel
+    @Environment(\.colorScheme) private var colorScheme
     @State private var editorRoute: WorkshopEditorRoute?
     @State private var localFailure: String?
     @State private var confirmsProjectionRebuild = false
     @State private var confirmsHealthContextRemoval = false
     @State private var confirmsCalendarContextRemoval = false
+    @State private var confirmsWeatherContextRemoval = false
     @State private var draftToAbandon: LifeModelDraftRecord?
 
     var body: some View {
@@ -44,6 +47,7 @@ struct WorkshopView: View {
             acceptedHistorySection
             healthContextSection
             calendarContextSection
+            weatherContextSection
             enrollmentSection
             synchronizationSection
             repairSection
@@ -52,6 +56,8 @@ struct WorkshopView: View {
         .refreshable {
             await model.refreshWorkshop()
             await model.refreshHealthContextStatus()
+            await model.refreshCalendarContextStatus()
+            await model.refreshWeatherContextStatus()
         }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -146,6 +152,21 @@ struct WorkshopView: View {
             Text(
                 "This deletes Odyssey's local event mirror and refresh marker. It does "
                     + "not move or delete source events or change system permission."
+            )
+        }
+        .confirmationDialog(
+            "Remove local weather context?",
+            isPresented: $confirmsWeatherContextRemoval,
+            titleVisibility: .visible
+        ) {
+            Button("Remove Local Mirror", role: .destructive) {
+                Task { await model.removeLocalWeatherContext() }
+            }
+            Button("Keep Local Mirror", role: .cancel) {}
+        } message: {
+            Text(
+                "This deletes Odyssey's local broad-place forecast and refresh marker. "
+                    + "It does not change WeatherKit service access or provider data."
             )
         }
     }
@@ -583,6 +604,123 @@ struct WorkshopView: View {
         }
     }
 
+    private var weatherContextSection: some View {
+        Section("Weather Context") {
+            weatherContextStatus
+            if let overview = model.weatherContextState.overview {
+                LabeledContent(
+                    "Availability",
+                    value: overview.capability.availability.ownerDisplayName
+                )
+                LabeledContent(
+                    "Service permission",
+                    value: overview.permission.ownerDisplayName
+                )
+                LabeledContent(
+                    "Supported context",
+                    value: weatherCoverage(overview.capability)
+                )
+                LabeledContent(
+                    "Local snapshot",
+                    value: overview.cachedPlace == nil ? "None" : "One broad place"
+                )
+                if let place = overview.cachedPlace {
+                    LabeledContent(
+                        "Cached broad place",
+                        value: place.displayName ?? "Resolved broad place"
+                    )
+                    LabeledContent("Place time zone", value: place.timeZoneID)
+                    LabeledContent(
+                        "Cache freshness",
+                        value: overview.cacheIsFresh ? "Fresh" : "Expired"
+                    )
+                }
+                if let outcome = overview.lastOutcome {
+                    LabeledContent("Last outcome", value: outcome.ownerDisplayName)
+                }
+                if let attemptedAt = overview.lastAttemptAt {
+                    LabeledContent(
+                        "Last attempt",
+                        value: attemptedAt.formatted(date: .abbreviated, time: .shortened)
+                    )
+                }
+                if let expiresAt = overview.expiresAt {
+                    LabeledContent(
+                        "Snapshot expires",
+                        value: expiresAt.formatted(date: .abbreviated, time: .shortened)
+                    )
+                }
+            }
+            if let health = model.weatherContextState.integrationHealth {
+                LabeledContent(
+                    "Integration state",
+                    value: health.operationalState.ownerDisplayName
+                )
+                if let refreshedAt = health.lastSuccessfulSync {
+                    LabeledContent(
+                        "Last successful refresh",
+                        value: refreshedAt.formatted(date: .abbreviated, time: .shortened)
+                    )
+                }
+                if let sourceTimestamp = health.newestSourceTimestamp {
+                    LabeledContent(
+                        "Newest source weather",
+                        value: sourceTimestamp.formatted(date: .abbreviated, time: .shortened)
+                    )
+                }
+                if let lag = health.lag {
+                    LabeledContent("Source lag", value: lagDescription(lag))
+                }
+                LabeledContent(
+                    "Rejected or quarantined",
+                    value: String(health.rejectedRecordCount)
+                )
+                LabeledContent(
+                    "Schema mismatch",
+                    value: health.schemaVersionMismatch ? "Detected" : "None"
+                )
+                LabeledContent(
+                    "Rate limit",
+                    value: health.rateLimitState.ownerDisplayName
+                )
+            }
+            if let attribution = model.weatherContextState.overview?.attribution {
+                weatherAttribution(attribution)
+            }
+            Text(
+                "Odyssey contributes fresh weather only to local planning for a current "
+                    + "broad place. Query coordinates are transient and are never written "
+                    + "to the weather mirror or sync outbox. Foreground place resolution "
+                    + "is required before a provider refresh."
+            )
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+
+            if let message = model.weatherContextState.message {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(message)
+                        .font(.footnote)
+                    Button("Dismiss status") {
+                        model.dismissWeatherContextMessage()
+                    }
+                    .font(.footnote)
+                }
+            }
+
+            Button {
+                Task { await model.refreshWeatherContextStatus() }
+            } label: {
+                Label("Refresh Weather Status", systemImage: "arrow.clockwise")
+            }
+            .disabled(model.weatherContextState.activity.isBusy)
+
+            Button("Remove Local Weather Mirror", role: .destructive) {
+                confirmsWeatherContextRemoval = true
+            }
+            .disabled(model.weatherContextState.activity.isBusy)
+        }
+    }
+
     private var synchronizationSection: some View {
         Section("Synchronization") {
             syncStatus
@@ -793,6 +931,66 @@ struct WorkshopView: View {
             Label(message, systemImage: "exclamationmark.triangle")
                 .foregroundStyle(.red)
         }
+    }
+
+    @ViewBuilder
+    private var weatherContextStatus: some View {
+        switch model.weatherContextState.activity {
+        case .idle:
+            EmptyView()
+        case .refreshing:
+            activityLabel("Inspecting local weather integration")
+        case .importing:
+            activityLabel("Refreshing local weather context")
+        case .revoking:
+            activityLabel("Removing the local weather mirror")
+        case let .failed(message):
+            Label(message, systemImage: "exclamationmark.triangle")
+                .foregroundStyle(.red)
+        }
+    }
+
+    private func weatherCoverage(_ capability: WeatherMirrorCapability) -> String {
+        var coverage = [String]()
+        if capability.supportsCurrentConditions {
+            coverage.append("Current")
+        }
+        if capability.supportsHourlyForecast {
+            coverage.append("Hourly")
+        }
+        if capability.supportsDailyForecast {
+            coverage.append("Daily")
+        }
+        return coverage.isEmpty ? "None on this device" : coverage.joined(separator: ", ")
+    }
+
+    @ViewBuilder
+    private func weatherAttribution(
+        _ attribution: WeatherProviderAttribution
+    ) -> some View {
+        let markURL = colorScheme == .light
+            ? attribution.combinedMarkDarkURL
+            : attribution.combinedMarkLightURL
+        if let markURL {
+            AsyncImage(url: markURL) { image in
+                image
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxWidth: 180, maxHeight: 32, alignment: .leading)
+                    .accessibilityLabel(attribution.providerName)
+            } placeholder: {
+                Text(attribution.providerName)
+                    .font(.footnote.weight(.semibold))
+            }
+        } else {
+            Text(attribution.providerName)
+                .font(.footnote.weight(.semibold))
+        }
+        Text(attribution.attributionText)
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+        Link("Weather data attribution and sources", destination: attribution.legalPageURL)
+            .font(.footnote)
     }
 
     private func lagDescription(_ lag: TimeInterval) -> String {

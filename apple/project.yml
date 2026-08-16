@@ -89,6 +89,8 @@ targets:
       - package: OdysseyPackages
         product: OdysseyCalendar
       - package: OdysseyPackages
+        product: OdysseyWeather
+      - package: OdysseyPackages
         product: OdysseyIntegrations
       - package: OdysseyPackages
         product: OdysseyIntelligence

@@ -14,6 +14,7 @@ import OdysseyIntegrations
 import OdysseySync
 import OdysseyTelemetry
 import OdysseyWatchConnectivity
+import OdysseyWeather
 import UIKit
 
 private enum CaptureReviewApplicationError: Error, LocalizedError {
@@ -40,6 +41,7 @@ final class OdysseyAppModel: ObservableObject {
     @Published private(set) var extensionPresentationRequest: ExtensionCommandPresentation?
     @Published private(set) var healthContextState = HealthContextIntegrationState()
     @Published private(set) var calendarContextState = CalendarContextIntegrationState()
+    @Published private(set) var weatherContextState = WeatherContextIntegrationState()
 
     private var localServices: NativeLocalServices?
     private var remoteServices: NativeRemoteServices?
@@ -107,6 +109,7 @@ final class OdysseyAppModel: ObservableObject {
         extensionPresentationRequest = nil
         healthContextState = HealthContextIntegrationState()
         calendarContextState = CalendarContextIntegrationState()
+        weatherContextState = WeatherContextIntegrationState()
 
         let local: NativeLocalServices
         do {
@@ -145,6 +148,7 @@ final class OdysseyAppModel: ObservableObject {
             await refreshFoodQuickLog()
             await refreshHealthContextStatus()
             await refreshCalendarContextStatus()
+            await refreshWeatherContextStatus()
             await drainExtensionCommands()
             if foodHealthAuthorization == .authorized {
                 Task { [weak self] in
@@ -676,6 +680,91 @@ final class OdysseyAppModel: ObservableObject {
 
     func dismissCalendarContextMessage() {
         calendarContextState.message = nil
+    }
+
+    func refreshWeatherContextStatus() async {
+        guard let coordinator = localServices?.weatherMirrorCoordinator else {
+            weatherContextState = WeatherContextIntegrationState()
+            return
+        }
+        guard !weatherContextState.activity.isBusy else { return }
+        weatherContextState.activity = .refreshing
+        do {
+            weatherContextState.overview = try await coordinator.overview()
+            weatherContextState.activity = .idle
+        } catch {
+            weatherContextState.activity = .failed(
+                "The local weather mirror could not be inspected safely."
+            )
+        }
+    }
+
+    func refreshWeatherContext(
+        for query: WeatherQueryLocation,
+        showCompletionMessage: Bool = true
+    ) async {
+        guard let coordinator = localServices?.weatherMirrorCoordinator else { return }
+        if weatherContextState.overview == nil {
+            await refreshWeatherContextStatus()
+        }
+        guard weatherContextState.overview?.capability.availability == .available,
+              !weatherContextState.activity.isBusy
+        else {
+            return
+        }
+        if showCompletionMessage {
+            weatherContextState.message = nil
+        }
+        weatherContextState.activity = .importing
+        do {
+            let result = try await coordinator.refresh(for: query)
+            weatherContextState.overview = try await coordinator.overview()
+            weatherContextState.localMirrorRevoked = false
+            weatherContextState.activity = .idle
+            guard showCompletionMessage else { return }
+            switch result.outcome {
+            case .fetched:
+                weatherContextState.message =
+                    "Weather context refreshed locally: \(result.insertedCount) added, "
+                    + "\(result.updatedCount) updated, and \(result.duplicateCount) unchanged."
+            case .rateLimited:
+                weatherContextState.message =
+                    "The weather provider is rate limited. Prior local context was preserved."
+            case .unavailable:
+                weatherContextState.message =
+                    "Weather service or entitlement is unavailable. Prior local context was preserved."
+            }
+        } catch {
+            weatherContextState.activity = .failed(
+                "Weather context could not be refreshed. Prior local context remains intact."
+            )
+        }
+    }
+
+    func removeLocalWeatherContext() async {
+        guard let coordinator = localServices?.weatherMirrorCoordinator,
+              !weatherContextState.activity.isBusy
+        else {
+            return
+        }
+        weatherContextState.activity = .revoking
+        do {
+            let removedCount = try await coordinator.revokeLocalWeatherData()
+            weatherContextState.overview = try await coordinator.overview()
+            weatherContextState.localMirrorRevoked = true
+            weatherContextState.activity = .idle
+            weatherContextState.message =
+                "Removed \(removedCount) local weather context snapshot"
+                + "\(removedCount == 1 ? "" : "s"). WeatherKit service access and provider data were not changed."
+        } catch {
+            weatherContextState.activity = .failed(
+                "The local weather mirror could not be removed safely."
+            )
+        }
+    }
+
+    func dismissWeatherContextMessage() {
+        weatherContextState.message = nil
     }
 
     func dismissExtensionCommandMessage() {
