@@ -35,6 +35,7 @@ extension SQLiteLedgerStore {
         try verifySyncOperations()
         try verifyLifeModelStorage()
         try verifyLocalApplicationState()
+        try verifyProductTelemetryStorage()
 
         return LedgerIntegrityReport(
             schemaVersion: Self.currentSchemaVersion,
@@ -192,6 +193,7 @@ extension SQLiteLedgerStore {
             "life_model_acceptance_commands_no_delete",
             "life_model_remote_versions_no_update",
             "life_model_remote_versions_no_delete",
+            "product_telemetry_events_no_update",
             "entity_projections_search_insert",
             "entity_projections_search_update",
             "entity_projections_search_delete",

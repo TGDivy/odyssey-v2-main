@@ -62,6 +62,12 @@ extension SQLiteLedgerStore {
                 appliedAt: clock()
             )
         }
+        migrator.registerMigration("v6-product-telemetry", foreignKeyChecks: .immediate) { database in
+            try applyVersionSix(
+                SQLiteSession(database: database),
+                appliedAt: clock()
+            )
+        }
         return migrator
     }
 
@@ -731,6 +737,58 @@ extension SQLiteLedgerStore {
         try migration.bind([.text(SQLiteValueCodec.dateString(appliedAt))])
         _ = try migration.step()
         try connection.execute("PRAGMA user_version = 5")
+    }
+
+    private static func applyVersionSix(
+        _ connection: SQLiteSession,
+        appliedAt: Date
+    ) throws {
+        try connection.execute(
+            """
+            CREATE TABLE product_telemetry_preferences (
+                singleton INTEGER PRIMARY KEY CHECK (singleton = 1),
+                document BLOB NOT NULL CHECK (length(document) BETWEEN 1 AND 65536),
+                document_sha256 TEXT NOT NULL CHECK (length(document_sha256) = 64),
+                updated_at TEXT NOT NULL
+            ) STRICT;
+
+            CREATE TABLE product_telemetry_events (
+                event_id TEXT PRIMARY KEY CHECK (length(event_id) = 36),
+                occurred_at TEXT NOT NULL,
+                received_at TEXT NOT NULL,
+                event_name TEXT NOT NULL CHECK (length(event_name) BETWEEN 1 AND 100),
+                question_id TEXT NOT NULL CHECK (length(question_id) BETWEEN 1 AND 100),
+                document BLOB NOT NULL CHECK (length(document) BETWEEN 1 AND 16384),
+                document_sha256 TEXT NOT NULL CHECK (length(document_sha256) = 64),
+                expires_at TEXT NOT NULL,
+                local_only INTEGER NOT NULL CHECK (local_only = 1),
+                CHECK (received_at >= occurred_at),
+                CHECK (expires_at > occurred_at)
+            ) STRICT, WITHOUT ROWID;
+
+            CREATE INDEX product_telemetry_events_time_index
+                ON product_telemetry_events (occurred_at, event_id);
+            CREATE INDEX product_telemetry_events_question_index
+                ON product_telemetry_events (question_id, occurred_at);
+            CREATE INDEX product_telemetry_events_expiry_index
+                ON product_telemetry_events (expires_at);
+
+            CREATE TRIGGER product_telemetry_events_no_update
+            BEFORE UPDATE ON product_telemetry_events
+            BEGIN
+                SELECT RAISE(ABORT, 'product telemetry events are immutable');
+            END;
+            """
+        )
+        let migration = try connection.statement(
+            """
+            INSERT INTO schema_migrations (version, name, applied_at)
+            VALUES (6, 'privacy-controlled local product telemetry', ?)
+            """
+        )
+        try migration.bind([.text(SQLiteValueCodec.dateString(appliedAt))])
+        _ = try migration.step()
+        try connection.execute("PRAGMA user_version = 6")
     }
 
     private static func backupTimestamp(_ date: Date) -> String {

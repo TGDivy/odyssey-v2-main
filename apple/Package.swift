@@ -56,6 +56,7 @@ let package = Package(
             dependencies: [
                 "OdysseyDomain",
                 "OdysseyIntegrations",
+                "OdysseyTelemetry",
                 "CSQLite",
                 .product(name: "GRDB", package: "GRDB.swift"),
             ],
@@ -152,6 +153,7 @@ let package = Package(
                 "OdysseyData",
                 "OdysseyDomain",
                 "OdysseyIntegrations",
+                "OdysseyTelemetry",
                 .product(name: "GRDB", package: "GRDB.swift"),
             ],
             path: "Tests/Unit/OdysseyDataTests"
