@@ -16,6 +16,8 @@
   </array>
   <key>com.apple.developer.siri</key>
   <true/>
+  <key>com.apple.developer.weatherkit</key>
+  <true/>
   <key>com.apple.security.application-groups</key>
   <array>
     <string>$(ODYSSEY_APP_GROUP)</string>

@@ -24,7 +24,7 @@ it does not prove an owner deployment:
   environment.
 - No Apple-platform package build, Xcode archive, signing operation, TestFlight
   upload, or physical-device test has been performed. The portable Swift
-  package has been compiled and its 155 deterministic tests have run under the
+  package has been compiled and its 162 deterministic tests have run under the
   official Linux Swift 6.1 toolchain; that is not Apple-platform validation.
 - The cloud model remains `deterministic`. Adding a model-provider key alone
   enables nothing; no evaluated cloud-model adapter is implemented.
@@ -76,6 +76,14 @@ it does not prove an owner deployment:
   local-only revocation. EventKit and Calendar SwiftUI paths are parser-validated
   only; no Apple SDK build, account, permission, recurrence, cancellation, or
   travel-timezone behavior is claimed.
+  A provider-neutral Weather contract, mutable coordinate-free local mirror,
+  guarded WeatherKit adapter, non-Apple fallback, provider attribution assets,
+  and Workshop integration health/revocation surface now exist. The guarded
+  branch was parser-validated and strict-concurrency type-checked against
+  disposable modules shaped from Apple’s documented signatures. No Apple SDK,
+  signed WeatherKit entitlement, live request, quota, attribution rendering, or
+  device proof is claimed. Foreground location-to-weather refresh remains
+  intentionally blocked until the conservative place resolver lands.
   A portable protected App Group command queue also exists for bounded text and
   opaque-preset food handoff with idempotency and crash recovery. The text App
   Intent queues without opening Odyssey, the food intent opens only the private
@@ -258,7 +266,7 @@ entitlements:
 
 | Identifier | Capabilities |
 | --- | --- |
-| Main `.app` | App Groups, HealthKit, Sign in with Apple, Push Notifications, Associated Domains, Siri |
+| Main `.app` | App Groups, HealthKit, WeatherKit, Sign in with Apple, Push Notifications, Associated Domains, Siri |
 | Watch `.watch` | App Groups, HealthKit |
 | macOS `.mac` | App Groups; sandbox/network/file entitlements remain Xcode-managed |
 | Widgets `.widgets` | App Groups |
@@ -267,6 +275,16 @@ entitlements:
 
 No iCloud or CloudKit container exists in the current design. Do not create one
 or enable iCloud merely because Apple calls App Groups “containers.”
+
+For each development, staging, and production main `.app` identifier, open
+**Certificates, Identifiers & Profiles → Identifiers → App ID → Capabilities**,
+enable **WeatherKit**, save, and regenerate the matching development and
+distribution profiles. The native integration uses the App ID capability and
+the checked-in Boolean `com.apple.developer.weatherkit` entitlement. It does
+not use WeatherKit REST, so do not create or store a WeatherKit Services ID,
+private key, or server credential. Review current Apple Weather attribution and
+service terms, account quota, and any pending Apple Developer agreement before
+promotion; never encode a quota assumption in the app.
 
 Choose an owner-controlled HTTPS domain before replacing
 `applinks:example.invalid`. Host a valid AASA document and verify it without a
@@ -295,13 +313,15 @@ Odyssey yet. Keep proactive delivery disabled.
 - If profile generation says an entitlement is unavailable, re-open the App ID,
   verify the capability, and regenerate the profile. Do not delete the
   entitlement to make signing green without recording the deviation.
-- HealthKit capability changes may require explicit agreement acceptance.
+- HealthKit or WeatherKit capability changes may require explicit agreement
+  acceptance and regenerated profiles.
 - If no owner-controlled domain exists, keep associated-domain release work
   blocked; never ship `example.invalid`.
 
 **Evidence retained**
 
-- Capability screenshots or portal export, App Group identifiers, AASA body
+- Capability screenshots or portal export, App Group identifiers, WeatherKit
+  agreement/quota review date, AASA body
   hash and HTTP headers, profile UUIDs, and a note that APNs backend delivery
   remains unimplemented. Never retain an APNs private key in the evidence set.
 
@@ -1089,6 +1109,20 @@ xcodebuild -workspace apple/Odyssey.xcworkspace \
   | rg 'DEVELOPMENT_TEAM|PRODUCT_BUNDLE_IDENTIFIER|CODE_SIGN_ENTITLEMENTS'
 ```
 
+After a successful archive, inspect the signed main app rather than trusting
+the source entitlement alone:
+
+```bash
+APP_PATH="$HOME/Library/Developer/Xcode/Archives/Odyssey-Staging.xcarchive/Products/Applications/Odyssey.app"
+codesign -d --entitlements :- "$APP_PATH" \
+  >"$ODYSSEY_PRIVATE_CONFIG/odyssey-staging.entitlements.plist"
+plutil -extract com.apple.developer.weatherkit raw \
+  "$ODYSSEY_PRIVATE_CONFIG/odyssey-staging.entitlements.plist"
+```
+
+The final command must print `true`. Store the entitlement report only in the
+private evidence directory because it also contains owner account identifiers.
+
 Use automatic signing for development/staging owner devices. Distribution
 signing and App Store Connect access remain Account Holder-controlled. Archive
 only after every embedded target/profile resolves:
@@ -1107,6 +1141,8 @@ xcodebuild -workspace apple/Odyssey.xcworkspace \
 - Build settings contain the owner Team ID and staging IDs, never placeholders.
 - Archive signs the iOS app plus Watch, widget, intents, and share extensions
   under the same team with the expected entitlements.
+- The signed main app contains `com.apple.developer.weatherkit = true`; embedded
+  extensions do not receive WeatherKit unless a later reviewed design uses it.
 
 **Troubleshooting**
 
@@ -1114,6 +1150,9 @@ xcodebuild -workspace apple/Odyssey.xcworkspace \
   unreviewed generated differences.
 - Provisioning failures usually indicate a missing embedded-target identifier,
   App Group membership, or capability. Compare steps 2–3.
+- A WeatherKit `permissionDenied` result without a location prompt usually means
+  the App ID/profile entitlement is missing or the Apple agreement is not active;
+  inspect the signed archive before changing runtime code.
 - If the archive still contains `example.invalid` or `com.example`, delete it,
   correct ignored config, clean DerivedData, and rebuild.
 

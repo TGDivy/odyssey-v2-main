@@ -198,6 +198,17 @@ Denial preserves the prior mirror, while explicit local revocation removes the
 mirror and refresh marker without changing EventKit permission or source data.
 See [`docs/architecture/calendar-context.md`](docs/architecture/calendar-context.md).
 
+The Weather vertical slice defines a provider-neutral, canonical-SI current/
+hourly/daily contract and a guarded WeatherKit adapter. A successful fetch
+atomically replaces one hash-verified local broad-place snapshot; coordinates
+and accuracy are transient query inputs and never enter SQLite or the sync
+outbox. Provider expiry, service/rate-limit outcomes, rejected rows, Apple
+Weather marks, and the legal source URL remain visible in Workshop. Failures
+preserve prior context, and explicit local revocation changes neither provider
+state nor location permission. Live refresh intentionally waits for the
+conservative foreground place resolver. See
+[`docs/architecture/weather-context.md`](docs/architecture/weather-context.md).
+
 The portable `OdysseyExtensionBridge` now supplies the protected atomic handoff
 needed by App Intents, controls, widgets, and same-device extensions. It queues
 bounded text or opaque-ID food commands as one Data-Protected, backup-excluded
