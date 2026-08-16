@@ -164,7 +164,9 @@ startup, foreground activation, and opportunistic background refresh. Command
 UUIDs become entity/outbox identities, so a crash after commit but before queue
 acknowledgment replays without duplicate mutation. The food shortcut opens the
 private in-app ranking surface rather than exposing preset names to system
-suggestions. Widget/control producers and Watch transport remain. See
+suggestions. Generic widget and Control Center actions use the same bridge to
+open private Capture/Food sheets without logging hidden values; stale routes
+expire after five minutes. Watch transport remains. See
 [`docs/architecture/extension-quick-capture.md`](docs/architecture/extension-quick-capture.md).
 
 ## Accepted orientation state

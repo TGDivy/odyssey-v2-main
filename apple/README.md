@@ -163,8 +163,10 @@ while the food intent opens the private ranked sheet without publishing preset
 labels. The iPhone performs bounded non-reentrant startup/foreground/background
 drains through a portable-tested processor. Command identity is reused for the
 entity and outbox operation, so post-commit crash replay verifies the projection
-instead of duplicating it. Widget/control producers and WatchConnectivity remain
-separate implementation slices; see
+instead of duplicating it. Generic Now-widget buttons and Control Center controls
+queue five-minute Capture/Food presentation requests without exposing preset
+labels or logging a value before in-app confirmation. WatchConnectivity remains
+a separate implementation slice; see
 [`docs/architecture/extension-quick-capture.md`](../docs/architecture/extension-quick-capture.md).
 
 `LocalCaptureAttachmentStore` now supplies the protected local object boundary
@@ -227,7 +229,7 @@ swift test --package-path apple
 ../tools/apple/generate-project.sh
 ```
 
-The portable package currently reports 126 tests passing under the official
+The portable package currently reports 128 tests passing under the official
 Swift 6.1 release toolchain on Linux. That result does not type-check SwiftUI or
 replace the required Xcode, simulator, accessibility, signing, and device runs.
 

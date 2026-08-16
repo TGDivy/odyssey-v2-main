@@ -173,6 +173,7 @@ targets:
       path: Extensions/Widgets/Info.plist
       properties:
         CFBundleDisplayName: Odyssey Widgets
+        ODYSSEY_APP_GROUP: $(ODYSSEY_APP_GROUP)
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
     dependencies:
@@ -182,6 +183,8 @@ targets:
         product: OdysseyIntelligence
       - package: OdysseyPackages
         product: OdysseyDesignSystem
+      - package: OdysseyPackages
+        product: OdysseyExtensionBridge
 
   OdysseyIntents:
     type: app-extension

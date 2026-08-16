@@ -61,9 +61,10 @@ it does not prove an owner deployment:
   opaque-preset food handoff with idempotency and crash recovery. The text App
   Intent queues without opening Odyssey, the food intent opens only the private
   ranked sheet, and the iPhone drains at startup, foreground activation, and
-  opportunistic background refresh. These sources are parser-validated only.
-  Widget/control producers and Watch transport are not wired, so those quick
-  capture paths must not be claimed.
+  opportunistic background refresh. Generic widget buttons and Control Center
+  controls route to the private Capture/Food sheets through five-minute commands
+  and never log hidden values. These sources are parser-validated only. Watch
+  transport is not wired, so Watch quick capture must not be claimed.
   The device/refresh Keychain vault, in-memory access-token refresh session,
   native Apple ceremony, and auth HTTP exchange are implemented as package
   boundaries. Recovery UI, server-side device-revocation UI, and physical
@@ -1142,6 +1143,10 @@ Do not enter real owner data. Then execute this staged flow:
    queueing without opening the app. Launch Odyssey and confirm the marker
    appears once in Archive with one outbox mutation. Background and foreground
    once more; it must not duplicate. Do not use private text in Siri evidence.
+   Add the Now widget and the Odyssey Capture/Food controls. Confirm their labels
+   remain generic, each opens the matching private sheet, cancelling writes
+   nothing, and Food never exposes preset names on the widget, lock screen, or
+   Control Center. Retain only synthetic screen recordings.
 6. In **Capture → Voice**, confirm no microphone prompt appears until **Start
    Recording**. Record only a synthetic phrase, stop, and save. Repeat once by
    starting a recording and backgrounding the app; confirm recording stops.

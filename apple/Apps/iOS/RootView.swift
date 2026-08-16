@@ -14,11 +14,17 @@ private enum PrimarySpace: Hashable {
     case workshop
 }
 
+private enum RootSheet: Identifiable {
+    case capture
+    case food
+
+    var id: Self { self }
+}
+
 struct RootView: View {
     @EnvironmentObject private var model: OdysseyAppModel
     @State private var selection: PrimarySpace = .now
-    @State private var isCapturePresented = false
-    @State private var isFoodLogPresented = false
+    @State private var activeSheet: RootSheet?
 
     var body: some View {
         Group {
@@ -40,13 +46,29 @@ struct RootView: View {
                 tabs
             }
         }
-        .sheet(isPresented: $isCapturePresented) {
-            CaptureSheet()
-                .environmentObject(model)
+        .sheet(
+            item: $activeSheet,
+            onDismiss: resumeExtensionPresentations
+        ) { sheet in
+            switch sheet {
+            case .capture:
+                CaptureSheet()
+                    .environmentObject(model)
+            case .food:
+                FoodQuickLogView()
+                    .environmentObject(model)
+            }
         }
-        .sheet(isPresented: $isFoodLogPresented) {
-            FoodQuickLogView()
-                .environmentObject(model)
+        .onChange(of: model.extensionPresentationRequest, initial: true) {
+            _, request in
+            guard let request else { return }
+            switch request {
+            case .capture:
+                presentCapture()
+            case .food:
+                presentFoodLog()
+            }
+            model.consumeExtensionPresentationRequest()
         }
     }
 
@@ -100,12 +122,18 @@ struct RootView: View {
 
     private func presentCapture() {
         model.dismissCaptureStatus()
-        isCapturePresented = true
+        activeSheet = .capture
     }
 
     private func presentFoodLog() {
         model.dismissFoodStatus()
-        isFoodLogPresented = true
+        activeSheet = .food
+    }
+
+    private func resumeExtensionPresentations() {
+        Task {
+            await model.processPendingExtensionCommands()
+        }
     }
 }
 

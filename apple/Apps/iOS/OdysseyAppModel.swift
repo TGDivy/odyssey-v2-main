@@ -32,6 +32,7 @@ final class OdysseyAppModel: ObservableObject {
     @Published private(set) var foodHealthAuthorization: FoodHealthAuthorizationState = .unavailable
     @Published private(set) var foodHealthMessage: String?
     @Published private(set) var extensionCommandMessage: String?
+    @Published private(set) var extensionPresentationRequest: ExtensionCommandPresentation?
 
     private var localServices: NativeLocalServices?
     private var remoteServices: NativeRemoteServices?
@@ -77,6 +78,7 @@ final class OdysseyAppModel: ObservableObject {
         extensionCommandQueue = nil
         extensionCommandProcessor = nil
         extensionCommandMessage = nil
+        extensionPresentationRequest = nil
 
         let local: NativeLocalServices
         do {
@@ -403,6 +405,10 @@ final class OdysseyAppModel: ObservableObject {
 
     func dismissExtensionCommandMessage() {
         extensionCommandMessage = nil
+    }
+
+    func consumeExtensionPresentationRequest() {
+        extensionPresentationRequest = nil
     }
 
     func refreshCaptureArchive() async {
@@ -1076,6 +1082,7 @@ final class OdysseyAppModel: ObservableObject {
                         captureTimeZoneID: TimeZone.current.identifier,
                         captureLocationPermissionState: .unavailable
                     )
+                    var stopAfterAcknowledgment = false
                     switch result {
                     case let .captureCommitted(receipt):
                         Task { [weak self] in
@@ -1093,10 +1100,16 @@ final class OdysseyAppModel: ObservableObject {
                         Task { [weak self] in
                             await self?.writeFoodOccurrenceToHealth(occurrence)
                         }
+                    case let .presentationRequested(presentation):
+                        extensionPresentationRequest = presentation
+                        stopAfterAcknowledgment = true
                     }
                     try await queue.acknowledge(claim)
                     if result.committedNewMutation {
                         processedCount += 1
+                    }
+                    if stopAfterAcknowledgment {
+                        break commandLoop
                     }
                 } catch let error as FoodOccurrenceServiceError {
                     switch error {

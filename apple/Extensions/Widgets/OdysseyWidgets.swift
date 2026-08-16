@@ -1,3 +1,4 @@
+import AppIntents
 import SwiftUI
 import WidgetKit
 
@@ -34,6 +35,17 @@ struct OdysseyWidgetView: View {
             Text(entry.freshness)
                 .font(.caption2)
                 .foregroundStyle(.secondary)
+            HStack(spacing: 12) {
+                Button(intent: OpenCaptureFromWidgetIntent()) {
+                    Label("Capture", systemImage: "square.and.pencil")
+                }
+                Button(intent: OpenFoodFromWidgetIntent()) {
+                    Label("Food", systemImage: "fork.knife")
+                }
+            }
+            .font(.caption.weight(.semibold))
+            .labelStyle(.iconOnly)
+            .accessibilityElement(children: .contain)
         }
         .containerBackground(.fill.tertiary, for: .widget)
     }
@@ -54,6 +66,9 @@ struct OdysseyNowWidget: Widget {
 
 @main
 struct OdysseyWidgetBundle: WidgetBundle {
-    var body: some Widget { OdysseyNowWidget() }
+    var body: some Widget {
+        OdysseyNowWidget()
+        OdysseyCaptureControl()
+        OdysseyFoodControl()
+    }
 }
-
