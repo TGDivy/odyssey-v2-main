@@ -5,6 +5,7 @@ import OdysseyCalendar
 import OdysseyDomain
 import OdysseyHealth
 import OdysseyIntegrations
+import OdysseyWeather
 import Testing
 
 @Test
@@ -39,6 +40,14 @@ func localServicesUseStableCredentialIdentityAndApplicationSupportLayout() async
             ),
             initialPermission: .notDetermined,
             authorizationAfterRequest: .authorized
+        ),
+        weatherAdapter: SyntheticWeatherAdapter(
+            capability: WeatherMirrorCapability(
+                availability: .available,
+                supportsCurrentConditions: true,
+                supportsHourlyForecast: true,
+                supportsDailyForecast: true
+            )
         )
     )
     let receipt = try await services.captureService.record(
@@ -57,6 +66,7 @@ func localServicesUseStableCredentialIdentityAndApplicationSupportLayout() async
     #expect(services.deviceID == deviceID)
     #expect(await services.healthImportCoordinator.capability().supportedKinds == [.workout])
     #expect(await services.calendarMirrorCoordinator.capability().supportsFullAccessRead)
+    #expect(await services.weatherMirrorCoordinator.capability().supportsDailyForecast)
     #expect(configuration.databaseURL.lastPathComponent == "odyssey.sqlite")
     #expect(configuration.databaseURL.path.contains("/Data/"))
     #expect(configuration.preMigrationBackupDirectory.path.hasSuffix("/Backups/Migrations"))

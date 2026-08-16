@@ -5,6 +5,7 @@ import OdysseyData
 import OdysseyDomain
 import OdysseyHealth
 import OdysseySync
+import OdysseyWeather
 
 public enum NativeApplicationConfigurationError: Error, Equatable, Sendable {
     case invalidApplicationIdentifier
@@ -193,6 +194,7 @@ public struct NativeLocalServices: Sendable {
     public let foodOccurrenceService: FoodOccurrenceService
     public let calendarMirrorCoordinator: CalendarMirrorCoordinator
     public let healthImportCoordinator: HealthImportCoordinator
+    public let weatherMirrorCoordinator: WeatherMirrorCoordinator
     public let lifeModelWorkshopService: LifeModelWorkshopService
     public let attachmentRecoveryState: LocalCaptureAttachmentRecoveryState
 
@@ -209,7 +211,8 @@ public struct NativeLocalServices: Sendable {
         configuration: NativeLocalConfiguration,
         vault: any CredentialVault,
         healthImporter: (any IncrementalHealthImporting)? = nil,
-        calendarAdapter: (any CalendarContextProviding)? = nil
+        calendarAdapter: (any CalendarContextProviding)? = nil,
+        weatherAdapter: (any WeatherContextProviding)? = nil
     ) async throws -> Self {
         let deviceID = try await vault.loadOrCreateDeviceID()
         let ledgerStore = try SQLiteLedgerStore(
@@ -269,6 +272,16 @@ public struct NativeLocalServices: Sendable {
             adapter: resolvedCalendarAdapter,
             store: ledgerStore
         )
+        let resolvedWeatherAdapter: any WeatherContextProviding
+        if let weatherAdapter {
+            resolvedWeatherAdapter = weatherAdapter
+        } else {
+            resolvedWeatherAdapter = SystemWeatherAdapter.make()
+        }
+        let weatherMirrorCoordinator = WeatherMirrorCoordinator(
+            adapter: resolvedWeatherAdapter,
+            store: ledgerStore
+        )
         let lifeModelWorkshopService = try LifeModelWorkshopService(
             store: ledgerStore,
             deviceID: deviceID,
@@ -287,6 +300,7 @@ public struct NativeLocalServices: Sendable {
             foodOccurrenceService: foodOccurrenceService,
             calendarMirrorCoordinator: calendarMirrorCoordinator,
             healthImportCoordinator: healthImportCoordinator,
+            weatherMirrorCoordinator: weatherMirrorCoordinator,
             lifeModelWorkshopService: lifeModelWorkshopService,
             attachmentRecoveryState: await attachmentRecoveryState(
                 store: captureAttachmentStore,
