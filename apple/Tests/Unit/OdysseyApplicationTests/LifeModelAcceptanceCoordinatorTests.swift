@@ -117,7 +117,7 @@ func acceptanceCoordinatorRecordsConflictWithCurrentOrientationAndRedactedMessag
 }
 
 @Test
-func acceptanceCoordinatorBoundsRetriesAndRejectsNonretryableFailures() async throws {
+func acceptanceCoordinatorStopsAfterRetryAndPreservesSuccessorOrder() async throws {
     let fixture = try AcceptanceCoordinatorFixture()
     defer { fixture.remove() }
     let retryCommand = try fixture.command(index: 20, kind: .lifeStage)
@@ -157,8 +157,10 @@ func acceptanceCoordinatorBoundsRetriesAndRejectsNonretryableFailures() async th
 
     let report = try await coordinator.synchronize()
 
+    #expect(report.attemptedCount == 1)
     #expect(report.retryScheduledCount == 1)
-    #expect(report.rejectedCount == 1)
+    #expect(report.rejectedCount == 0)
+    #expect(await transport.submissionEvents() == [retryCommand.eventID])
     let stored = try fixture.store.lifeModelAcceptances()
     let retry = try #require(stored.first { $0.command.eventID == retryCommand.eventID })
     let rejected = try #require(stored.first { $0.command.eventID == rejectedCommand.eventID })
@@ -166,10 +168,56 @@ func acceptanceCoordinatorBoundsRetriesAndRejectsNonretryableFailures() async th
     #expect(retry.attemptCount == 2)
     #expect(retry.nextAttemptAt == runDate.addingTimeInterval(15))
     #expect(retry.lastErrorMessage == "Delivery could not be completed and will retry.")
+    #expect(rejected.deliveryStatus == .pending)
+    #expect(rejected.attemptCount == 0)
+    #expect(rejected.lastErrorCode == nil)
+}
+
+@Test
+func acceptanceCoordinatorContinuesAfterTerminalRejection() async throws {
+    let fixture = try AcceptanceCoordinatorFixture()
+    defer { fixture.remove() }
+    let rejectedCommand = try fixture.command(index: 22, kind: .charter)
+    let acceptedCommand = try fixture.command(index: 23, kind: .season)
+    _ = try fixture.store.enqueueLifeModelAcceptance(rejectedCommand)
+    _ = try fixture.store.enqueueLifeModelAcceptance(acceptedCommand)
+    let rejection = APIErrorBody(
+        code: "REQUEST_VALIDATION_FAILED",
+        message: "Private rejected body detail.",
+        retryable: false,
+        correlationID: "correlation-rejected"
+    )
+    let envelope = try fixture.envelope(for: acceptedCommand, acceptanceSequence: 1)
+    let transport = ScriptedLifeModelTransport(
+        submissions: [
+            rejectedCommand.eventID: .failure(.api(statusCode: 422, error: rejection)),
+            acceptedCommand.eventID: .receipt(fixture.receipt(envelope)),
+        ],
+        histories: fixture.emptyHistories()
+    )
+    let coordinator = try LifeModelAcceptanceCoordinator(
+        store: fixture.store,
+        transport: transport,
+        clock: { acceptanceCoordinatorDate.addingTimeInterval(2) }
+    )
+
+    let report = try await coordinator.synchronize()
+
+    #expect(report.attemptedCount == 2)
+    #expect(report.rejectedCount == 1)
+    #expect(report.acceptedCount == 1)
+    #expect(
+        await transport.submissionEvents()
+            == [rejectedCommand.eventID, acceptedCommand.eventID]
+    )
+    let stored = try fixture.store.lifeModelAcceptances()
+    let rejected = try #require(stored.first { $0.command.eventID == rejectedCommand.eventID })
+    let accepted = try #require(stored.first { $0.command.eventID == acceptedCommand.eventID })
     #expect(rejected.deliveryStatus == .rejected)
     #expect(rejected.lastErrorCode == "REQUEST_VALIDATION_FAILED")
     #expect(rejected.lastErrorMessage == "The server or transport rejected this acceptance command.")
     #expect(rejected.lastErrorMessage?.contains("Private rejected body detail.") == false)
+    #expect(accepted.deliveryStatus == .accepted)
 }
 
 private enum ScriptedLifeModelSubmission: Sendable {
@@ -235,6 +283,10 @@ private actor ScriptedLifeModelTransport: LifeModelTransport {
 
     func submissionCount() -> Int {
         submittedEvents.count
+    }
+
+    func submissionEvents() -> [UUIDv7] {
+        submittedEvents
     }
 
     func historyKinds() -> [LifeModelKind] {

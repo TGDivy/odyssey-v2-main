@@ -170,8 +170,10 @@ public actor LifeModelAcceptanceCoordinator {
         var rejectedCount = 0
         var retryScheduledCount = 0
         var orientationRefreshFailureCount = 0
-        for queued in pending {
+        var attemptedCount = 0
+        deliveryLoop: for queued in pending {
             try Task.checkCancellation()
+            attemptedCount += 1
             do {
                 let receipt = try await transport.submit(queued.command)
                 let completedAt = try validClockInstant(context: "accepted delivery")
@@ -200,6 +202,7 @@ public actor LifeModelAcceptanceCoordinator {
                     rejectedCount += 1
                 case .retryScheduled:
                     retryScheduledCount += 1
+                    break deliveryLoop
                 }
             }
         }
@@ -207,7 +210,7 @@ public actor LifeModelAcceptanceCoordinator {
         let historyResult = try await refreshHistoryBestEffort()
         let completedAt = try validClockInstant(context: "delivery completion")
         return LifeModelAcceptanceRunReport(
-            attemptedCount: pending.count,
+            attemptedCount: attemptedCount,
             acceptedCount: acceptedCount,
             conflictCount: conflictCount,
             rejectedCount: rejectedCount,

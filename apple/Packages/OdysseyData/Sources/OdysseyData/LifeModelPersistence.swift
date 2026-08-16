@@ -338,11 +338,22 @@ extension SQLiteLedgerStore {
                 \(lifeModelAcceptanceSelect)
                 WHERE state.delivery_status IN ('pending', 'retry')
                   AND (state.next_attempt_at IS NULL OR state.next_attempt_at <= ?)
+                  AND NOT EXISTS (
+                      SELECT 1
+                      FROM life_model_acceptance_commands AS earlier_command
+                      JOIN life_model_acceptance_state AS earlier_state
+                        ON earlier_state.event_id = earlier_command.event_id
+                      WHERE earlier_command.local_sequence < command.local_sequence
+                        AND earlier_state.delivery_status IN ('pending', 'retry')
+                        AND earlier_state.next_attempt_at IS NOT NULL
+                        AND earlier_state.next_attempt_at > ?
+                  )
                 ORDER BY command.local_sequence
                 LIMIT ?
                 """
             )
             try statement.bind([
+                .text(SQLiteValueCodec.dateString(readyAt)),
                 .text(SQLiteValueCodec.dateString(readyAt)),
                 .integer(Int64(limit)),
             ])

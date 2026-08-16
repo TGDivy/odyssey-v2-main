@@ -38,6 +38,31 @@ func lifeModelAcceptanceQueueIsDurableIdempotentAndOrdered() throws {
 }
 
 @Test
+func delayedLifeModelRetryBlocksLaterCommandsUntilReady() throws {
+    let fixture = try LifeModelFixture()
+    let first = try fixture.command(index: 5, kind: .charter)
+    let second = try fixture.command(index: 6, kind: .season)
+    _ = try fixture.store.enqueueLifeModelAcceptance(first)
+    _ = try fixture.store.enqueueLifeModelAcceptance(second)
+    let retryAt = lifeModelFixtureDate.addingTimeInterval(60)
+    try fixture.store.recordLifeModelRetry(
+        eventID: first.eventID,
+        errorCode: "NETWORK",
+        message: "Synthetic delayed retry.",
+        nextAttemptAt: retryAt,
+        updatedAt: lifeModelFixtureDate
+    )
+
+    #expect(
+        try fixture.store.pendingLifeModelAcceptances(readyAt: lifeModelFixtureDate).isEmpty
+    )
+    #expect(
+        try fixture.store.pendingLifeModelAcceptances(readyAt: retryAt)
+            .map(\.command.eventID) == [first.eventID, second.eventID]
+    )
+}
+
+@Test
 func lifeModelConflictIsTerminalAndNeverSilentlyMerged() throws {
     let fixture = try LifeModelFixture()
     let command = try fixture.command(index: 10, kind: .season)

@@ -80,7 +80,10 @@ time and document before transmission.
 `LifeModelAcceptanceCoordinator` coalesces concurrent runs and submits ready
 commands in local sequence order. Successful receipts must exactly match the
 queued command before transactionally becoming accepted and cached. Network and
-retryable API failures use bounded exponential delays. HTTP `409` is terminal:
+retryable API failures use bounded exponential delays. A delayed retry blocks
+every later command, and scheduling a retry stops the current delivery batch;
+terminal conflicts and rejections do not block an ordered successor. HTTP `409`
+is terminal:
 the command becomes a reviewable conflict, current orientation is fetched and
 cached when available, and no last-write-wins merge occurs. Persisted failures
 use fixed local copy and never retain the server message. Each run also refreshes
