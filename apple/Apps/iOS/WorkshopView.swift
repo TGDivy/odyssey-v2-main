@@ -1,5 +1,6 @@
 import Foundation
 import OdysseyApplication
+import OdysseyCalendar
 import OdysseyData
 import OdysseyDomain
 import OdysseyHealth
@@ -30,6 +31,7 @@ struct WorkshopView: View {
     @State private var localFailure: String?
     @State private var confirmsProjectionRebuild = false
     @State private var confirmsHealthContextRemoval = false
+    @State private var confirmsCalendarContextRemoval = false
     @State private var draftToAbandon: LifeModelDraftRecord?
 
     var body: some View {
@@ -41,6 +43,7 @@ struct WorkshopView: View {
             acceptanceQueueSection
             acceptedHistorySection
             healthContextSection
+            calendarContextSection
             enrollmentSection
             synchronizationSection
             repairSection
@@ -128,6 +131,21 @@ struct WorkshopView: View {
             Text(
                 "This deletes Odyssey's local Health sample mirror and import anchors. "
                     + "It does not delete Apple Health data or change system permissions."
+            )
+        }
+        .confirmationDialog(
+            "Remove local calendar context?",
+            isPresented: $confirmsCalendarContextRemoval,
+            titleVisibility: .visible
+        ) {
+            Button("Remove Local Mirror", role: .destructive) {
+                Task { await model.removeLocalCalendarContext() }
+            }
+            Button("Keep Local Mirror", role: .cancel) {}
+        } message: {
+            Text(
+                "This deletes Odyssey's local event mirror and refresh marker. It does "
+                    + "not move or delete source events or change system permission."
             )
         }
     }
@@ -456,6 +474,115 @@ struct WorkshopView: View {
         }
     }
 
+    private var calendarContextSection: some View {
+        Section("Calendar Context") {
+            calendarContextStatus
+            if let overview = model.calendarContextState.overview {
+                LabeledContent(
+                    "Availability",
+                    value: overview.capability.availability.ownerDisplayName
+                )
+                LabeledContent(
+                    "Read permission",
+                    value: overview.permission.ownerDisplayName
+                )
+                LabeledContent(
+                    "Local events",
+                    value: String(overview.localItemCount)
+                )
+                if let window = overview.lastWindow {
+                    LabeledContent(
+                        "Mirrored window",
+                        value: window.startDate.formatted(date: .abbreviated, time: .omitted)
+                            + " – "
+                            + window.endDate.formatted(date: .abbreviated, time: .omitted)
+                    )
+                    LabeledContent("Window time zone", value: window.timeZoneID)
+                }
+            }
+            if let health = model.calendarContextState.integrationHealth {
+                LabeledContent(
+                    "Integration state",
+                    value: health.operationalState.ownerDisplayName
+                )
+                if let refreshedAt = health.lastSuccessfulSync {
+                    LabeledContent(
+                        "Last successful refresh",
+                        value: refreshedAt.formatted(
+                            date: .abbreviated,
+                            time: .shortened
+                        )
+                    )
+                }
+                if let sourceVersion = health.newestSourceTimestamp {
+                    LabeledContent(
+                        "Newest source version",
+                        value: sourceVersion.formatted(
+                            date: .abbreviated,
+                            time: .shortened
+                        )
+                    )
+                }
+                if let lag = health.lag {
+                    LabeledContent("Source lag", value: lagDescription(lag))
+                }
+                LabeledContent(
+                    "Rejected or quarantined",
+                    value: String(health.rejectedRecordCount)
+                )
+                LabeledContent(
+                    "Schema mismatch",
+                    value: health.schemaVersionMismatch ? "Detected" : "None"
+                )
+                LabeledContent("Rate limit", value: "Not applicable")
+            }
+            Text(
+                "Odyssey mirrors calendar constraints locally with source, version, "
+                    + "cancellation, and time-zone semantics. It never moves or deletes "
+                    + "external events through this read path."
+            )
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+
+            if let message = model.calendarContextState.message {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(message)
+                        .font(.footnote)
+                    Button("Dismiss status") {
+                        model.dismissCalendarContextMessage()
+                    }
+                    .font(.footnote)
+                }
+            }
+
+            if model.calendarContextState.canRequestFullAccess {
+                Button {
+                    Task { await model.requestCalendarContextAuthorization() }
+                } label: {
+                    Label("Request Full Calendar Access", systemImage: "calendar.badge.plus")
+                }
+            }
+            Button {
+                Task { await model.refreshCalendarContext() }
+            } label: {
+                Label("Refresh Local Calendar Mirror", systemImage: "calendar.badge.clock")
+            }
+            .disabled(!model.calendarContextState.canRefresh)
+
+            Button {
+                Task { await model.refreshCalendarContextStatus() }
+            } label: {
+                Label("Refresh Calendar Status", systemImage: "arrow.clockwise")
+            }
+            .disabled(model.calendarContextState.activity.isBusy)
+
+            Button("Remove Local Calendar Mirror", role: .destructive) {
+                confirmsCalendarContextRemoval = true
+            }
+            .disabled(model.calendarContextState.activity.isBusy)
+        }
+    }
+
     private var synchronizationSection: some View {
         Section("Synchronization") {
             syncStatus
@@ -643,6 +770,25 @@ struct WorkshopView: View {
             activityLabel("Importing permitted Health context")
         case .revoking:
             activityLabel("Removing the local Health mirror")
+        case let .failed(message):
+            Label(message, systemImage: "exclamationmark.triangle")
+                .foregroundStyle(.red)
+        }
+    }
+
+    @ViewBuilder
+    private var calendarContextStatus: some View {
+        switch model.calendarContextState.activity {
+        case .idle:
+            EmptyView()
+        case .refreshing:
+            activityLabel("Inspecting local calendar integration")
+        case .authorizing:
+            activityLabel("Waiting for full calendar access")
+        case .importing:
+            activityLabel("Refreshing local calendar constraints")
+        case .revoking:
+            activityLabel("Removing the local calendar mirror")
         case let .failed(message):
             Label(message, systemImage: "exclamationmark.triangle")
                 .foregroundStyle(.red)

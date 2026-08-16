@@ -87,6 +87,8 @@ targets:
       - package: OdysseyPackages
         product: OdysseyHealth
       - package: OdysseyPackages
+        product: OdysseyCalendar
+      - package: OdysseyPackages
         product: OdysseyIntegrations
       - package: OdysseyPackages
         product: OdysseyIntelligence

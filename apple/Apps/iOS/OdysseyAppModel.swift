@@ -5,6 +5,7 @@ import CoreLocation
 import Foundation
 import OdysseyApplication
 import OdysseyAuth
+import OdysseyCalendar
 import OdysseyData
 import OdysseyDomain
 import OdysseyExtensionBridge
@@ -38,6 +39,7 @@ final class OdysseyAppModel: ObservableObject {
     @Published private(set) var extensionCommandMessage: String?
     @Published private(set) var extensionPresentationRequest: ExtensionCommandPresentation?
     @Published private(set) var healthContextState = HealthContextIntegrationState()
+    @Published private(set) var calendarContextState = CalendarContextIntegrationState()
 
     private var localServices: NativeLocalServices?
     private var remoteServices: NativeRemoteServices?
@@ -104,6 +106,7 @@ final class OdysseyAppModel: ObservableObject {
         extensionCommandMessage = nil
         extensionPresentationRequest = nil
         healthContextState = HealthContextIntegrationState()
+        calendarContextState = CalendarContextIntegrationState()
 
         let local: NativeLocalServices
         do {
@@ -141,6 +144,7 @@ final class OdysseyAppModel: ObservableObject {
             await refreshWorkshop()
             await refreshFoodQuickLog()
             await refreshHealthContextStatus()
+            await refreshCalendarContextStatus()
             await drainExtensionCommands()
             if foodHealthAuthorization == .authorized {
                 Task { [weak self] in
@@ -153,6 +157,11 @@ final class OdysseyAppModel: ObservableObject {
             if healthContextState.canImport {
                 Task { [weak self] in
                     await self?.importHealthContext(showCompletionMessage: false)
+                }
+            }
+            if calendarContextState.canRefresh {
+                Task { [weak self] in
+                    await self?.refreshCalendarContext(showCompletionMessage: false)
                 }
             }
         } catch {
@@ -572,6 +581,103 @@ final class OdysseyAppModel: ObservableObject {
         healthContextState.message = nil
     }
 
+    func refreshCalendarContextStatus() async {
+        guard let coordinator = localServices?.calendarMirrorCoordinator else {
+            calendarContextState = CalendarContextIntegrationState()
+            return
+        }
+        guard !calendarContextState.activity.isBusy else { return }
+        calendarContextState.activity = .refreshing
+        do {
+            calendarContextState.overview = try await coordinator.overview()
+            calendarContextState.activity = .idle
+        } catch {
+            calendarContextState.activity = .failed(
+                "The local calendar mirror could not be inspected safely."
+            )
+        }
+    }
+
+    func requestCalendarContextAuthorization() async {
+        guard let coordinator = localServices?.calendarMirrorCoordinator else { return }
+        if calendarContextState.overview == nil {
+            await refreshCalendarContextStatus()
+        }
+        guard let overview = calendarContextState.overview,
+              overview.capability.availability == .available,
+              overview.capability.supportsFullAccessRead
+        else {
+            calendarContextState.message =
+                "Calendar context is unavailable on this device. Other Odyssey features still work."
+            return
+        }
+        guard !calendarContextState.activity.isBusy else { return }
+        calendarContextState.message = nil
+        calendarContextState.activity = .authorizing
+        do {
+            let permission = try await coordinator.requestReadAuthorization()
+            calendarContextState.overview = try await coordinator.overview()
+            calendarContextState.activity = .idle
+            switch permission {
+            case .authorized:
+                await refreshCalendarContext(showCompletionMessage: true)
+            case .partial:
+                calendarContextState.message =
+                    "Calendar write-only access does not permit reading context. Full access remains optional."
+            case .denied:
+                calendarContextState.message =
+                    "Calendar read access was denied. Existing local context remains until you remove it."
+            case .restricted:
+                calendarContextState.message =
+                    "Calendar access is restricted on this device. Odyssey continues without it."
+            case .notDetermined:
+                calendarContextState.message =
+                    "Calendar access was not completed. No events were mirrored."
+            case .unavailable:
+                calendarContextState.message =
+                    "Calendar access is unavailable on this device. Odyssey continues without it."
+            case .notRequired:
+                calendarContextState.message =
+                    "No calendar read capability is currently requested."
+            }
+        } catch {
+            calendarContextState.activity = .failed(
+                "Calendar access could not be completed. No permission was assumed."
+            )
+        }
+    }
+
+    func refreshCalendarContext() async {
+        await refreshCalendarContext(showCompletionMessage: true)
+    }
+
+    func removeLocalCalendarContext() async {
+        guard let coordinator = localServices?.calendarMirrorCoordinator,
+              !calendarContextState.activity.isBusy
+        else {
+            return
+        }
+        calendarContextState.activity = .revoking
+        do {
+            let removedCount = try await coordinator.revokeLocalCalendarData()
+            calendarContextState.overview = try await coordinator.overview()
+            calendarContextState.rejectedRecordCount = 0
+            calendarContextState.localMirrorRevoked = true
+            calendarContextState.activity = .idle
+            calendarContextState.message =
+                "Removed \(removedCount) local calendar context event"
+                + "\(removedCount == 1 ? "" : "s"). Source calendars and system permission were not changed."
+        } catch {
+            calendarContextState.activity = .failed(
+                "The local calendar mirror could not be removed safely."
+            )
+        }
+    }
+
+    func dismissCalendarContextMessage() {
+        calendarContextState.message = nil
+    }
+
     func dismissExtensionCommandMessage() {
         extensionCommandMessage = nil
     }
@@ -677,6 +783,7 @@ final class OdysseyAppModel: ObservableObject {
         await processPendingExtensionCommands()
         await resumePendingCaptureInterpretations()
         await importHealthContext(showCompletionMessage: false)
+        await refreshCalendarContext(showCompletionMessage: false)
         guard let remoteServices, state.canSynchronize else { return }
         await withTaskCancellationHandler {
             await synchronize()
@@ -1006,6 +1113,82 @@ final class OdysseyAppModel: ObservableObject {
                 "Apple Health context refreshed locally: \(insertedCount) added, "
                 + "\(deletedCount) removed, and \(duplicateCount) already known."
         }
+    }
+
+    private func refreshCalendarContext(
+        showCompletionMessage: Bool
+    ) async {
+        guard let coordinator = localServices?.calendarMirrorCoordinator else { return }
+        if calendarContextState.overview == nil {
+            await refreshCalendarContextStatus()
+        }
+        guard calendarContextState.overview?.capability.availability == .available,
+              calendarContextState.overview?.permission == .authorized,
+              !calendarContextState.activity.isBusy
+        else {
+            if showCompletionMessage,
+               calendarContextState.overview?.permission == .notDetermined
+                    || calendarContextState.overview?.permission == .partial
+            {
+                calendarContextState.message =
+                    "Grant optional full calendar access before refreshing local constraints."
+            }
+            return
+        }
+        if showCompletionMessage {
+            calendarContextState.message = nil
+        }
+        calendarContextState.activity = .importing
+        do {
+            let result = try await coordinator.refresh(
+                window: try calendarContextWindow()
+            )
+            calendarContextState.rejectedRecordCount = min(
+                1_000_000,
+                calendarContextState.rejectedRecordCount + result.rejectedCount
+            )
+            calendarContextState.overview = try await coordinator.overview()
+            calendarContextState.activity = .idle
+            switch result.outcome {
+            case .imported:
+                calendarContextState.localMirrorRevoked = false
+                if showCompletionMessage {
+                    calendarContextState.message =
+                        "Calendar context refreshed locally: \(result.insertedCount) added, "
+                        + "\(result.updatedCount) updated, \(result.deletedCount) removed, "
+                        + "and \(result.duplicateCount) unchanged."
+                }
+            case .permissionDenied:
+                if showCompletionMessage {
+                    calendarContextState.message =
+                        "Calendar full access is not granted. Existing local context was preserved."
+                }
+            case .restricted:
+                if showCompletionMessage {
+                    calendarContextState.message =
+                        "Calendar access is restricted. Existing local context was preserved."
+                }
+            case .unavailable:
+                if showCompletionMessage {
+                    calendarContextState.message =
+                        "Calendar context is unavailable. Existing local context was preserved."
+                }
+            }
+        } catch {
+            calendarContextState.activity = .failed(
+                "Calendar context could not be refreshed. Prior local events remain intact."
+            )
+        }
+    }
+
+    private func calendarContextWindow(
+        at date: Date = Date()
+    ) throws -> CalendarQueryWindow {
+        try CalendarQueryWindow(
+            startDate: date.addingTimeInterval(-14 * 24 * 60 * 60),
+            endDate: date.addingTimeInterval(180 * 24 * 60 * 60),
+            timeZoneID: TimeZone.current.identifier
+        )
     }
 
     private func foodQuickLogSnapshot(at date: Date) async throws -> FoodQuickLogSnapshot {
