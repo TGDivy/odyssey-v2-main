@@ -123,9 +123,12 @@ The first food-capture foundation is portable and deliberately narrow.
 optional source-labeled nutrient values with explicit units.
 `OdysseyApplication` provides versioned deterministic context/frequency and
 frequency-only ranking over coarse time-zone-aware local context, bounded
-lookback windows, explainable counts, and stable ties. It has no durable preset
-or meal service, native quick-log surface, HealthKit write, or experiment
-assignment yet. See
+lookback windows, explainable counts, and stable ties. `FoodPresetService` now
+persists create, optimistic revision, and archive as one atomic
+ledger/projection/sync-outbox commit, preserves immutable identity and
+provenance, emits changed-field sync updates, and prevents tombstone
+resurrection. It has no durable meal occurrence service, native quick-log
+surface, HealthKit write, or experiment assignment yet. See
 [`docs/architecture/food-presets.md`](../docs/architecture/food-presets.md).
 
 `LocalCaptureAttachmentStore` now supplies the protected local object boundary
@@ -188,7 +191,7 @@ swift test --package-path apple
 ../tools/apple/generate-project.sh
 ```
 
-The portable package currently reports 107 tests passing under the official
+The portable package currently reports 110 tests passing under the official
 Swift 6.1 release toolchain on Linux. That result does not type-check SwiftUI or
 replace the required Xcode, simulator, accessibility, signing, and device runs.
 

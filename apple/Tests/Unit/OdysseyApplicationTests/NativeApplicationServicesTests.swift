@@ -48,10 +48,12 @@ func localServicesUseStableCredentialIdentityAndApplicationSupportLayout() async
     #expect(receipt.deviceSequence == 1)
     let diagnostics = try await services.localDiagnostics()
     let workshop = try await services.lifeModelWorkshopService.snapshot()
+    let foodPresets = try await services.foodPresetService.activePresets()
     #expect(diagnostics.operationsQueued == 2)
     #expect(diagnostics.deviceCursor.value == 0)
     #expect(workshop.drafts.isEmpty)
     #expect(workshop.acceptanceCommands.isEmpty)
+    #expect(foodPresets.isEmpty)
     let captures = try services.recentCaptures()
     #expect(captures.count == 1)
     #expect(

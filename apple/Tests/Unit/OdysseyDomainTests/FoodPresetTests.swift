@@ -70,6 +70,22 @@ func foodPresetRejectsAmbiguousNamesMetadataAndNutrientValues() throws {
             servingDescription: "1 serving"
         )
     }
+    let nonFiniteMetadata = try EntityMetadata(
+        id: foodPresetIdentifier(9),
+        createdAt: Date(timeIntervalSinceReferenceDate: .infinity),
+        createdBy: ActorRef(actorType: .user, actorID: "owner"),
+        lastRevisedAt: Date(timeIntervalSinceReferenceDate: .infinity),
+        revision: 1,
+        sensitivity: .private,
+        provenanceID: UUID(uuidString: "00000000-0000-4000-8000-000000000009")!
+    )
+    #expect(throws: FoodPresetValidationError.invalidMetadata) {
+        try FoodPreset(
+            metadata: nonFiniteMetadata,
+            name: "Non-finite",
+            servingDescription: "1 serving"
+        )
+    }
 }
 
 private func foodPresetMetadata(

@@ -187,6 +187,7 @@ public struct NativeLocalServices: Sendable {
     public let captureImportBuffer: LocalCaptureImportBuffer
     public let mediaCaptureService: LocalMediaCaptureService
     public let captureInterpretationService: CaptureInterpretationService
+    public let foodPresetService: FoodPresetService
     public let lifeModelWorkshopService: LifeModelWorkshopService
     public let attachmentRecoveryState: LocalCaptureAttachmentRecoveryState
 
@@ -233,6 +234,10 @@ public struct NativeLocalServices: Sendable {
         let captureInterpretationService = CaptureInterpretationService(
             store: ledgerStore
         )
+        let foodPresetService = try FoodPresetService(
+            store: ledgerStore,
+            ownerActorID: configuration.ownerActorID
+        )
         let lifeModelWorkshopService = try LifeModelWorkshopService(
             store: ledgerStore,
             deviceID: deviceID,
@@ -247,6 +252,7 @@ public struct NativeLocalServices: Sendable {
             captureImportBuffer: captureImportBuffer,
             mediaCaptureService: mediaCaptureService,
             captureInterpretationService: captureInterpretationService,
+            foodPresetService: foodPresetService,
             lifeModelWorkshopService: lifeModelWorkshopService,
             attachmentRecoveryState: await attachmentRecoveryState(
                 store: captureAttachmentStore,

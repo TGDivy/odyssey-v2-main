@@ -107,9 +107,23 @@ public struct FoodPreset: Codable, Hashable, Sendable {
     ) throws {
         guard metadata.schemaVersion == Self.currentSchemaVersion,
               metadata.revision >= 1,
-              metadata.sensitivity != .operationalSecret
+              metadata.sensitivity != .operationalSecret,
+              metadata.createdAt.timeIntervalSinceReferenceDate.isFinite,
+              metadata.lastRevisedAt.timeIntervalSinceReferenceDate.isFinite,
+              metadata.lastRevisedAt >= metadata.createdAt,
+              (1 ... 100).contains(metadata.createdBy.actorID.count),
+              metadata.createdBy.actorID
+                  == metadata.createdBy.actorID.trimmingCharacters(in: .whitespacesAndNewlines)
         else {
             throw FoodPresetValidationError.invalidMetadata
+        }
+        if let tombstonedAt = metadata.tombstonedAt {
+            guard tombstonedAt.timeIntervalSinceReferenceDate.isFinite,
+                  tombstonedAt >= metadata.createdAt,
+                  tombstonedAt <= metadata.lastRevisedAt
+            else {
+                throw FoodPresetValidationError.invalidMetadata
+            }
         }
         guard Self.validText(name, maximum: 100) else {
             throw FoodPresetValidationError.invalidName

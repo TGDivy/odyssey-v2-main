@@ -71,18 +71,48 @@ Identical usage IDs deduplicate idempotently. Conflicting values under one
 usage ID and duplicate preset identities fail closed. Future, pre-lookback,
 unknown-preset, and tombstoned-preset history cannot affect the result.
 
+## Durable preset lifecycle
+
+`FoodPresetService` is composed during native local bootstrap and stores presets
+in the same protected SQLite ledger used by capture and sync. Create, revise,
+and archive each make one atomic commit containing:
+
+- an immutable `food_preset.created.v1` or `food_preset.revised.v1` local ledger
+  entry;
+- the next complete `food_preset` projection; and
+- a sequence-ordered sync-outbox operation.
+
+Revision requires the exact current revision, preserves identity, creation
+metadata, owner, sensitivity, and entity provenance, and rejects no-op edits.
+Its sync payload contains only changed top-level fields plus revision metadata;
+cleared optional values are explicit JSON `null`. This retains the server's
+ability to identify disjoint semantic edits rather than treating every update
+as a replacement. The local projection still stores the complete validated
+document.
+
+Archive advances the revision, records `tombstoned_at`, writes a delete
+projection, and queues an empty-object delete payload. Archived presets remain
+in immutable history but cannot be revised or resurrected and do not appear in
+active pages or ranking. Current active reads are bounded to 500 presets.
+Malformed projection identity, revision, tombstone, dates, actor metadata, or
+domain content fails closed before it reaches ranking.
+
 ## Current boundary
 
-This slice does **not** provide durable preset storage, preset revision events,
-meal occurrence storage, a quick-log UI, HealthKit writes, sync behavior, or a
-live experiment assignment. Those require separate ledger/projection/outbox,
-event-registry, native UI, permission, and owner-device slices. In particular,
-the presence of optional nutrient values does not authorize HealthKit access or
-write anything to Apple Health.
+This slice does **not** provide meal occurrence storage, a quick-log UI,
+HealthKit writes, a cross-stack domain-event consumer, or a live experiment
+assignment. The local event names still require backend registry/schema
+registration, and partial food-preset merge behavior still requires a native
+document regression before cross-device convergence is claimed. Those follow in
+separate event-registry, meal ledger, native UI, permission, and integration
+slices. In particular, the presence of optional nutrient values does not
+authorize HealthKit access or write anything to Apple Health.
 
-Seven focused tests cover value validation, time-zone-aware context derivation,
+Ten focused tests cover value validation, time-zone-aware context derivation,
 both ranking strategies, threshold behavior, deterministic ordering, excluded
-history, idempotent deduplication, and fail-closed identity handling. The full
-portable Swift package reports 107 tests passing under the official Swift 6.1
-Linux toolchain. This does not type-check SwiftUI or prove Xcode, HealthKit,
-signing, simulator, accessibility, or physical-device behavior.
+history, idempotent deduplication, fail-closed identity handling, atomic preset
+lifecycle commits, partial/null sync payloads, optimistic revision, and
+tombstones. The full portable Swift package reports 110 tests passing under the
+official Swift 6.1 Linux toolchain. This does not type-check SwiftUI or prove
+Xcode, HealthKit, signing, simulator, accessibility, or physical-device
+behavior.

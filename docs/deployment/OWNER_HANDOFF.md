@@ -24,7 +24,7 @@ it does not prove an owner deployment:
   environment.
 - No Apple-platform package build, Xcode archive, signing operation, TestFlight
   upload, or physical-device test has been performed. The portable Swift
-  package has been compiled and its 107 deterministic tests have run under the
+  package has been compiled and its 110 deterministic tests have run under the
   official Linux Swift 6.1 toolchain; that is not Apple-platform validation.
 - The cloud model remains `deterministic`. Adding a model-provider key alone
   enables nothing; no evaluated cloud-model adapter is implemented.
@@ -47,9 +47,10 @@ it does not prove an owner deployment:
   manual sync, integrity verification, projection rebuild, and an
   opportunistic app-refresh entry. None of those Apple-platform paths has been
   Xcode-built or device-tested.
-  Portable simple food-preset values and deterministic context/frequency ranking
-  contracts also exist, but durable preset/meal storage, quick-log UI, HealthKit
-  writes, and live ranking experiments do not.
+  Portable simple food-preset values, atomic local create/revise/archive, and
+  deterministic context/frequency ranking also exist, but durable meal
+  occurrences, quick-log UI, HealthKit writes, cross-stack food-event proof, and
+  live ranking experiments do not.
   The device/refresh Keychain vault, in-memory access-token refresh session,
   native Apple ceremony, and auth HTTP exchange are implemented as package
   boundaries. Recovery UI, server-side device-revocation UI, and physical
