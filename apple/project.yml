@@ -57,7 +57,6 @@ targets:
           - fetch
           - processing
           - remote-notification
-          - location
         NSHealthShareUsageDescription: Odyssey uses selected health data to provide context you request.
         NSHealthUpdateUsageDescription: Odyssey writes only explicitly confirmed health entries.
         NSCalendarsFullAccessUsageDescription: Odyssey mirrors selected calendar context for planning and preparation.

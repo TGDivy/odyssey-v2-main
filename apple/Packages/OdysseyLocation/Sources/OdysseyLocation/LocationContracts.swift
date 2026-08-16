@@ -185,7 +185,9 @@ enum LocationValidation {
     static func validText(_ value: String, maximum: Int) -> Bool {
         (1 ... maximum).contains(value.count)
             && value == value.trimmingCharacters(in: .whitespacesAndNewlines)
-            && !value.unicodeScalars.contains(where: { $0.value == 0 })
+            && !value.unicodeScalars.contains(where: {
+                CharacterSet.controlCharacters.contains($0)
+            })
     }
 
     static func validOptionalText(_ value: String?, maximum: Int) -> Bool {
