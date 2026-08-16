@@ -751,7 +751,7 @@ struct WorkshopView: View {
             Button {
                 Task { await model.refreshLocationContext() }
             } label: {
-                Label("Refresh Current Broad Place", systemImage: "location.magnifyingglass")
+                Label("Refresh Broad Place and Weather", systemImage: "location.magnifyingglass")
             }
             .disabled(!model.locationContextState.canRefresh)
 
@@ -1108,7 +1108,7 @@ struct WorkshopView: View {
         case .authorizing:
             activityLabel("Waiting for when-in-use location access")
         case .acquiring:
-            activityLabel("Resolving one current broad place")
+            activityLabel("Resolving broad place and current weather")
         case .revoking:
             activityLabel("Removing local broad-place context")
         case let .failed(message):

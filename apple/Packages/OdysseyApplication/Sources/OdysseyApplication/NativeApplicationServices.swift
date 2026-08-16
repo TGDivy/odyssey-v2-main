@@ -197,6 +197,7 @@ public struct NativeLocalServices: Sendable {
     public let healthImportCoordinator: HealthImportCoordinator
     public let locationContextCoordinator: LocationContextCoordinator
     public let weatherMirrorCoordinator: WeatherMirrorCoordinator
+    public let foregroundContextRefreshCoordinator: ForegroundContextRefreshCoordinator
     public let lifeModelWorkshopService: LifeModelWorkshopService
     public let attachmentRecoveryState: LocalCaptureAttachmentRecoveryState
 
@@ -295,6 +296,10 @@ public struct NativeLocalServices: Sendable {
             adapter: resolvedWeatherAdapter,
             store: ledgerStore
         )
+        let foregroundContextRefreshCoordinator = ForegroundContextRefreshCoordinator(
+            locationCoordinator: locationContextCoordinator,
+            weatherCoordinator: weatherMirrorCoordinator
+        )
         let lifeModelWorkshopService = try LifeModelWorkshopService(
             store: ledgerStore,
             deviceID: deviceID,
@@ -315,6 +320,7 @@ public struct NativeLocalServices: Sendable {
             healthImportCoordinator: healthImportCoordinator,
             locationContextCoordinator: locationContextCoordinator,
             weatherMirrorCoordinator: weatherMirrorCoordinator,
+            foregroundContextRefreshCoordinator: foregroundContextRefreshCoordinator,
             lifeModelWorkshopService: lifeModelWorkshopService,
             attachmentRecoveryState: await attachmentRecoveryState(
                 store: captureAttachmentStore,

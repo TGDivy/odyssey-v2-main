@@ -754,7 +754,7 @@ final class OdysseyAppModel: ObservableObject {
     }
 
     func refreshLocationContext() async {
-        guard let coordinator = localServices?.locationContextCoordinator else { return }
+        guard let localServices else { return }
         if locationContextState.overview == nil {
             await refreshLocationContextStatus()
         }
@@ -762,14 +762,15 @@ final class OdysseyAppModel: ObservableObject {
         locationContextState.message = nil
         locationContextState.activity = .acquiring
         do {
-            let result = try await coordinator.refresh()
-            locationContextState.overview = try await coordinator.overview()
+            let result = try await localServices.foregroundContextRefreshCoordinator.refresh()
+            locationContextState.overview = try await localServices.locationContextCoordinator
+                .overview()
             locationContextState.activity = .idle
-            switch result.outcome {
+            switch result.locationOutcome {
             case .acquired:
                 locationContextState.localMirrorRevoked = false
                 locationContextState.message =
-                    "Current broad-place context refreshed locally. Coordinates were discarded after resolution."
+                    "Current broad-place context refreshed locally. Coordinates were discarded after the immediate weather handoff."
             case .permissionDenied:
                 locationContextState.message =
                     "When-in-use access is not granted. Prior local broad-place context was preserved."
@@ -786,6 +787,10 @@ final class OdysseyAppModel: ObservableObject {
                 locationContextState.message =
                     "No current location fix was available. Prior local broad-place context was preserved."
             }
+            await applyForegroundWeatherRefresh(
+                result.weatherRefresh,
+                coordinator: localServices.weatherMirrorCoordinator
+            )
         } catch {
             locationContextState.activity = .failed(
                 "Broad-place context could not be refreshed. Prior local context remains intact."
@@ -832,48 +837,6 @@ final class OdysseyAppModel: ObservableObject {
         } catch {
             weatherContextState.activity = .failed(
                 "The local weather mirror could not be inspected safely."
-            )
-        }
-    }
-
-    func refreshWeatherContext(
-        for query: WeatherQueryLocation,
-        showCompletionMessage: Bool = true
-    ) async {
-        guard let coordinator = localServices?.weatherMirrorCoordinator else { return }
-        if weatherContextState.overview == nil {
-            await refreshWeatherContextStatus()
-        }
-        guard weatherContextState.overview?.capability.availability == .available,
-              !weatherContextState.activity.isBusy
-        else {
-            return
-        }
-        if showCompletionMessage {
-            weatherContextState.message = nil
-        }
-        weatherContextState.activity = .importing
-        do {
-            let result = try await coordinator.refresh(for: query)
-            weatherContextState.overview = try await coordinator.overview()
-            weatherContextState.localMirrorRevoked = false
-            weatherContextState.activity = .idle
-            guard showCompletionMessage else { return }
-            switch result.outcome {
-            case .fetched:
-                weatherContextState.message =
-                    "Weather context refreshed locally: \(result.insertedCount) added, "
-                    + "\(result.updatedCount) updated, and \(result.duplicateCount) unchanged."
-            case .rateLimited:
-                weatherContextState.message =
-                    "The weather provider is rate limited. Prior local context was preserved."
-            case .unavailable:
-                weatherContextState.message =
-                    "Weather service or entitlement is unavailable. Prior local context was preserved."
-            }
-        } catch {
-            weatherContextState.activity = .failed(
-                "Weather context could not be refreshed. Prior local context remains intact."
             )
         }
     }
@@ -1403,6 +1366,42 @@ final class OdysseyAppModel: ObservableObject {
         } catch {
             calendarContextState.activity = .failed(
                 "Calendar context could not be refreshed. Prior local events remain intact."
+            )
+        }
+    }
+
+    private func applyForegroundWeatherRefresh(
+        _ refresh: ForegroundWeatherRefreshState,
+        coordinator: WeatherMirrorCoordinator
+    ) async {
+        switch refresh {
+        case .notAttempted:
+            return
+        case let .completed(result):
+            do {
+                weatherContextState.overview = try await coordinator.overview()
+                weatherContextState.activity = .idle
+                switch result.outcome {
+                case .fetched:
+                    weatherContextState.localMirrorRevoked = false
+                    weatherContextState.message =
+                        "Weather context refreshed locally: \(result.insertedCount) added, "
+                        + "\(result.updatedCount) updated, and \(result.duplicateCount) unchanged."
+                case .rateLimited:
+                    weatherContextState.message =
+                        "The weather provider is rate limited. Prior local context was preserved."
+                case .unavailable:
+                    weatherContextState.message =
+                        "Weather service or entitlement is unavailable. Prior local context was preserved."
+                }
+            } catch {
+                weatherContextState.activity = .failed(
+                    "Weather refreshed, but its local status could not be inspected safely."
+                )
+            }
+        case .failed:
+            weatherContextState.activity = .failed(
+                "Weather context could not be refreshed. Prior local context remains intact."
             )
         }
     }
