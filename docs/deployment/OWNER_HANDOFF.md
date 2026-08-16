@@ -286,6 +286,12 @@ private key, or server credential. Review current Apple Weather attribution and
 service terms, account quota, and any pending Apple Developer agreement before
 promotion; never encode a quota assumption in the app.
 
+Core Location when-in-use access does not require a Developer portal
+capability. Keep the checked-in `NSLocationWhenInUseUsageDescription`, and do
+not add the `location` background mode, significant-change entitlement, or a
+second location usage string to make testing more convenient. The implemented
+scope is one explicit foreground broad-place request.
+
 Choose an owner-controlled HTTPS domain before replacing
 `applinks:example.invalid`. Host a valid AASA document and verify it without a
 redirect:
@@ -1118,10 +1124,15 @@ codesign -d --entitlements :- "$APP_PATH" \
   >"$ODYSSEY_PRIVATE_CONFIG/odyssey-staging.entitlements.plist"
 plutil -extract com.apple.developer.weatherkit raw \
   "$ODYSSEY_PRIVATE_CONFIG/odyssey-staging.entitlements.plist"
+plutil -extract NSLocationWhenInUseUsageDescription raw "$APP_PATH/Info.plist"
+plutil -extract UIBackgroundModes json -o - "$APP_PATH/Info.plist" \
+  | jq -e 'index("location") | not'
 ```
 
-The final command must print `true`. Store the entitlement report only in the
-private evidence directory because it also contains owner account identifiers.
+The WeatherKit command must print `true`, the disclosure must match the reviewed
+copy, and the background-mode assertion must succeed. Store the entitlement
+report only in the private evidence directory because it also contains owner
+account identifiers.
 
 Use automatic signing for development/staging owner devices. Distribution
 signing and App Store Connect access remain Account Holder-controlled. Archive
@@ -1143,6 +1154,8 @@ xcodebuild -workspace apple/Odyssey.xcworkspace \
   under the same team with the expected entitlements.
 - The signed main app contains `com.apple.developer.weatherkit = true`; embedded
   extensions do not receive WeatherKit unless a later reviewed design uses it.
+- The signed main app contains the reviewed when-in-use Location disclosure and
+  its background-mode array does not contain `location`.
 
 **Troubleshooting**
 
@@ -1298,9 +1311,35 @@ Do not enter real owner data. Then execute this staged flow:
    records and the refresh marker disappear while source events, calendar
    membership, and system permission remain unchanged. Re-import only if the
    test protocol requires it. Never use a real work, family, or travel calendar.
-22. Background the app and retain the app-refresh scheduling/debug evidence. Do
-   not claim timing guarantees; the OS may defer or cancel the task.
-23. On a paired disposable Watch, open Food on iPhone to publish synthetic ranked
+22. In **Workshop → Broad Location Context**, confirm status inspection causes
+   no prompt and shows no coordinate or accuracy. Choose **Request When-in-Use
+   Access** only from this explicit action and deny first on a disposable
+   install. Capture, Food, Workshop, prior calendar/weather context, and sync
+   must remain usable; Location must degrade without a Weather request.
+23. Grant when-in-use access and use only an Xcode-simulated public test
+   location or a purpose-made synthetic route. Choose **Refresh Broad Place and
+   Weather**. Confirm one foreground request produces at most one broad-place
+   record, reports locality/administrative-area/time-zone precision and
+   freshness without coordinates, and immediately refreshes Weather. Verify
+   Weather source/expiry, rate-limit state, rejected count, legal link, and the
+   Apple Weather mark in light and dark appearance. Repeat offline: prior local
+   context must remain and the failure must be generic.
+24. Simulate a second public test place in another IANA time zone and refresh.
+   Confirm both Location and Weather replace `current` rather than accumulating
+   history. On a stopped app and a private copy of its container, verify one
+   `location/broad_place` and one `weather/forecast` record, no `latitude`,
+   `longitude`, or `horizontalAccuracyMeters` JSON keys, and no increase in the
+   sync queue. Retain only counts, booleans, time-zone IDs, and hashes; never
+   retain coordinates or the device's real place.
+25. Choose **Remove Local Broad-Place Context**, then **Remove Local Weather
+   Mirror**. Confirm both local records/cursors disappear independently while
+   system Location permission and WeatherKit service access remain unchanged.
+   Refresh Location again only if the protocol requires it.
+26. Background the app and retain the app-refresh scheduling/debug evidence. Do
+   not claim timing guarantees; the OS may defer or cancel the task. Confirm
+   background/launch reconciliation does not request Location or advance the
+   Weather provider-attempt time without the explicit foreground action.
+27. On a paired disposable Watch, open Food on iPhone to publish synthetic ranked
    presets. Disconnect phone reachability, save one synthetic Watch note and one
    synthetic food command, and confirm both report pending without waiting.
    Force-quit/relaunch Watch and confirm pending commands survive. Reconnect;

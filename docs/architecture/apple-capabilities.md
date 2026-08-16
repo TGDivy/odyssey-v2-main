@@ -11,9 +11,10 @@ permission to use the corresponding data or perform an external action.
 | HealthKit | iOS, Watch | Enable HealthKit on both identifiers | Ask by data type at the moment of value; anchored reads and Odyssey-owned writes stay separate | Existing local context, manual context, and all non-Health workflows remain available |
 | EventKit | iOS | Add calendar usage descriptions | Full access is required for the bounded read mirror; write-only is never treated as readable | Prior local mirror, user-entered commitments, and imported files remain available |
 | WeatherKit | iOS | Enable WeatherKit on the main App ID and sign `com.apple.developer.weatherkit` | Fetch only from a transient foreground broad-place query; persist provider expiry and required attribution, never coordinates | Prior unexpired local snapshot, calendar/timezone/manual context, or no weather context |
+| Core Location (when in use) | iOS | Keep the reviewed usage description; no portal capability is required | Prompt only from the explicit owner action, request one broad foreground fix, discard coordinates after the immediate Weather handoff | Prior broad place, calendar/timezone/manual context, and all non-Location workflows |
 | Notifications/APNs | iOS | Enable push and upload APNs signing key to backend secret store | Visible delivery remains budgeted and optional | In-app, widget, and local pre-scheduled surfaces |
 | Background tasks | iOS | Register refresh and maintenance identifiers | Opportunistic only; never a deadline clock | Foreground reconciliation and server reevaluation |
-| Significant location | iOS | Enable location background mode only after owner review | Broad, sparse context; no continuous precise history | Calendar/timezone/manual place context |
+| Significant/background Location | None | Do not enable the location background mode | Unsupported; no standard updates, visits, regions, or significant-change monitoring | Explicit foreground broad-place refresh only |
 | Siri/App Intents | iOS intents | Enable Siri entitlement | Bounded text queues through the App Group; food opens the private in-app ranking surface | Standard in-app capture |
 | Widgets/controls | widget extension | Embed and sign with shared group | Render cached state with explicit freshness; generic actions route to private in-app sheets | Main app remains fully usable |
 | Watch | watchOS app | Register companion bundle and HealthKit capability | Text/food commands persist locally and use receipt-bound WatchConnectivity; ranked presets expire | Pending commands remain on Watch; full iPhone capture path remains available |
@@ -74,6 +75,14 @@ still requires the owner to enable WeatherKit on every main App ID and
 regenerate profiles. The guarded source has only parser and public-signature
 stub validation here; Xcode, signing, live service, attribution, quota, and
 device proof remain owner work. See `docs/architecture/weather-context.md`.
+
+The Core Location path stores one mutable broad-place record with precision,
+time zone, capture time, and expiry. Coordinates and horizontal accuracy exist
+only in a non-`Codable` transient fix and disappear after the immediate Weather
+handoff. Workshop exposes explicit authorization, refresh, health, and local
+revocation controls without showing coordinates. The app declares only
+when-in-use usage and intentionally omits the location background mode. See
+`docs/architecture/location-context.md`.
 
 `apple/Config/*.xcconfig` intentionally contains placeholder bundle IDs and
 domains. Exact account registration and replacement steps belong in

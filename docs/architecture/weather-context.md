@@ -43,10 +43,11 @@ stores one mutable record named `current`; a successful query for another place
 replaces that record rather than accumulating a place history. Query failures
 do not persist a newly requested place.
 
-The iOS shell currently exposes provider/cache health, attribution, and local
-revocation. A provider refresh is intentionally not exposed until the
-conservative foreground place resolver can construct the transient query
-without retaining raw coordinates.
+The iOS shell exposes provider/cache health, attribution, and local revocation.
+Its explicit **Refresh Broad Place and Weather** action first runs the
+conservative one-shot foreground resolver and then constructs the transient
+query in `ForegroundContextRefreshCoordinator`. Bootstrap and background tasks
+never acquire Location or refresh Weather.
 
 ## Local mirror semantics
 
@@ -136,8 +137,9 @@ valid attribution, no snapshot is admitted.
 
 Portable Swift tests cover coordinate-free serialization, URL/date/value
 validation, synthetic outcomes, mutable replacement, cache preservation,
-tamper rejection, local revocation, and non-Apple fallback. At the 2026-08-16
-checkpoint, the complete portable suite passes 162 tests under Swift 6.1.
+tamper rejection, local revocation, non-Apple fallback, foreground
+Location-to-Weather handoff, denied-location suppression, provider-failure
+isolation, and travel across a local-day boundary.
 
 The guarded source was parser-validated and strict-concurrency type-checked
 against disposable modules shaped from Apple’s documented public signatures.
@@ -150,3 +152,6 @@ each environment’s main App ID, regenerate profiles, inspect the signed
 entitlement, run only synthetic/public-place checks, verify attribution in both
 color schemes, inspect the local database/outbox for coordinate absence, test
 offline cache preservation and expiry, and record payload-free evidence.
+
+The Location half of this handoff is specified in
+`docs/architecture/location-context.md`.
