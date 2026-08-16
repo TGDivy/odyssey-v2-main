@@ -14,6 +14,12 @@
       "schema": "schemas/events/v1/capture.interpreted.v1.schema.json"
     },
     {
+      "aggregate_type": "capture",
+      "event_type": "capture.interpretation_reviewed.v1",
+      "purpose": "Append-only owner review or correction of an interpretation",
+      "schema": "schemas/events/v1/capture.interpretation_reviewed.v1.schema.json"
+    },
+    {
       "aggregate_type": "observation",
       "event_type": "observation.normalized.v1",
       "purpose": "Normalized source-linked observation",

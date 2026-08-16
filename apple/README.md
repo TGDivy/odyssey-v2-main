@@ -108,6 +108,8 @@ prefixes, treats other text as an unstructured note, and leaves media pending
 rather than inventing content. Bootstrap and opportunistic app refresh rescan
 pending captures. Provider-backed interpretation and correction UI remain. See
 [`docs/architecture/capture-interpretation.md`](../docs/architecture/capture-interpretation.md).
+The same cross-stack contract now defines stable append-only owner acceptance,
+correction, and dismissal lineage; durable review execution follows separately.
 
 `NativeLocalServices` opens the stable Keychain device identity, protected
 Application Support database, migration-backup directory, and capture service

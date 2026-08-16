@@ -94,6 +94,32 @@ func captureInterpretationVersionRejectsTransientOrUnlinkedResults() throws {
     #expect(throws: CaptureContractError.invalidInterpretation("field source references")) {
         try CaptureInterpretedField(value: .string("food"), sourceSpanRefs: [])
     }
+    let targetID = try captureInterpretationIdentifier(40)
+    let review = try CaptureInterpretationVersion(
+        id: captureInterpretationIdentifier(41),
+        interpreter: "odyssey.owner-review",
+        interpreterVersion: "1",
+        createdAt: captureInterpretationDate,
+        status: .interpreted,
+        proposedFields: [
+            "capture_type": CaptureInterpretedField(
+                value: .string("food"),
+                sourceSpanRefs: ["capture:source#original_payload"]
+            ),
+        ],
+        supersedesInterpretationVersionID: targetID,
+        ownerReviewDisposition: .corrected,
+        ownerReviewNote: "Owner corrected the explicit category."
+    )
+    #expect(review.supersedesInterpretationVersionID == targetID)
+    #expect(review.ownerReviewDisposition == .corrected)
+    #expect(throws: CaptureContractError.invalidInterpretation("review replacement fields")) {
+        try CaptureInterpretationReviewDraft(
+            targetInterpretationVersionID: targetID,
+            expectedCaptureRevision: 2,
+            disposition: .corrected
+        )
+    }
 }
 
 @Test

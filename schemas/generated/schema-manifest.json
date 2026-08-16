@@ -2,7 +2,7 @@
   "artifacts": [
     {
       "path": "schemas/events/registry.v1.json",
-      "sha256": "af0de4d07ba2e7567be922b8215f667e61ba39220a07d43a9c8cb720bb822271"
+      "sha256": "8e1972dcc40eb106f91c5e806d4c00d2752e10d30ad6103a7a34eefac5ffddf0"
     },
     {
       "path": "schemas/events/v1/action.status_changed.v1.schema.json",
@@ -15,6 +15,10 @@
     {
       "path": "schemas/events/v1/assertion.superseded.v1.schema.json",
       "sha256": "7c62089e3d9e22d56f3a2e262702c77e0b25458c4ef6e125379126b3180d3700"
+    },
+    {
+      "path": "schemas/events/v1/capture.interpretation_reviewed.v1.schema.json",
+      "sha256": "2c1d2dc6ac015a10fd1092af3262bb056485a2321301642d0f198285d45c8fda"
     },
     {
       "path": "schemas/events/v1/capture.interpreted.v1.schema.json",
@@ -118,7 +122,7 @@
     },
     {
       "path": "schemas/jsonschema/v1/capture.schema.json",
-      "sha256": "4528f7c09151cdc1bb08b06fecfac15e7fa7f732a9ba5ea2de6af143045f63a9"
+      "sha256": "e5e41dfe3a3ce83d35fc344a8863ff68a7144ad89c4d8a176c27794698aa41ab"
     },
     {
       "path": "schemas/jsonschema/v1/chapter-version.schema.json",

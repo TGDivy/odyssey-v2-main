@@ -1,9 +1,9 @@
 """Offline-first capture and normalized observation contracts."""
 
 from enum import StrEnum
-from typing import Any
+from typing import Any, Self
 
-from pydantic import AwareDatetime, Field
+from pydantic import AwareDatetime, Field, model_validator
 
 from odyssey.domain.common import (
     UUID7,
@@ -20,6 +20,12 @@ class CapturePayloadKind(StrEnum):
     IMAGE_REF = "image_ref"
     FILE_REF = "file_ref"
     STRUCTURED_QUICK_ACTION = "structured_quick_action"
+
+
+class InterpretationReviewDisposition(StrEnum):
+    ACCEPTED = "accepted"
+    CORRECTED = "corrected"
+    DISMISSED = "dismissed"
 
 
 class CapturePayload(StrictModel):
@@ -43,6 +49,39 @@ class InterpretationVersion(StrictModel):
     status: str
     proposed_fields: dict[str, Any] = Field(default_factory=dict)
     source_span_refs: tuple[str, ...] = ()
+    supersedes_interpretation_version_id: UUID7 | None = None
+    owner_review_disposition: InterpretationReviewDisposition | None = None
+    owner_review_note: str | None = Field(default=None, min_length=1, max_length=500)
+
+    @model_validator(mode="after")
+    def validate_owner_review(self) -> Self:
+        disposition = self.owner_review_disposition
+        if disposition is None:
+            if (
+                self.supersedes_interpretation_version_id is not None
+                or self.owner_review_note is not None
+                or self.status == "dismissed"
+            ):
+                raise ValueError("owner review metadata requires a disposition")
+            return self
+        if (
+            self.supersedes_interpretation_version_id is None
+            or self.supersedes_interpretation_version_id == self.id
+        ):
+            raise ValueError("owner review requires distinct interpretation lineage")
+        if (
+            self.owner_review_note is not None
+            and self.owner_review_note.strip() != self.owner_review_note
+        ):
+            raise ValueError("owner review note must be trimmed")
+        if disposition is InterpretationReviewDisposition.DISMISSED:
+            if self.status != "dismissed" or self.proposed_fields:
+                raise ValueError("dismissed review cannot retain proposed fields")
+        elif self.status != "interpreted":
+            raise ValueError("accepted or corrected review must remain interpreted")
+        elif disposition is InterpretationReviewDisposition.CORRECTED and not self.proposed_fields:
+            raise ValueError("corrected review requires replacement fields")
+        return self
 
 
 class Capture(StrictModel):

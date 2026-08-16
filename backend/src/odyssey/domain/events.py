@@ -50,6 +50,17 @@ EVENT_DEFINITIONS: tuple[EventDefinition, ...] = (
         purpose="Versioned source-linked capture interpretation",
     ),
     EventDefinition(
+        "capture.interpretation_reviewed.v1",
+        "capture",
+        (
+            "capture_id",
+            "interpretation_version_id",
+            "reviewed_interpretation_version_id",
+            "disposition",
+        ),
+        purpose="Append-only owner review or correction of an interpretation",
+    ),
+    EventDefinition(
         "observation.normalized.v1",
         "observation",
         ("observation_id", "source_record_id"),

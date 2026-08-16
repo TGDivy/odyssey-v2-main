@@ -49,6 +49,7 @@ public enum CaptureInterpretationStatus: String, Codable, CaseIterable, Hashable
     case needsClarification = "needs_clarification"
     case interpreted
     case failed
+    case dismissed
 }
 
 public struct CaptureInvokingSurface: RawRepresentable, Codable, Hashable, Sendable {

@@ -2,6 +2,14 @@ import Foundation
 import OdysseyDomain
 import OdysseySync
 
+public enum CaptureInterpretationReviewDisposition: String, Codable, CaseIterable, Hashable,
+    Sendable
+{
+    case accepted
+    case corrected
+    case dismissed
+}
+
 public struct CaptureInterpretedField: Codable, Hashable, Sendable {
     public static let maximumSourceReferenceCount = 16
 
@@ -40,6 +48,9 @@ public struct CaptureInterpretationVersion: Codable, Hashable, Sendable {
     public let status: CaptureInterpretationStatus
     public let proposedFields: [String: CaptureInterpretedField]
     public let sourceSpanRefs: [String]
+    public let supersedesInterpretationVersionID: UUIDv7?
+    public let ownerReviewDisposition: CaptureInterpretationReviewDisposition?
+    public let ownerReviewNote: String?
 
     public init(
         id: UUIDv7 = UUIDv7(),
@@ -47,7 +58,10 @@ public struct CaptureInterpretationVersion: Codable, Hashable, Sendable {
         interpreterVersion: String,
         createdAt: Date,
         status: CaptureInterpretationStatus,
-        proposedFields: [String: CaptureInterpretedField] = [:]
+        proposedFields: [String: CaptureInterpretedField] = [:],
+        supersedesInterpretationVersionID: UUIDv7? = nil,
+        ownerReviewDisposition: CaptureInterpretationReviewDisposition? = nil,
+        ownerReviewNote: String? = nil
     ) throws {
         guard Self.isValidIdentifier(interpreter, maximum: 100) else {
             throw CaptureContractError.invalidInterpretation("interpreter")
@@ -58,7 +72,9 @@ public struct CaptureInterpretationVersion: Codable, Hashable, Sendable {
         guard createdAt.timeIntervalSinceReferenceDate.isFinite else {
             throw CaptureContractError.invalidInterpretation("creation time")
         }
-        guard status == .interpreted || status == .needsClarification || status == .failed else {
+        guard status == .interpreted || status == .needsClarification || status == .failed
+            || status == .dismissed
+        else {
             throw CaptureContractError.invalidInterpretation("status")
         }
         guard proposedFields.count <= Self.maximumProposedFieldCount,
@@ -68,6 +84,44 @@ public struct CaptureInterpretationVersion: Codable, Hashable, Sendable {
         }
         guard status != .failed || proposedFields.isEmpty else {
             throw CaptureContractError.invalidInterpretation("failed result fields")
+        }
+        if let ownerReviewNote {
+            guard (1 ... 500).contains(ownerReviewNote.count),
+                  ownerReviewNote == ownerReviewNote.trimmingCharacters(
+                      in: .whitespacesAndNewlines
+                  ),
+                  !ownerReviewNote.unicodeScalars.contains(where: { $0.value == 0 })
+            else {
+                throw CaptureContractError.invalidInterpretation("owner review note")
+            }
+        }
+        if let ownerReviewDisposition {
+            guard let supersedesInterpretationVersionID,
+                  supersedesInterpretationVersionID != id
+            else {
+                throw CaptureContractError.invalidInterpretation("owner review lineage")
+            }
+            switch ownerReviewDisposition {
+            case .accepted:
+                guard status == .interpreted else {
+                    throw CaptureContractError.invalidInterpretation("accepted review status")
+                }
+            case .corrected:
+                guard status == .interpreted, !proposedFields.isEmpty else {
+                    throw CaptureContractError.invalidInterpretation("corrected review fields")
+                }
+            case .dismissed:
+                guard status == .dismissed, proposedFields.isEmpty else {
+                    throw CaptureContractError.invalidInterpretation("dismissed review fields")
+                }
+            }
+        } else {
+            guard supersedesInterpretationVersionID == nil,
+                  ownerReviewNote == nil,
+                  status != .dismissed
+            else {
+                throw CaptureContractError.invalidInterpretation("owner review metadata")
+            }
         }
         let sourceSpanRefs = proposedFields.values
             .flatMap(\.sourceSpanRefs)
@@ -83,6 +137,9 @@ public struct CaptureInterpretationVersion: Codable, Hashable, Sendable {
         self.status = status
         self.proposedFields = proposedFields
         self.sourceSpanRefs = sourceSpanRefs
+        self.supersedesInterpretationVersionID = supersedesInterpretationVersionID
+        self.ownerReviewDisposition = ownerReviewDisposition
+        self.ownerReviewNote = ownerReviewNote
     }
 
     private static func isValidIdentifier(_ value: String, maximum: Int) -> Bool {
@@ -103,6 +160,56 @@ public struct CaptureInterpretationVersion: Codable, Hashable, Sendable {
                     .union(CharacterSet(charactersIn: "._-"))
                     .contains($0)
             }
+    }
+}
+
+public struct CaptureInterpretationReviewDraft: Hashable, Sendable {
+    public let reviewVersionID: UUIDv7
+    public let targetInterpretationVersionID: UUIDv7
+    public let expectedCaptureRevision: Int
+    public let disposition: CaptureInterpretationReviewDisposition
+    public let replacementValues: [String: JSONValue]
+    public let note: String?
+
+    public init(
+        reviewVersionID: UUIDv7 = UUIDv7(),
+        targetInterpretationVersionID: UUIDv7,
+        expectedCaptureRevision: Int,
+        disposition: CaptureInterpretationReviewDisposition,
+        replacementValues: [String: JSONValue] = [:],
+        note: String? = nil
+    ) throws {
+        guard expectedCaptureRevision >= 1 else {
+            throw CaptureContractError.invalidInterpretation("review revision")
+        }
+        guard replacementValues.count <= CaptureInterpretationVersion.maximumProposedFieldCount
+        else {
+            throw CaptureContractError.invalidInterpretation("review replacement fields")
+        }
+        switch disposition {
+        case .accepted, .dismissed:
+            guard replacementValues.isEmpty else {
+                throw CaptureContractError.invalidInterpretation("review replacement fields")
+            }
+        case .corrected:
+            guard !replacementValues.isEmpty else {
+                throw CaptureContractError.invalidInterpretation("review replacement fields")
+            }
+        }
+        if let note {
+            guard (1 ... 500).contains(note.count),
+                  note == note.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !note.unicodeScalars.contains(where: { $0.value == 0 })
+            else {
+                throw CaptureContractError.invalidInterpretation("owner review note")
+            }
+        }
+        self.reviewVersionID = reviewVersionID
+        self.targetInterpretationVersionID = targetInterpretationVersionID
+        self.expectedCaptureRevision = expectedCaptureRevision
+        self.disposition = disposition
+        self.replacementValues = replacementValues
+        self.note = note
     }
 }
 

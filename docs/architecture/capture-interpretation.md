@@ -20,6 +20,26 @@ adapter from producing an apparently precise field with no link to the original
 capture. Proposed fields do not become observations or canonical facts through
 interpretation alone; material acceptance and correction remain separate.
 
+## Owner review contract
+
+`CaptureInterpretationReviewDraft` carries a stable review-version ID, the exact
+interpretation version reviewed, the expected capture revision, and one of
+three explicit dispositions: accepted, corrected, or dismissed. Corrected
+reviews carry bounded replacement values; accepted and dismissed reviews
+cannot smuggle replacements into the ceremony.
+
+The resulting `CaptureInterpretationVersion` has explicit
+`supersedesInterpretationVersionID` lineage, owner-review disposition, and an
+optional bounded note. Accepted and corrected results remain interpreted;
+dismissal is a distinct terminal meaning and cannot retain proposed fields.
+The cross-stack contract rejects self-supersession, unbound review metadata,
+empty corrections, and incoherent status/disposition combinations.
+
+This slice defines the append-only semantics and registered
+`capture.interpretation_reviewed.v1` event. Durable review execution and the
+Archive correction surface are implemented in the following slices rather than
+overloading analytics feedback.
+
 ## Adapter boundary
 
 `CaptureInterpreting` is provider-neutral and asynchronous. It receives the

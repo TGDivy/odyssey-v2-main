@@ -183,6 +183,15 @@
       "title": "EntityMetadata",
       "type": "object"
     },
+    "InterpretationReviewDisposition": {
+      "enum": [
+        "accepted",
+        "corrected",
+        "dismissed"
+      ],
+      "title": "InterpretationReviewDisposition",
+      "type": "string"
+    },
     "InterpretationVersion": {
       "additionalProperties": false,
       "properties": {
@@ -204,6 +213,31 @@
           "title": "Interpreter Version",
           "type": "string"
         },
+        "owner_review_disposition": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/InterpretationReviewDisposition"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "owner_review_note": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Owner Review Note"
+        },
         "proposed_fields": {
           "additionalProperties": true,
           "title": "Proposed Fields",
@@ -220,6 +254,19 @@
         "status": {
           "title": "Status",
           "type": "string"
+        },
+        "supersedes_interpretation_version_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Supersedes Interpretation Version Id"
         }
       },
       "required": [
