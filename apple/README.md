@@ -154,6 +154,14 @@ Odyssey-owned samples and void deletes them. Alcohol grams remain Odyssey-only
 rather than being mapped to an inexact type. The HealthKit branch is not
 Xcode-built or device-tested; a live ranking experiment also remains absent.
 
+`OdysseyExtensionBridge` now defines the next extension boundary: validated
+text/opaque-preset food commands and a Data-Protected, backup-excluded atomic
+App Group file queue with UUID idempotency, claim/ack/retry, malformed-command
+quarantine, and interrupted-claim recovery. Extensions still do not write the
+ledger directly. App Intent/widget/control producers, iPhone draining, and
+WatchConnectivity remain separate implementation slices; see
+[`docs/architecture/extension-quick-capture.md`](../docs/architecture/extension-quick-capture.md).
+
 `LocalCaptureAttachmentStore` now supplies the protected local object boundary
 needed by voice/photo/file capture. It copies files through a bounded stream,
 hashes the copied bytes incrementally, records no source filename or absolute
@@ -214,7 +222,7 @@ swift test --package-path apple
 ../tools/apple/generate-project.sh
 ```
 
-The portable package currently reports 120 tests passing under the official
+The portable package currently reports 122 tests passing under the official
 Swift 6.1 release toolchain on Linux. That result does not type-check SwiftUI or
 replace the required Xcode, simulator, accessibility, signing, and device runs.
 

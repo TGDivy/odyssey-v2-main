@@ -16,6 +16,7 @@ let package = Package(
         .library(name: "OdysseySync", targets: ["OdysseySync"]),
         .library(name: "OdysseyAuth", targets: ["OdysseyAuth"]),
         .library(name: "OdysseyApplication", targets: ["OdysseyApplication"]),
+        .library(name: "OdysseyExtensionBridge", targets: ["OdysseyExtensionBridge"]),
         .library(name: "OdysseyHealth", targets: ["OdysseyHealth"]),
         .library(name: "OdysseyCalendar", targets: ["OdysseyCalendar"]),
         .library(name: "OdysseyLocation", targets: ["OdysseyLocation"]),
@@ -67,6 +68,11 @@ let package = Package(
             name: "OdysseyApplication",
             dependencies: ["OdysseyAuth", "OdysseyDomain", "OdysseyData", "OdysseySync"],
             path: "Packages/OdysseyApplication/Sources/OdysseyApplication"
+        ),
+        .target(
+            name: "OdysseyExtensionBridge",
+            dependencies: ["OdysseyDomain"],
+            path: "Packages/OdysseyExtensionBridge/Sources/OdysseyExtensionBridge"
         ),
         .target(
             name: "OdysseyHealth",
@@ -141,6 +147,11 @@ let package = Package(
             name: "OdysseyHealthTests",
             dependencies: ["OdysseyHealth", "OdysseyDomain"],
             path: "Tests/Unit/OdysseyHealthTests"
+        ),
+        .testTarget(
+            name: "OdysseyExtensionBridgeTests",
+            dependencies: ["OdysseyExtensionBridge", "OdysseyDomain"],
+            path: "Tests/Unit/OdysseyExtensionBridgeTests"
         ),
     ]
 )

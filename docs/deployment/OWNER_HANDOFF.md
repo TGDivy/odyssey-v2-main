@@ -24,7 +24,7 @@ it does not prove an owner deployment:
   environment.
 - No Apple-platform package build, Xcode archive, signing operation, TestFlight
   upload, or physical-device test has been performed. The portable Swift
-  package has been compiled and its 120 deterministic tests have run under the
+  package has been compiled and its 122 deterministic tests have run under the
   official Linux Swift 6.1 toolchain; that is not Apple-platform validation.
 - The cloud model remains `deterministic`. Adding a model-provider key alone
   enables nothing; no evaluated cloud-model adapter is implemented.
@@ -57,6 +57,10 @@ it does not prove an owner deployment:
   correction/void reconciliation. Xcode/accessibility, warm-device timing and
   physical HealthKit proof, event consumers, authenticated physical two-device
   food convergence, and live ranking experiments do not.
+  A portable protected App Group command queue also exists for bounded text and
+  opaque-preset food handoff with idempotency and crash recovery. The extension
+  producers and main-app drain are not wired yet, so shortcut/widget/control/
+  Watch quick capture must not be claimed.
   The device/refresh Keychain vault, in-memory access-token refresh session,
   native Apple ceremony, and auth HTTP exchange are implemented as package
   boundaries. Recovery UI, server-side device-revocation UI, and physical

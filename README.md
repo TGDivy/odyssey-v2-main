@@ -154,6 +154,14 @@ correction, and delete them on void. Alcohol grams remain local because the
 adapter does not substitute an inexact HealthKit type. The Apple-framework path
 still requires Xcode and physical-device proof.
 
+The portable `OdysseyExtensionBridge` now supplies the protected atomic handoff
+needed by App Intents, controls, widgets, and same-device extensions. It queues
+bounded text or opaque-ID food commands as one Data-Protected, backup-excluded
+file per UUID, deduplicates repeated delivery, and supports claim/retry/crash
+recovery without allowing extensions to write the ledger directly. Producers
+and the iPhone drain remain to be wired. See
+[`docs/architecture/extension-quick-capture.md`](docs/architecture/extension-quick-capture.md).
+
 ## Accepted orientation state
 
 Owner-authenticated commands under `/v1/seasons/*` now append immutable

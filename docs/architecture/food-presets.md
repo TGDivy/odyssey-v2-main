@@ -174,6 +174,6 @@ lifecycle commits, partial/null sync payloads, optimistic revision, and
 tombstones, including server-normalized pull materialization, immutable
 occurrence snapshots, DST-aware offsets, malformed nutrient rejection, and
 atomic occurrence record/correct/void behavior. The full portable Swift package
-reports 120 tests passing under the official Swift
+reports 122 tests passing under the official Swift
 6.1 Linux toolchain. This does not type-check SwiftUI or prove Xcode, HealthKit,
 signing, simulator, accessibility, or physical-device behavior.
