@@ -24,7 +24,7 @@ it does not prove an owner deployment:
   environment.
 - No Apple-platform package build, Xcode archive, signing operation, TestFlight
   upload, or physical-device test has been performed. The portable Swift
-  package has been compiled and its 122 deterministic tests have run under the
+  package has been compiled and its 135 deterministic tests have run under the
   official Linux Swift 6.1 toolchain; that is not Apple-platform validation.
 - The cloud model remains `deterministic`. Adding a model-provider key alone
   enables nothing; no evaluated cloud-model adapter is implemented.
@@ -52,11 +52,15 @@ it does not prove an owner deployment:
   ranking, native-shaped server merge/pull regressions, and atomic local meal
   occurrence record/correct/void, registered occurrence event schemas, and a
   parser-validated iPhone ranked quick-log/create/correct/void source also exist.
+  Payload-free monotonic instrumentation now qualifies only a durable ranked
+  preset commit, preserves iPhone/App Intent/widget/control provenance, and
+  exposes an ephemeral owner result. Its target arithmetic is portable-tested;
+  no physical under-five-second result is claimed.
   A portable-tested, parser-validated permission-gated HealthKit food writer
   also exists for exact energy/protein/caffeine values and Odyssey-owned
-  correction/void reconciliation. Xcode/accessibility, warm-device timing and
-  physical HealthKit proof, event consumers, authenticated physical two-device
-  food convergence, and live ranking experiments do not.
+  correction/void reconciliation. Xcode/accessibility, physical warm-path and
+  HealthKit proof, event consumers, authenticated physical two-device food
+  convergence, and live ranking experiments do not.
   A portable protected App Group command queue also exists for bounded text and
   opaque-preset food handoff with idempotency and crash recovery. The text App
   Intent queues without opening Odyssey, the food intent opens only the private
@@ -1212,6 +1216,45 @@ Do not enter real owner data. Then execute this staged flow:
    them. Retain synthetic UUID/count/timing evidence only; an accepted Watch
    receipt is not proof of cloud sync or HealthKit completion.
 
+**Warm-path food timing protocol**
+
+Run this protocol against the exact signed Release build, not a debugger build,
+after step 13 has made one synthetic common food the first ranked preset. This
+is a warm-path capability test, not a cold-launch benchmark.
+
+1. Record commit hash, archive/build number, iPhone model, iOS version, battery,
+   and thermal state. Disable Low Power Mode, close unrelated foreground work,
+   launch Odyssey once, wait for the local ledger to report ready, open and close
+   Food once without logging, and confirm the intended synthetic preset is first
+   under **Likely Now**. Do not grant Health permission or require network.
+2. Predeclare forty trials: ten each from the iPhone Now action, the **Log Food
+   in Odyssey** App Intent, the Home Screen widget Food action, and the Odyssey
+   Food Control Center control. An interaction is (1) invoking the action that
+   presents the private sheet and (2) tapping the ranked preset. Navigation to a
+   system surface before invocation is setup, not part of the measured path.
+3. Run all forty trials consecutively without searching, refreshing, editing,
+   correcting, or opening Health actions. After each durable commit closes the
+   sheet, open Now if necessary and transcribe the owner-visible duration,
+   interaction count, target result, and source into a private table. Confirm
+   the local occurrence count advanced exactly once. Do not replace a slow or
+   interrupted predeclared trial with a better run.
+4. The exit criterion passes only if all forty trials report two interactions,
+   a committed duration strictly below 5.0 seconds, the expected source, and one
+   durable occurrence. Any missing result, duplicate, source mismatch,
+   5.0-second boundary result, or slower result blocks the claim.
+5. Run four negative controls from a newly opened Food sheet: type and clear a
+   search before logging from All Presets; open/cancel preset creation before a
+   ranked log; open/cancel correction before a ranked log; and dismiss without
+   logging. None may publish a new timing result. Dismiss the prior result, open
+   a new attempt, and relaunch once to confirm the ephemeral result is not
+   persisted.
+6. Inspect the in-memory signal through an owner-controlled debug-only recorder
+   in a separate non-performance run if needed. It may contain only workflow,
+   surface, outcome, interaction count, duration bucket, target result,
+   timestamp, and correlation UUID. Evidence must never include preset names,
+   serving text, nutrients, search text, screenshots of private food history,
+   or real health data.
+
 Follow `docs/architecture/authentication.md` for the matching backend and token
 invariants. Local credential removal in Workshop is not server revocation; use
 the backend owner runbook until a device-registry UI is implemented.
@@ -1227,7 +1270,8 @@ the backend owner runbook until a device-registry UI is implemented.
   authorized exact energy/protein/caffeine samples replace idempotently while
   alcohol and foreign samples remain untouched; authenticated push/pull clears
   the queue; cursors advance; integrity/rebuild succeed; app refresh is observed
-  as opportunistic rather than exact.
+  as opportunistic rather than exact; all forty predeclared ranked-food trials
+  meet the strict warm-path rule and all four negative controls stay unmeasured.
 - Still-unavailable evidence: uninstall/reinstall recovery, second-device
   convergence, server revocation from native UI, attachment transfer, and all
   unexecuted HealthKit/Watch/widget/background production behaviors.
@@ -1248,6 +1292,10 @@ the backend owner runbook until a device-registry UI is implemented.
 - If food create/log requests Health permission implicitly, denial blocks the
   local ledger, correction duplicates samples, alcohol is approximated, or a
   void touches another source, stop and retain only synthetic metadata evidence.
+- A timing miss, missing result, wrong source, duplicate occurrence, or result
+  after a negative control is a failed warm-path protocol. Preserve the full
+  predeclared table, investigate on the same build, and rerun a newly declared
+  complete protocol rather than deleting outliers.
 - If Workshop reports a placeholder host, fix the ignored staging xcconfig;
   never weaken HTTPS validation outside development loopback.
 - Do not substitute a simulator for HealthKit, background, APNs, Watch, or
@@ -1257,9 +1305,10 @@ the backend owner runbook until a device-registry UI is implemented.
 
 - Device model/OS and hashed UDID reference, build/archive hash, install result,
   launch log, entitlement/privacy-key check, capture-kind/count results,
-  payload-free temporary/durable path checks, future device UUID/status, and
-  refresh test status. No media, embedded metadata, filename, provider path,
-  health data, token, Keychain item, or screenshot with private data.
+  payload-free temporary/durable path checks, future device UUID/status,
+  refresh test status, and the complete payload-free warm-path/negative-control
+  table. No media, embedded metadata, filename, provider path, health data,
+  token, Keychain item, or screenshot with private data.
 
 ## 15. Run integration smoke tests
 

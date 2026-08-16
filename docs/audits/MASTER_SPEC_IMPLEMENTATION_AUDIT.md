@@ -41,7 +41,7 @@ deployment, external account configuration, or physical-device behavior.
 | §15 score philosophy | `partial` | Constitution prohibits universal Life Score/people ranking; optional C.5 qualitative day-alignment policy is disabled by default, non-scalar, coverage/exception/comparison guarded and canonical-history independent | Owner-approved experiment flag, product surface and longitudinal harm/usefulness evaluation only if deliberately enabled. |
 | §16 AI philosophy | `contract-only` | provider-neutral model-run contract plus durable coalesced native capture-interpreter boundary and conservative explicit-prefix fallback | Capability router, provider execution, structured fallbacks, refusal/uncertainty, model-run provenance, evaluations and rollback. |
 | §17 trust and agency | `partial` | deterministic authority policy, B.7 append-only recommendation correction, and source-inspectable stable/idempotent Archive accept/correct/dismiss review | Trust Center, future correction retrieval, revocation UI and autonomous-action audit UI. |
-| §18 experience architecture | `partial` | iPhone quiet Now, explicit text/voice/photo/file capture, local-first ranked food quick-log/create/correct/void source, forensic capture-detail Archive, typed reviewed life-model Workshop, accepted Season landscape/plain-language Map, sync/repair surfaces, and deterministic guilt-free re-entry contract | Tomorrow Map, rendered re-entry, decision/evidence flows, warm-path/device timing, Xcode accessibility and complete platform depth. |
+| §18 experience architecture | `partial` | iPhone quiet Now, explicit text/voice/photo/file capture, local-first ranked food quick-log/create/correct/void source with payload-free monotonic warm-path instrumentation and ephemeral owner result, forensic capture-detail Archive, typed reviewed life-model Workshop, accepted Season landscape/plain-language Map, sync/repair surfaces, and deterministic guilt-free re-entry contract | Tomorrow Map, rendered re-entry, decision/evidence flows, physical warm-path proof, Xcode accessibility and complete platform depth. |
 | §19 visual and art direction | `partial` | calm SwiftUI/Canvas regional prototype, deterministic qualitative paths/terrain/landmarks, complete plain-language alternative, native shells and shared assets | Theme tokens, richer prototype, atlas/world states, snapshots, Xcode accessibility and dogfood proof. |
 | §20 Apple ecosystem | `partial` | iOS/Watch/macOS shells, widgets/intents/share targets, portable data/auth/sync packages, guarded local AVFoundation voice capture, selected-only PhotosUI capture, system file import, permission-gated Odyssey-owned food HealthKit writes, protected extension commands, App Intents, widget/Control Center routing, crash-idempotent iPhone drains, and a protected receipt-bound WatchConnectivity text/food outbox with expiring ranked presets | Prove App Intents/WidgetKit/controls/WatchConnectivity/HealthKit on devices; add incremental health reads, EventKit/location and validation. |
 | §21 integrations | `deferred` | entitlements and adapter seams only | Implement consented adapters incrementally; keep OAuth/webhooks/provider credentials disabled. |
@@ -58,7 +58,7 @@ deployment, external account configuration, or physical-device behavior.
 | §32 failure modes/pre-mortem | `partial` | kill switches, retry/conflict diagnostics, incident/recovery runbooks | Regression scenarios for each severe failure and owner drills. |
 | §33 technology choices | `documented` | master specification, ADR 0001, lockfiles, OpenTofu and XcodeGen manifests | Add ADRs whenever implementation departs from selected architecture. |
 | §34 repository architecture | `verified` | monorepo layout, portable paths, package/infra/docs/tool boundaries | Keep directory contract synchronized as editions are added. |
-| §35 testing strategy | `partial` | 215 backend tests pass at 86.67% coverage, 122 portable Swift 6.1 tests pass, and deterministic policy golden replay plus schema/fixture/IaC checks pass in this Linux snapshot | Clear repository-wide formatter drift; historical/model, UI, performance, broader fault, Apple integration and live recovery suites remain. |
+| §35 testing strategy | `partial` | 215 backend tests pass at 86.67% coverage, 135 portable Swift 6.1 tests pass, and deterministic policy golden replay plus schema/fixture/IaC checks pass in this Linux snapshot | Clear repository-wide formatter drift; historical/model, UI, physical performance, broader fault, Apple integration and live recovery suites remain. |
 | §36 deployment architecture | `implemented` | GCP OpenTofu, deployment workflow examples, migration/canary/rollback and handoff docs | Owner provisions accounts, imports secrets, deploys, validates alerts/backups/restore and signs apps. |
 | §37 development environments | `verified` | lockfiles, Compose, environment diagnostics, `make verify`, Mac-only skip reporting | Fresh personal Mac proof is owner-only. |
 | §38 roadmap | `partial` | Edition 0 substrate and iPhone capture/auth/sync slice | Edition 1–4 product loops and milestone acceptance artifacts remain. |
@@ -86,10 +86,10 @@ deployment, external account configuration, or physical-device behavior.
 | 0.3 cloud core/sync | `verified` | Auth, sync, attachments, conflicts and convergence/fault tests exist; live cloud proof is owner-only. |
 | 0.4 durability/observability | `implemented` | Tools/runbooks/IaC exist; isolated live restore and external alert evidence are owner-only. |
 | 1.1 Charter/Season Workshop | `implemented` | Server acceptance/history/context loop, typed local draft ledger/editors, editable seed, semantic review ceremony, immutable native history, frozen outgoing summaries, optional retrospectives, explicit successor flow, offline queue, authenticated delivery, terminal conflict guidance and accepted-history-only plain/Canvas map exist; Xcode/accessibility and two-device proof remain owner-only. |
-| 1.2 capture/personal library | `partial` | Offline durable text/media capture and review, atomic food-preset lifecycle/ranking and occurrence record/correct/void, registered food events, ranked iPhone quick log, portable-tested HealthKit reconciliation, protected extension handoff, shortcuts, widget/control sheet routing, crash-idempotent iPhone drains, and protected offline Watch text/food handoff source exist | Add playback, provider interpretation and event consumption; prove App Intents/WidgetKit/WatchConnectivity/HealthKit/accessibility/warm timing on devices. |
+| 1.2 capture/personal library | `partial` | Offline durable text/media capture and review, atomic food-preset lifecycle/ranking and occurrence record/correct/void, registered food events, ranked iPhone quick log with source-preserving payload-free timing, portable-tested HealthKit reconciliation, protected extension handoff, shortcuts, widget/control sheet routing, crash-idempotent iPhone drains, and protected offline Watch text/food handoff source exist | Add playback, provider interpretation and event consumption; prove App Intents/WidgetKit/WatchConnectivity/HealthKit/accessibility and the warm-path target on devices. |
 | 1.3 Apple context adapters | `missing` | Targets/seams exist without real incremental HealthKit/calendar/location adapters. |
 | 1.4 Now/Tomorrow Map v1 | `partial` | Quiet Now, C.7 re-entry policy and immutable deterministic model-free server context assembly exist; Tomorrow Map and rendered re-entry do not. |
-| 1.5 telemetry/review | `contract-only` | Schemas exist; declared questions and product review loop do not. |
+| 1.5 telemetry/review | `partial` | Schemas plus payload-free ranked-food warm-path instrumentation, source/correlation dimensions, duration buckets and an ephemeral owner result exist | Declared product questions, durable consented recorder/export, broader review metrics and review loop do not. |
 | 2.1 decision journal | `partial` | B.5 persistently prepares context-bound structured options/consequences and asks for missing information; choice/outcome/replay/UI loops remain. |
 | 2.2 consequence engine v1 | `partial` | C.2 bounded propagation core is tested; domain rules, durable inputs/outputs, calibration, replay API and product surface remain. |
 | 2.3 intent engine v1 | `partial` | C.1 silence gate, budgets, cooldown and channel policy are tested; opportunity generation/durability/delivery are absent. |
@@ -116,6 +116,7 @@ personal state or complete the longitudinal protocol.
 | Guilt-free re-entry | `repo` | `partial` | C.7 guarantees at most three current changes, one question, stale expiry, clean options, backlog suppression and no absence penalty; native rendering remains. |
 | Two-line proactive copy | `repo` | `missing` | No enabled proactive copy pipeline or lint. |
 | Offline local capture | `repo` | `verified` | Atomic portable/native text/media capture, protected provider-buffer handoff, crash-idempotent extension processing, and append-only owner-review tests pass; iPhone text/voice/photo/file, App Intent drain, and forensic review sources are parser-validated. |
+| Common food warm path | `owner` | `implemented` | A monotonic timer accepts only durable ranked commits, counts two interactions, preserves private launch source, emits payload-free dimensions and shows one ephemeral owner result; the predeclared 40-trial physical protocol remains unexecuted. |
 | Two-device convergence | `repo` | `verified` | Simulated backend/native convergence and conflict tests. |
 | Migration fixtures | `repo` | `partial` | Current migrations test; full historical fixture matrix absent. |
 | Intelligible owner export | `repo` | `verified` | B.9 emits signed passphrase-encrypted JSONL/CSV/Markdown ZIPs with optional raw attachments, explicit credential exclusions, immutable transition audit, retry-safe outbox processing, byte-range download, and owner verification CLI; live cloud drill remains owner-only. |
@@ -175,7 +176,7 @@ At this snapshot:
   mocked plans, including encrypted-export secret, storage, IAM and worker
   wiring across seventeen migrations. OpenTofu is unavailable for a current
   rerun in this environment.
-- The complete portable Swift package reports 133 tests passing under the
+- The complete portable Swift package reports 135 tests passing under the
   official Swift 6.1 release toolchain in a local Ubuntu container. This includes
   typed Workshop/editor/reducer coverage, deterministic Season map, durable
   source-linked capture interpretation, protected local attachment storage and
@@ -184,7 +185,8 @@ At this snapshot:
   canonical merge materialization, durable food occurrence record/correct/void,
   immutable temporal/nutrient snapshots, permission-gated idempotent food-health
   reconciliation, extension crash idempotency, bounded Watch command/snapshot
-  codecs and outbox recovery, streaming SHA-256 known answers, and
+  codecs and outbox recovery, monotonic payload-free food warm-path timing,
+  streaming SHA-256 known answers, and
   temporal/acronym codec regressions.
 - iOS, widget/control, App Intent and Watch sources, including guarded voice,
   selected-only photo/file capture, ranked food flows, HealthKit writes and

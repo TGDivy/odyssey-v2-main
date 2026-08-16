@@ -146,6 +146,32 @@ active local occurrences and durable tombstone IDs so transient failure or
 reinstall/restore can converge. No health value gates or rolls back local
 logging.
 
+## Ranked warm-path timing boundary
+
+`WarmPathTimer` uses monotonic uptime rather than wall time and applies the
+Milestone 1.2 target literally: a committed food quick log qualifies only with
+two or three interactions and a duration strictly below 5,000 milliseconds.
+Opening the private Food sheet starts an attempt; a successful tap on one of the
+currently ranked presets completes it as the second interaction. The launch
+correlation and surface survive App Intent, widget, and Control Center command
+handoff without carrying a preset name or value.
+
+Typing in search, opening preset creation, opening correction, choosing an
+unranked result, refreshing manually, entering Health actions, a failed durable
+commit, or dismissing the sheet abandons the attempt and produces no qualifying
+result. A successful measurement is retained only in the running iPhone model
+and shown to the owner in Now until dismissed, replaced, or the next bootstrap.
+The technical signal contains only workflow, surface, outcome, interaction
+count, duration bucket, target result, timestamp, and an opaque correlation
+UUID. It does not contain food identity, serving, nutrients, query text, or
+occurrence data; the default recorder exports nothing.
+
+Portable tests prove target boundaries, duration bucketing, and invalid-clock
+handling. They do not prove SwiftUI interaction counting or device latency. The
+strict owner-run release-build protocol in
+`docs/deployment/OWNER_HANDOFF.md` is required before claiming the physical
+under-five-second exit criterion.
+
 ## Current boundary
 
 The iPhone Now surface and global quick-action menu now open a local-first
@@ -162,7 +188,7 @@ metadata and converge while overlapping owner fields remain conflicts; a
 portable pull-persistence regression proves the resulting canonical document is
 still a valid `FoodPreset`. No authenticated physical two-device run has been
 performed, so live convergence remains owner evidence. Xcode/accessibility,
-warm-device timing, and physical HealthKit permission, sample ownership,
+physical warm-path timing, and physical HealthKit permission, sample ownership,
 correction, and non-interference proof remain. Optional nutrient values alone do
 not authorize HealthKit access; only the explicit food-sheet action can request
 write permission.
@@ -172,8 +198,8 @@ both ranking strategies, threshold behavior, deterministic ordering, excluded
 history, idempotent deduplication, fail-closed identity handling, atomic preset
 lifecycle commits, partial/null sync payloads, optimistic revision, and
 tombstones, including server-normalized pull materialization, immutable
-occurrence snapshots, DST-aware offsets, malformed nutrient rejection, and
-atomic occurrence record/correct/void behavior. The full portable Swift package
-reports 133 tests passing under the official Swift
+occurrence snapshots, DST-aware offsets, malformed nutrient rejection, atomic
+occurrence record/correct/void behavior, and the warm-path timing contract. The
+full portable Swift package reports 135 tests passing under the official Swift
 6.1 Linux toolchain. This does not type-check SwiftUI or prove Xcode, HealthKit,
 signing, simulator, accessibility, or physical-device behavior.

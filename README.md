@@ -145,8 +145,15 @@ revision/name/serving, quantity, total kcal/protein/caffeine/alcohol values,
 occurrence time, IANA zone, and original UTC offset. The iPhone Now surface and
 global quick-action menu open a local-first food sheet with four ranked one-tap
 presets, searchable fallback, preset creation, recent history, and explicit
-correction/void flows. Those sources are parser-validated only; no Xcode,
-accessibility, or device timing is claimed. A portable-tested Health write
+correction/void flows. A monotonic portable timing contract now measures only a
+ranked preset that commits durably after the private sheet opens. It preserves
+iPhone, App Intent, widget, or control provenance, counts the open and preset
+tap as two interactions, forms only payload-free technical dimensions and
+duration buckets, and shows the owner one ephemeral exact result in Now. Search,
+preset editing,
+correction, failure, or dismissal invalidates the attempt. The Apple sources are
+parser-validated only; the under-five-second claim remains blocked on the
+documented physical-device protocol. A portable-tested Health write
 coordinator and `canImport(HealthKit)` adapter map exact energy, protein, and
 caffeine values, request write-only permission from an explicit UI action, use
 stable occurrence/revision metadata, replace only Odyssey-owned samples on
