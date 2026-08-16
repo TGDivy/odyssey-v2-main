@@ -56,6 +56,37 @@ func manualCaptureWritesImmutableEventProjectionAndOutboxAtomically() async thro
 }
 
 @Test
+func manualCapturePreservesOccurrenceTimeBeforeDurableCommit() async throws {
+    let deviceID = try captureIdentifier(20)
+    let store = RecordingLedgerStore(deviceID: deviceID)
+    let service = try ManualCaptureService(
+        store: store,
+        deviceID: deviceID,
+        clock: { captureFixtureDate },
+        identifier: SequentialCaptureIdentifiers().next,
+        provenanceIdentifier: { UUID(uuidString: "10000000-0000-4000-8000-000000000020")! }
+    )
+    let occurredAt = captureFixtureDate.addingTimeInterval(-120)
+
+    let receipt = try await service.record(
+        .text(
+            "Queued while the app was closed",
+            capturedAt: occurredAt,
+            timeZoneID: "UTC",
+            locationPermissionState: .unavailable,
+            invokingSurface: .appIntent
+        )
+    )
+
+    let commit = try #require(await store.recordedCommit())
+    #expect(receipt.capture.capturedAt == occurredAt)
+    #expect(receipt.capture.metadata.createdAt == captureFixtureDate)
+    #expect(commit.entry.occurredAt == occurredAt)
+    #expect(commit.entry.recordedAt == captureFixtureDate)
+    #expect(commit.syncMutation?.createdAt == captureFixtureDate)
+}
+
+@Test
 func manualCaptureRejectsEmptyAndOperationalSecretPayloads() throws {
     #expect(throws: CaptureContractError.emptyPayload) {
         try ManualCaptureDraft.text(

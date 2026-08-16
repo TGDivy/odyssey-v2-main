@@ -308,6 +308,16 @@ public actor ExtensionCommandQueue {
         try fileManager.moveItem(at: source, to: destination)
     }
 
+    public func reject(_ claim: ClaimedExtensionCommand) throws {
+        let source = try processingURL(for: claim)
+        let destination = rejectedDirectory.appendingPathComponent(claim.token)
+        if fileManager.fileExists(atPath: destination.path) {
+            try fileManager.removeItem(at: source)
+        } else {
+            try fileManager.moveItem(at: source, to: destination)
+        }
+    }
+
     public func pendingCount() throws -> Int {
         try commandFiles(in: pendingDirectory).count
     }

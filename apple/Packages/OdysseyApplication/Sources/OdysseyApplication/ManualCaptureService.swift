@@ -60,11 +60,15 @@ public actor ManualCaptureService {
 
     @discardableResult
     public func record(_ draft: ManualCaptureDraft) async throws -> ManualCaptureReceipt {
-        let capturedAt = clock()
-        guard capturedAt.timeIntervalSinceReferenceDate.isFinite else {
+        let recordedAt = clock()
+        let capturedAt = draft.capturedAt ?? recordedAt
+        guard recordedAt.timeIntervalSinceReferenceDate.isFinite,
+              capturedAt.timeIntervalSinceReferenceDate.isFinite,
+              capturedAt <= recordedAt
+        else {
             throw ManualCaptureError.invalidClock
         }
-        let captureID = identifier()
+        let captureID = draft.sourceCommandID ?? identifier()
         let provenanceID = provenanceIdentifier()
         let payload = CaptureOriginalPayload(
             kind: draft.kind,
@@ -73,9 +77,9 @@ public actor ManualCaptureService {
         )
         let metadata = try EntityMetadata(
             id: captureID,
-            createdAt: capturedAt,
+            createdAt: recordedAt,
             createdBy: ActorRef(actorType: .user, actorID: ownerActorID),
-            lastRevisedAt: capturedAt,
+            lastRevisedAt: recordedAt,
             revision: 1,
             sensitivity: draft.sensitivity,
             provenanceID: provenanceID
@@ -102,7 +106,7 @@ public actor ManualCaptureService {
             )
         }
         let eventID = identifier()
-        let operationID = identifier()
+        let operationID = draft.sourceCommandID ?? identifier()
         let commitReceipt = try await store.commit(
             LedgerCommit(
                 entry: LedgerEntry(
@@ -111,7 +115,7 @@ public actor ManualCaptureService {
                     aggregateType: Self.entityType,
                     aggregateID: captureID,
                     occurredAt: capturedAt,
-                    recordedAt: capturedAt,
+                    recordedAt: recordedAt,
                     payload: document,
                     provenanceID: provenanceID
                 ),
@@ -128,7 +132,7 @@ public actor ManualCaptureService {
                     entityID: captureID,
                     mutationType: .create,
                     payload: document,
-                    createdAt: capturedAt,
+                    createdAt: recordedAt,
                     idempotencyKey: operationID.description,
                     sensitivityClass: draft.sensitivity
                 )

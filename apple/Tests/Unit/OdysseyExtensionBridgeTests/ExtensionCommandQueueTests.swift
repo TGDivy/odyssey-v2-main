@@ -60,6 +60,33 @@ func extensionQueueClaimsRetriesAndAcknowledgesAtomicFiles() async throws {
     #expect(try await queue.claimNext() == nil)
 }
 
+@Test
+func extensionQueueQuarantinesPermanentlyRejectedClaims() async throws {
+    let directory = FileManager.default.temporaryDirectory.appendingPathComponent(
+        "odyssey-extension-reject-\(UUID().uuidString)",
+        isDirectory: true
+    )
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let queue = try ExtensionCommandQueue(rootDirectory: directory)
+    let command = try ExtensionCommand.captureText(
+        "Synthetic rejected capture",
+        commandID: extensionIdentifier(11),
+        createdAt: extensionDate,
+        invokingSurface: .widget
+    )
+
+    try await queue.enqueue(command)
+    let claim = try #require(try await queue.claimNext())
+    try await queue.reject(claim)
+
+    let rejectedURL = directory
+        .appendingPathComponent("ExtensionCommands/v1/rejected", isDirectory: true)
+        .appendingPathComponent("\(command.commandID.description).json")
+    #expect(FileManager.default.fileExists(atPath: rejectedURL.path))
+    #expect(try await queue.pendingCount() == 0)
+    #expect(try await queue.claimNext() == nil)
+}
+
 private func extensionIdentifier(_ value: Int) throws -> UUIDv7 {
     let suffix = String(format: "%012x", value)
     return try UUIDv7(

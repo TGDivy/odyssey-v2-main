@@ -74,6 +74,8 @@ public struct CaptureInvokingSurface: RawRepresentable, Codable, Hashable, Senda
     public static let watchQuickAction = Self(rawValue: "watch.quick_action")!
     public static let shareExtension = Self(rawValue: "share_extension")!
     public static let appIntent = Self(rawValue: "app_intent")!
+    public static let control = Self(rawValue: "control")!
+    public static let widget = Self(rawValue: "widget")!
     public static let mac = Self(rawValue: "mac")!
 
     public init(from decoder: Decoder) throws {
@@ -203,6 +205,8 @@ public struct ManualCaptureDraft: Hashable, Sendable {
 
     public let kind: CapturePayloadKind
     public let contentOrObjectReference: String
+    public let capturedAt: Date?
+    public let sourceCommandID: UUIDv7?
     public let timeZoneID: String
     public let locationPermissionState: CaptureLocationPermissionState
     public let broadLocation: String?
@@ -213,6 +217,8 @@ public struct ManualCaptureDraft: Hashable, Sendable {
     public init(
         kind: CapturePayloadKind,
         contentOrObjectReference: String,
+        capturedAt: Date? = nil,
+        sourceCommandID: UUIDv7? = nil,
         timeZoneID: String,
         locationPermissionState: CaptureLocationPermissionState,
         broadLocation: String? = nil,
@@ -228,6 +234,11 @@ public struct ManualCaptureDraft: Hashable, Sendable {
         let payloadSize = contentOrObjectReference.lengthOfBytes(using: .utf8)
         guard payloadSize <= Self.maximumPayloadBytes else {
             throw CaptureContractError.payloadTooLarge(maximumBytes: Self.maximumPayloadBytes)
+        }
+        if let capturedAt {
+            guard capturedAt.timeIntervalSinceReferenceDate.isFinite else {
+                throw CaptureContractError.invalidContext("capture time")
+            }
         }
         guard TimeZone(identifier: timeZoneID) != nil else {
             throw CaptureContractError.invalidContext("timezone")
@@ -249,6 +260,8 @@ public struct ManualCaptureDraft: Hashable, Sendable {
         }
         self.kind = kind
         self.contentOrObjectReference = contentOrObjectReference
+        self.capturedAt = capturedAt
+        self.sourceCommandID = sourceCommandID
         self.timeZoneID = timeZoneID
         self.locationPermissionState = locationPermissionState
         self.broadLocation = broadLocation
@@ -259,6 +272,8 @@ public struct ManualCaptureDraft: Hashable, Sendable {
 
     public static func text(
         _ text: String,
+        capturedAt: Date? = nil,
+        sourceCommandID: UUIDv7? = nil,
         timeZoneID: String,
         locationPermissionState: CaptureLocationPermissionState,
         broadLocation: String? = nil,
@@ -268,6 +283,8 @@ public struct ManualCaptureDraft: Hashable, Sendable {
         try Self(
             kind: .text,
             contentOrObjectReference: text,
+            capturedAt: capturedAt,
+            sourceCommandID: sourceCommandID,
             timeZoneID: timeZoneID,
             locationPermissionState: locationPermissionState,
             broadLocation: broadLocation,

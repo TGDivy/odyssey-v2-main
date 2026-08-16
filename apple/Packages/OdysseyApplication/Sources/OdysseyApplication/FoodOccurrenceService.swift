@@ -65,19 +65,22 @@ public struct FoodOccurrenceDraft: Hashable, Sendable {
     public let quantity: Double
     public let occurredAt: Date
     public let timeZoneID: String
+    public let sourceCommandID: UUIDv7?
 
     public init(
         presetID: UUIDv7,
         expectedPresetRevision: Int,
         quantity: Double = 1,
         occurredAt: Date,
-        timeZoneID: String
+        timeZoneID: String,
+        sourceCommandID: UUIDv7? = nil
     ) {
         self.presetID = presetID
         self.expectedPresetRevision = expectedPresetRevision
         self.quantity = quantity
         self.occurredAt = occurredAt
         self.timeZoneID = timeZoneID
+        self.sourceCommandID = sourceCommandID
     }
 }
 
@@ -188,7 +191,7 @@ public actor FoodOccurrenceService {
             id: draft.presetID,
             expectedRevision: draft.expectedPresetRevision
         )
-        let occurrenceID = identifier()
+        let occurrenceID = draft.sourceCommandID ?? identifier()
         let provenanceID = provenanceIdentifier()
         let metadata = try EntityMetadata(
             id: occurrenceID,
@@ -208,7 +211,7 @@ public actor FoodOccurrenceService {
         )
         let document = try encodedDocument(occurrence)
         let eventID = identifier()
-        let operationID = identifier()
+        let operationID = draft.sourceCommandID ?? identifier()
         let eventPayload = try SyncJSONCoding.makeEncoder().encode(
             FoodConsumedLedgerPayload(
                 foodOccurrenceID: occurrenceID,

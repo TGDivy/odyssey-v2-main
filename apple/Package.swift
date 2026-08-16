@@ -66,7 +66,13 @@ let package = Package(
         ),
         .target(
             name: "OdysseyApplication",
-            dependencies: ["OdysseyAuth", "OdysseyDomain", "OdysseyData", "OdysseySync"],
+            dependencies: [
+                "OdysseyAuth",
+                "OdysseyDomain",
+                "OdysseyData",
+                "OdysseyExtensionBridge",
+                "OdysseySync",
+            ],
             path: "Packages/OdysseyApplication/Sources/OdysseyApplication"
         ),
         .target(
@@ -139,6 +145,7 @@ let package = Package(
                 "OdysseyApplication",
                 "OdysseyData",
                 "OdysseyDomain",
+                "OdysseyExtensionBridge",
                 "OdysseySync",
             ],
             path: "Tests/Unit/OdysseyApplicationTests"
