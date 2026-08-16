@@ -101,6 +101,39 @@ func extensionQueueQuarantinesPermanentlyRejectedClaims() async throws {
     #expect(try await queue.claimNext() == nil)
 }
 
+@Test
+func extensionQueueResolvesWatchCommandsByIdentity() async throws {
+    let directory = FileManager.default.temporaryDirectory.appendingPathComponent(
+        "odyssey-extension-resolve-\(UUID().uuidString)",
+        isDirectory: true
+    )
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let queue = try ExtensionCommandQueue(rootDirectory: directory)
+    let accepted = try ExtensionCommand.captureText(
+        "Accepted Watch capture",
+        commandID: extensionIdentifier(12),
+        createdAt: extensionDate,
+        invokingSurface: .watch
+    )
+    let rejected = try ExtensionCommand.captureText(
+        "Rejected Watch capture",
+        commandID: extensionIdentifier(13),
+        createdAt: extensionDate,
+        invokingSurface: .watch
+    )
+
+    try await queue.enqueue(accepted)
+    try await queue.enqueue(rejected)
+    #expect(try await queue.acknowledge(commandID: accepted.commandID))
+    #expect(try await queue.reject(commandID: rejected.commandID))
+    #expect(!(try await queue.acknowledge(commandID: accepted.commandID)))
+    #expect(try await queue.pendingCount() == 0)
+    let rejectedURL = directory
+        .appendingPathComponent("ExtensionCommands/v1/rejected", isDirectory: true)
+        .appendingPathComponent("\(rejected.commandID.description).json")
+    #expect(FileManager.default.fileExists(atPath: rejectedURL.path))
+}
+
 private func extensionIdentifier(_ value: Int) throws -> UUIDv7 {
     let suffix = String(format: "%012x", value)
     return try UUIDv7(

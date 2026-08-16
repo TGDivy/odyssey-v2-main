@@ -361,6 +361,11 @@ public actor ExtensionCommandQueue {
         try fileManager.removeItem(at: try processingURL(for: claim))
     }
 
+    @discardableResult
+    public func acknowledge(commandID: UUIDv7) throws -> Bool {
+        try removeCommand(commandID: commandID, quarantine: false)
+    }
+
     public func retry(_ claim: ClaimedExtensionCommand) throws {
         let source = try processingURL(for: claim)
         let destination = pendingDirectory.appendingPathComponent(claim.token)
@@ -375,6 +380,11 @@ public actor ExtensionCommandQueue {
         } else {
             try fileManager.moveItem(at: source, to: destination)
         }
+    }
+
+    @discardableResult
+    public func reject(commandID: UUIDv7) throws -> Bool {
+        try removeCommand(commandID: commandID, quarantine: true)
     }
 
     public func pendingCount() throws -> Int {
@@ -403,6 +413,30 @@ public actor ExtensionCommandQueue {
             throw ExtensionCommandError.unsafeClaimToken
         }
         return processingDirectory.appendingPathComponent(claim.token)
+    }
+
+    private func removeCommand(
+        commandID: UUIDv7,
+        quarantine: Bool
+    ) throws -> Bool {
+        let token = commandID.description + ".json"
+        var found = false
+        for directory in [pendingDirectory, processingDirectory] {
+            let source = directory.appendingPathComponent(token)
+            guard fileManager.fileExists(atPath: source.path) else { continue }
+            found = true
+            if quarantine {
+                let destination = rejectedDirectory.appendingPathComponent(token)
+                if fileManager.fileExists(atPath: destination.path) {
+                    try fileManager.removeItem(at: source)
+                } else {
+                    try fileManager.moveItem(at: source, to: destination)
+                }
+            } else {
+                try fileManager.removeItem(at: source)
+            }
+        }
+        return found
     }
 
     private func commandFiles(in directory: URL) throws -> [URL] {
