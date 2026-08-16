@@ -23,6 +23,8 @@ func weatherSnapshotPreservesFreshnessForecastAndRequiredAttributionWithoutCoord
     #expect(roundTrip.hourlyForecast.count == 2)
     #expect(roundTrip.dailyForecast.count == 2)
     #expect(roundTrip.attribution.legalPageURL.scheme == "https")
+    #expect(roundTrip.attribution.combinedMarkLightURL?.scheme == "https")
+    #expect(roundTrip.attribution.combinedMarkDarkURL?.scheme == "https")
     #expect(!encoded.contains("latitude"))
     #expect(!encoded.contains("longitude"))
     #expect(!encoded.contains("horizontalAccuracyMeters"))
@@ -74,6 +76,14 @@ func weatherSnapshotRejectsInvalidFreshnessAndForecastOrdering() throws {
             outcome: .unavailable,
             snapshot: nil,
             rateLimitState: .limited
+        )
+    }
+    #expect(throws: WeatherContextError.invalidAttribution) {
+        try WeatherProviderAttribution(
+            providerName: "Unsafe Weather",
+            attributionText: "Unsafe mark URL.",
+            legalPageURL: URL(string: "https://weather.example.test/legal")!,
+            combinedMarkLightURL: URL(string: "http://weather.example.test/mark.svg")
         )
     }
 }
@@ -171,6 +181,12 @@ private func weatherAttribution() throws -> WeatherProviderAttribution {
     try WeatherProviderAttribution(
         providerName: "Synthetic Weather",
         attributionText: "Synthetic forecast for contract testing.",
-        legalPageURL: URL(string: "https://weather.example.test/legal")!
+        legalPageURL: URL(string: "https://weather.example.test/legal")!,
+        combinedMarkLightURL: URL(
+            string: "https://weather.example.test/mark-light.svg"
+        ),
+        combinedMarkDarkURL: URL(
+            string: "https://weather.example.test/mark-dark.svg"
+        )
     )
 }

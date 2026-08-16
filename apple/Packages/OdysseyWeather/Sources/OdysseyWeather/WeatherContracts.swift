@@ -86,30 +86,37 @@ public struct WeatherProviderAttribution: Codable, Hashable, Sendable {
     public let providerName: String
     public let attributionText: String
     public let legalPageURL: URL
+    public let combinedMarkLightURL: URL?
+    public let combinedMarkDarkURL: URL?
 
     public init(
         providerName: String,
         attributionText: String,
-        legalPageURL: URL
+        legalPageURL: URL,
+        combinedMarkLightURL: URL? = nil,
+        combinedMarkDarkURL: URL? = nil
     ) throws {
         guard WeatherValidation.validText(providerName, maximum: 200),
               WeatherValidation.validText(attributionText, maximum: 1_000),
-              legalPageURL.scheme?.lowercased() == "https",
-              legalPageURL.host != nil,
-              legalPageURL.user == nil,
-              legalPageURL.password == nil
+              WeatherValidation.validHTTPSURL(legalPageURL),
+              WeatherValidation.validOptionalHTTPSURL(combinedMarkLightURL),
+              WeatherValidation.validOptionalHTTPSURL(combinedMarkDarkURL)
         else {
             throw WeatherContextError.invalidAttribution
         }
         self.providerName = providerName
         self.attributionText = attributionText
         self.legalPageURL = legalPageURL
+        self.combinedMarkLightURL = combinedMarkLightURL
+        self.combinedMarkDarkURL = combinedMarkDarkURL
     }
 
     private enum CodingKeys: String, CodingKey {
         case providerName
         case attributionText
         case legalPageURL
+        case combinedMarkLightURL
+        case combinedMarkDarkURL
     }
 
     public init(from decoder: Decoder) throws {
@@ -117,7 +124,15 @@ public struct WeatherProviderAttribution: Codable, Hashable, Sendable {
         try self.init(
             providerName: values.decode(String.self, forKey: .providerName),
             attributionText: values.decode(String.self, forKey: .attributionText),
-            legalPageURL: values.decode(URL.self, forKey: .legalPageURL)
+            legalPageURL: values.decode(URL.self, forKey: .legalPageURL),
+            combinedMarkLightURL: values.decodeIfPresent(
+                URL.self,
+                forKey: .combinedMarkLightURL
+            ),
+            combinedMarkDarkURL: values.decodeIfPresent(
+                URL.self,
+                forKey: .combinedMarkDarkURL
+            )
         )
     }
 }
@@ -456,6 +471,17 @@ private enum WeatherValidation {
 
     static func validOptionalText(_ value: String?, maximum: Int) -> Bool {
         value.map { validText($0, maximum: maximum) } ?? true
+    }
+
+    static func validHTTPSURL(_ value: URL) -> Bool {
+        value.scheme?.lowercased() == "https"
+            && value.host != nil
+            && value.user == nil
+            && value.password == nil
+    }
+
+    static func validOptionalHTTPSURL(_ value: URL?) -> Bool {
+        value.map(validHTTPSURL) ?? true
     }
 
     static func validTemperature(_ value: Double) -> Bool {
