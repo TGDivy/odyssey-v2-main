@@ -9,6 +9,7 @@ import OdysseyData
 import OdysseyDomain
 import OdysseyExtensionBridge
 import OdysseyHealth
+import OdysseyIntegrations
 import OdysseySync
 import OdysseyTelemetry
 import OdysseyWatchConnectivity
@@ -36,6 +37,7 @@ final class OdysseyAppModel: ObservableObject {
     @Published private(set) var foodWarmPathMeasurement: WarmPathMeasurement?
     @Published private(set) var extensionCommandMessage: String?
     @Published private(set) var extensionPresentationRequest: ExtensionCommandPresentation?
+    @Published private(set) var healthContextState = HealthContextIntegrationState()
 
     private var localServices: NativeLocalServices?
     private var remoteServices: NativeRemoteServices?
@@ -101,6 +103,7 @@ final class OdysseyAppModel: ObservableObject {
         foodWarmPathMeasurement = nil
         extensionCommandMessage = nil
         extensionPresentationRequest = nil
+        healthContextState = HealthContextIntegrationState()
 
         let local: NativeLocalServices
         do {
@@ -137,6 +140,7 @@ final class OdysseyAppModel: ObservableObject {
             refreshRecentCaptures()
             await refreshWorkshop()
             await refreshFoodQuickLog()
+            await refreshHealthContextStatus()
             await drainExtensionCommands()
             if foodHealthAuthorization == .authorized {
                 Task { [weak self] in
@@ -145,6 +149,11 @@ final class OdysseyAppModel: ObservableObject {
             }
             Task { [weak self] in
                 await self?.resumePendingCaptureInterpretations()
+            }
+            if healthContextState.canImport {
+                Task { [weak self] in
+                    await self?.importHealthContext(showCompletionMessage: false)
+                }
             }
         } catch {
             apply(.localUnavailable(
@@ -466,6 +475,103 @@ final class OdysseyAppModel: ObservableObject {
         foodHealthMessage = nil
     }
 
+    func refreshHealthContextStatus() async {
+        guard let coordinator = localServices?.healthImportCoordinator else {
+            healthContextState = HealthContextIntegrationState()
+            return
+        }
+        guard !healthContextState.activity.isBusy else { return }
+        healthContextState.activity = .refreshing
+        do {
+            healthContextState.overview = try await coordinator.overview()
+            healthContextState.activity = .idle
+        } catch {
+            healthContextState.activity = .failed(
+                "The local Apple Health mirror could not be inspected safely."
+            )
+        }
+    }
+
+    func requestHealthContextAuthorization() async {
+        guard let coordinator = localServices?.healthImportCoordinator else { return }
+        if healthContextState.overview == nil {
+            await refreshHealthContextStatus()
+        }
+        guard let overview = healthContextState.overview,
+              overview.capability.availability == .available,
+              !overview.capability.supportedKinds.isEmpty
+        else {
+            healthContextState.message =
+                "Apple Health context is unavailable on this device. Other Odyssey features still work."
+            return
+        }
+        guard !healthContextState.activity.isBusy else { return }
+        healthContextState.message = nil
+        healthContextState.activity = .authorizing
+        do {
+            let permission = try await coordinator.requestAuthorization(
+                for: overview.capability.supportedKinds
+            )
+            healthContextState.overview = try await coordinator.overview()
+            healthContextState.activity = .idle
+            switch permission {
+            case .authorized, .partial:
+                await importHealthContext(showCompletionMessage: true)
+            case .denied:
+                healthContextState.message =
+                    "Apple Health access was denied. Existing local context remains available until you remove it."
+            case .restricted:
+                healthContextState.message =
+                    "Apple Health access is restricted on this device. Odyssey continues without it."
+            case .notDetermined:
+                healthContextState.message =
+                    "Apple Health access was not completed. No context was imported."
+            case .unavailable:
+                healthContextState.message =
+                    "Apple Health is unavailable on this device. Odyssey continues without it."
+            case .notRequired:
+                healthContextState.message =
+                    "No Apple Health data types are currently requested."
+            }
+        } catch {
+            healthContextState.activity = .failed(
+                "Apple Health access could not be completed. No permission was assumed."
+            )
+        }
+    }
+
+    func importHealthContext() async {
+        await importHealthContext(showCompletionMessage: true)
+    }
+
+    func removeLocalHealthContext() async {
+        guard let coordinator = localServices?.healthImportCoordinator,
+              !healthContextState.activity.isBusy
+        else {
+            return
+        }
+        healthContextState.activity = .revoking
+        do {
+            let removedCount = try await coordinator.revokeLocalHealthData()
+            healthContextState.overview = try await coordinator.overview()
+            healthContextState.lastSuccessfulImportAt = nil
+            healthContextState.rejectedRecordCount = 0
+            healthContextState.localMirrorRevoked = true
+            healthContextState.activity = .idle
+            healthContextState.message =
+                "Removed \(removedCount) local Apple Health context record"
+                + "\(removedCount == 1 ? "" : "s"). HealthKit permissions and Apple Health data were not changed."
+        } catch {
+            healthContextState.activity = .failed(
+                "The local Apple Health mirror could not be removed safely."
+            )
+        }
+    }
+
+    func dismissHealthContextMessage() {
+        healthContextState.message = nil
+    }
+
     func dismissExtensionCommandMessage() {
         extensionCommandMessage = nil
     }
@@ -570,6 +676,7 @@ final class OdysseyAppModel: ObservableObject {
     func performBackgroundRefresh() async {
         await processPendingExtensionCommands()
         await resumePendingCaptureInterpretations()
+        await importHealthContext(showCompletionMessage: false)
         guard let remoteServices, state.canSynchronize else { return }
         await withTaskCancellationHandler {
             await synchronize()
@@ -807,6 +914,97 @@ final class OdysseyAppModel: ObservableObject {
             apply(.diagnosticsUpdated(try await localServices.localDiagnostics()))
         } catch {
             return
+        }
+    }
+
+    private func importHealthContext(
+        showCompletionMessage: Bool
+    ) async {
+        guard let coordinator = localServices?.healthImportCoordinator else { return }
+        if healthContextState.overview == nil {
+            await refreshHealthContextStatus()
+        }
+        guard let overview = healthContextState.overview,
+              overview.capability.availability == .available,
+              overview.permission == .authorized || overview.permission == .partial,
+              !healthContextState.activity.isBusy
+        else {
+            if showCompletionMessage,
+               healthContextState.overview?.permission == .notDetermined
+            {
+                healthContextState.message =
+                    "Request Apple Health access before importing local context."
+            }
+            return
+        }
+        if showCompletionMessage {
+            healthContextState.message = nil
+        }
+        healthContextState.activity = .importing
+        var insertedCount = 0
+        var deletedCount = 0
+        var duplicateCount = 0
+        var rejectedCount = 0
+        var degradedKindCount = 0
+        var failedKindCount = 0
+        var latestSuccessfulImport: Date?
+        for kind in overview.capability.supportedKinds.sorted(by: {
+            $0.rawValue < $1.rawValue
+        }) {
+            do {
+                let receipt = try await coordinator.importChanges(for: kind)
+                rejectedCount += receipt.rejectedCount
+                switch receipt.outcome {
+                case .imported, .noChanges:
+                    insertedCount += receipt.insertedCount
+                    deletedCount += receipt.deletedCount
+                    duplicateCount += receipt.duplicateCount
+                    if latestSuccessfulImport.map({ receipt.queriedAt > $0 }) ?? true {
+                        latestSuccessfulImport = receipt.queriedAt
+                    }
+                case .permissionDenied, .restricted, .unavailable:
+                    degradedKindCount += 1
+                }
+            } catch {
+                failedKindCount += 1
+            }
+        }
+        if let latestSuccessfulImport {
+            if healthContextState.lastSuccessfulImportAt.map({
+                latestSuccessfulImport > $0
+            }) ?? true {
+                healthContextState.lastSuccessfulImportAt = latestSuccessfulImport
+            }
+            healthContextState.localMirrorRevoked = false
+        }
+        healthContextState.rejectedRecordCount = min(
+            1_000_000,
+            healthContextState.rejectedRecordCount + rejectedCount
+        )
+        do {
+            healthContextState.overview = try await coordinator.overview()
+        } catch {
+            failedKindCount += 1
+        }
+        if failedKindCount > 0 {
+            healthContextState.activity = .failed(
+                "Some Apple Health types could not be refreshed. Successful type imports remain committed locally."
+            )
+        } else {
+            healthContextState.activity = .idle
+        }
+        guard showCompletionMessage else { return }
+        if failedKindCount > 0 {
+            healthContextState.message =
+                "Apple Health refresh was partial. Try again after reviewing integration status."
+        } else if degradedKindCount > 0 {
+            healthContextState.message =
+                "Apple Health refreshed the permitted types; \(degradedKindCount) type"
+                + "\(degradedKindCount == 1 ? " was" : "s were") unavailable or denied."
+        } else {
+            healthContextState.message =
+                "Apple Health context refreshed locally: \(insertedCount) added, "
+                + "\(deletedCount) removed, and \(duplicateCount) already known."
         }
     }
 

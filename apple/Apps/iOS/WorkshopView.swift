@@ -2,6 +2,8 @@ import Foundation
 import OdysseyApplication
 import OdysseyData
 import OdysseyDomain
+import OdysseyHealth
+import OdysseyIntegrations
 import OdysseySync
 import SwiftUI
 
@@ -27,6 +29,7 @@ struct WorkshopView: View {
     @State private var editorRoute: WorkshopEditorRoute?
     @State private var localFailure: String?
     @State private var confirmsProjectionRebuild = false
+    @State private var confirmsHealthContextRemoval = false
     @State private var draftToAbandon: LifeModelDraftRecord?
 
     var body: some View {
@@ -37,12 +40,16 @@ struct WorkshopView: View {
             lifeModelSection(.season)
             acceptanceQueueSection
             acceptedHistorySection
+            healthContextSection
             enrollmentSection
             synchronizationSection
             repairSection
         }
         .navigationTitle("Workshop")
-        .refreshable { await model.refreshWorkshop() }
+        .refreshable {
+            await model.refreshWorkshop()
+            await model.refreshHealthContextStatus()
+        }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
@@ -106,6 +113,21 @@ struct WorkshopView: View {
             Text(
                 "The immutable ledger remains unchanged. Derived local projections are "
                     + "recreated transactionally."
+            )
+        }
+        .confirmationDialog(
+            "Remove local Apple Health context?",
+            isPresented: $confirmsHealthContextRemoval,
+            titleVisibility: .visible
+        ) {
+            Button("Remove Local Mirror", role: .destructive) {
+                Task { await model.removeLocalHealthContext() }
+            }
+            Button("Keep Local Mirror", role: .cancel) {}
+        } message: {
+            Text(
+                "This deletes Odyssey's local Health sample mirror and import anchors. "
+                    + "It does not delete Apple Health data or change system permissions."
             )
         }
     }
@@ -326,6 +348,114 @@ struct WorkshopView: View {
         }
     }
 
+    private var healthContextSection: some View {
+        Section("Apple Health Context") {
+            healthContextStatus
+            if let overview = model.healthContextState.overview {
+                LabeledContent(
+                    "Availability",
+                    value: overview.capability.availability.ownerDisplayName
+                )
+                LabeledContent(
+                    "Read permission",
+                    value: overview.permission.ownerDisplayName
+                )
+                let supportedKinds = overview.capability.supportedKinds.sorted {
+                    $0.rawValue < $1.rawValue
+                }.map(\.ownerDisplayName)
+                LabeledContent(
+                    "Supported context",
+                    value: supportedKinds.isEmpty
+                        ? "None on this device"
+                        : supportedKinds.joined(separator: ", ")
+                )
+                LabeledContent(
+                    "Local records",
+                    value: String(overview.totalSampleCount)
+                )
+            }
+            if let health = model.healthContextState.integrationHealth {
+                LabeledContent(
+                    "Integration state",
+                    value: health.operationalState.ownerDisplayName
+                )
+                if let importedAt = health.lastSuccessfulSync {
+                    LabeledContent(
+                        "Last successful import",
+                        value: importedAt.formatted(
+                            date: .abbreviated,
+                            time: .shortened
+                        )
+                    )
+                }
+                if let sourceTimestamp = health.newestSourceTimestamp {
+                    LabeledContent(
+                        "Newest source sample",
+                        value: sourceTimestamp.formatted(
+                            date: .abbreviated,
+                            time: .shortened
+                        )
+                    )
+                }
+                if let lag = health.lag {
+                    LabeledContent("Source lag", value: lagDescription(lag))
+                }
+                LabeledContent(
+                    "Rejected or quarantined",
+                    value: String(health.rejectedRecordCount)
+                )
+                LabeledContent(
+                    "Schema mismatch",
+                    value: health.schemaVersionMismatch ? "Detected" : "None"
+                )
+                LabeledContent("Rate limit", value: "Not applicable")
+            }
+            Text(
+                "Odyssey currently contributes only user-approved Health context to local "
+                    + "planning and interpretation. Health data is not sent to cloud AI by this import."
+            )
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+
+            if let message = model.healthContextState.message {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(message)
+                        .font(.footnote)
+                    Button("Dismiss status") {
+                        model.dismissHealthContextMessage()
+                    }
+                    .font(.footnote)
+                }
+            }
+
+            if model.healthContextState.canRequestAuthorization {
+                Button {
+                    Task { await model.requestHealthContextAuthorization() }
+                } label: {
+                    Label("Request Health Context Access", systemImage: "heart.text.square")
+                }
+            }
+            Button {
+                Task { await model.importHealthContext() }
+            } label: {
+                Label("Import Permitted Health Context", systemImage: "arrow.down.heart")
+            }
+            .disabled(!model.healthContextState.canImport)
+
+            Button {
+                Task { await model.refreshHealthContextStatus() }
+            } label: {
+                Label("Refresh Health Status", systemImage: "arrow.clockwise")
+            }
+            .disabled(model.healthContextState.activity.isBusy)
+
+            Button("Remove Local Health Mirror", role: .destructive) {
+                confirmsHealthContextRemoval = true
+            }
+            .disabled(model.healthContextState.activity.isBusy)
+        }
+    }
+
     private var synchronizationSection: some View {
         Section("Synchronization") {
             syncStatus
@@ -498,6 +628,36 @@ struct WorkshopView: View {
             ProgressView()
             Text(title)
         }
+    }
+
+    @ViewBuilder
+    private var healthContextStatus: some View {
+        switch model.healthContextState.activity {
+        case .idle:
+            EmptyView()
+        case .refreshing:
+            activityLabel("Inspecting local Health integration")
+        case .authorizing:
+            activityLabel("Waiting for Apple Health access")
+        case .importing:
+            activityLabel("Importing permitted Health context")
+        case .revoking:
+            activityLabel("Removing the local Health mirror")
+        case let .failed(message):
+            Label(message, systemImage: "exclamationmark.triangle")
+                .foregroundStyle(.red)
+        }
+    }
+
+    private func lagDescription(_ lag: TimeInterval) -> String {
+        let totalMinutes = max(0, Int(lag / 60))
+        if totalMinutes >= 1_440 {
+            return "\(totalMinutes / 1_440)d \((totalMinutes % 1_440) / 60)h"
+        }
+        if totalMinutes >= 60 {
+            return "\(totalMinutes / 60)h \(totalMinutes % 60)m"
+        }
+        return "\(totalMinutes)m"
     }
 
     @ViewBuilder
