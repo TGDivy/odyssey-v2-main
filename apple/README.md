@@ -118,6 +118,17 @@ Accept, Correct Category, and Dismiss actions. A failed UI retry retains the
 same review-version ID for the same content; a successful local review refreshes
 Archive/diagnostics, schedules background work, and triggers sync separately.
 
+`LocalCaptureAttachmentStore` now supplies the protected local object boundary
+needed by voice/photo/file capture. It copies files through a bounded stream,
+hashes the copied bytes incrementally, records no source filename or absolute
+path, publishes only an opaque UUIDv7 reference after an atomic directory
+rename, and supports staged/committed crash reconciliation. Object directories
+and files use owner-only permissions; Apple mobile targets additionally fail
+closed unless Data Protection can be applied. This first manifest version is
+local-only and excluded from backup, upload, provider interpretation, and remote
+restore. Media capture composition and UI are not wired yet. See
+[`docs/architecture/local-capture-attachments.md`](../docs/architecture/local-capture-attachments.md).
+
 `NativeLocalServices` opens the stable Keychain device identity, protected
 Application Support database, migration-backup directory, and capture service
 before any remote configuration is parsed. `NativeRemoteServices` is a separate
@@ -146,7 +157,7 @@ swift test --package-path apple
 ../tools/apple/generate-project.sh
 ```
 
-The portable package currently reports 88 tests passing under the official
+The portable package currently reports 93 tests passing under the official
 Swift 6.1 release toolchain on Linux. That result does not type-check SwiftUI or
 replace the required Xcode, simulator, accessibility, signing, and device runs.
 

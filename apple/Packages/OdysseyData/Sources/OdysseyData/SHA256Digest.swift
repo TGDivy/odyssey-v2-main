@@ -1,7 +1,58 @@
 import Foundation
 
+public enum SHA256DigestError: Error, Equatable, Sendable {
+    case invalidChunkSize
+    case invalidFileURL
+}
+
 public enum SHA256Digest {
-    private static let initialState: [UInt32] = [
+    public struct Hasher: Sendable {
+        private var state = SHA256Digest.initialState
+        private var bufferedBytes: [UInt8] = []
+        private var byteCount: UInt64 = 0
+
+        public init() {}
+
+        public mutating func update(_ data: Data) {
+            byteCount &+= UInt64(data.count)
+            var bytes = bufferedBytes
+            bytes.append(contentsOf: data)
+            let completeByteCount = bytes.count - (bytes.count % 64)
+            if completeByteCount > 0 {
+                for chunkStart in stride(from: 0, to: completeByteCount, by: 64) {
+                    SHA256Digest.compress(
+                        bytes[chunkStart ..< chunkStart + 64],
+                        into: &state
+                    )
+                }
+            }
+            bufferedBytes = Array(bytes[completeByteCount...])
+        }
+
+        public func hexDigest() -> String {
+            var copy = self
+            return copy.finalizedHexDigest()
+        }
+
+        private mutating func finalizedHexDigest() -> String {
+            var finalBytes = bufferedBytes
+            let bitCount = byteCount &* 8
+            finalBytes.append(0x80)
+            while finalBytes.count % 64 != 56 {
+                finalBytes.append(0)
+            }
+            finalBytes.append(contentsOf: withUnsafeBytes(of: bitCount.bigEndian) { Array($0) })
+            for chunkStart in stride(from: 0, to: finalBytes.count, by: 64) {
+                SHA256Digest.compress(
+                    finalBytes[chunkStart ..< chunkStart + 64],
+                    into: &state
+                )
+            }
+            return state.map { String(format: "%08x", $0) }.joined()
+        }
+    }
+
+    fileprivate static let initialState: [UInt32] = [
         0x6a09e667,
         0xbb67ae85,
         0x3c6ef372,
@@ -32,86 +83,102 @@ public enum SHA256Digest {
     ]
 
     public static func hexDigest(of data: Data) -> String {
-        var bytes = Array(data)
-        let bitCount = UInt64(bytes.count) * 8
-        bytes.append(0x80)
-        while bytes.count % 64 != 56 {
-            bytes.append(0)
-        }
-        bytes.append(contentsOf: withUnsafeBytes(of: bitCount.bigEndian) { Array($0) })
+        var hasher = Hasher()
+        hasher.update(data)
+        return hasher.hexDigest()
+    }
 
-        var state = initialState
+    public static func hexDigest(
+        ofFileAt fileURL: URL,
+        chunkSize: Int = 64 * 1_024
+    ) throws -> String {
+        guard fileURL.isFileURL else {
+            throw SHA256DigestError.invalidFileURL
+        }
+        guard chunkSize > 0 else {
+            throw SHA256DigestError.invalidChunkSize
+        }
+        let handle = try FileHandle(forReadingFrom: fileURL)
+        defer { try? handle.close() }
+        var hasher = Hasher()
+        while let chunk = try handle.read(upToCount: chunkSize), !chunk.isEmpty {
+            hasher.update(chunk)
+        }
+        return hasher.hexDigest()
+    }
+
+    fileprivate static func compress(
+        _ chunk: ArraySlice<UInt8>,
+        into state: inout [UInt32]
+    ) {
+        precondition(chunk.count == 64)
         var schedule = [UInt32](repeating: 0, count: 64)
-
-        for chunkStart in stride(from: 0, to: bytes.count, by: 64) {
-            for wordIndex in 0 ..< 16 {
-                let offset = chunkStart + (wordIndex * 4)
-                schedule[wordIndex] = UInt32(bytes[offset]) << 24
-                    | UInt32(bytes[offset + 1]) << 16
-                    | UInt32(bytes[offset + 2]) << 8
-                    | UInt32(bytes[offset + 3])
-            }
-            for wordIndex in 16 ..< 64 {
-                let first = schedule[wordIndex - 15]
-                let second = schedule[wordIndex - 2]
-                let smallSigma0 = rotateRight(first, by: 7)
-                    ^ rotateRight(first, by: 18)
-                    ^ (first >> 3)
-                let smallSigma1 = rotateRight(second, by: 17)
-                    ^ rotateRight(second, by: 19)
-                    ^ (second >> 10)
-                schedule[wordIndex] = schedule[wordIndex - 16]
-                    &+ smallSigma0
-                    &+ schedule[wordIndex - 7]
-                    &+ smallSigma1
-            }
-
-            var a = state[0]
-            var b = state[1]
-            var c = state[2]
-            var d = state[3]
-            var e = state[4]
-            var f = state[5]
-            var g = state[6]
-            var h = state[7]
-
-            for round in 0 ..< 64 {
-                let bigSigma1 = rotateRight(e, by: 6)
-                    ^ rotateRight(e, by: 11)
-                    ^ rotateRight(e, by: 25)
-                let choice = (e & f) ^ ((~e) & g)
-                let firstTemporary = h
-                    &+ bigSigma1
-                    &+ choice
-                    &+ roundConstants[round]
-                    &+ schedule[round]
-                let bigSigma0 = rotateRight(a, by: 2)
-                    ^ rotateRight(a, by: 13)
-                    ^ rotateRight(a, by: 22)
-                let majority = (a & b) ^ (a & c) ^ (b & c)
-                let secondTemporary = bigSigma0 &+ majority
-
-                h = g
-                g = f
-                f = e
-                e = d &+ firstTemporary
-                d = c
-                c = b
-                b = a
-                a = firstTemporary &+ secondTemporary
-            }
-
-            state[0] = state[0] &+ a
-            state[1] = state[1] &+ b
-            state[2] = state[2] &+ c
-            state[3] = state[3] &+ d
-            state[4] = state[4] &+ e
-            state[5] = state[5] &+ f
-            state[6] = state[6] &+ g
-            state[7] = state[7] &+ h
+        let chunkStart = chunk.startIndex
+        for wordIndex in 0 ..< 16 {
+            let offset = chunkStart + (wordIndex * 4)
+            schedule[wordIndex] = UInt32(chunk[offset]) << 24
+                | UInt32(chunk[offset + 1]) << 16
+                | UInt32(chunk[offset + 2]) << 8
+                | UInt32(chunk[offset + 3])
+        }
+        for wordIndex in 16 ..< 64 {
+            let first = schedule[wordIndex - 15]
+            let second = schedule[wordIndex - 2]
+            let smallSigma0 = rotateRight(first, by: 7)
+                ^ rotateRight(first, by: 18)
+                ^ (first >> 3)
+            let smallSigma1 = rotateRight(second, by: 17)
+                ^ rotateRight(second, by: 19)
+                ^ (second >> 10)
+            schedule[wordIndex] = schedule[wordIndex - 16]
+                &+ smallSigma0
+                &+ schedule[wordIndex - 7]
+                &+ smallSigma1
         }
 
-        return state.map { String(format: "%08x", $0) }.joined()
+        var a = state[0]
+        var b = state[1]
+        var c = state[2]
+        var d = state[3]
+        var e = state[4]
+        var f = state[5]
+        var g = state[6]
+        var h = state[7]
+
+        for round in 0 ..< 64 {
+            let bigSigma1 = rotateRight(e, by: 6)
+                ^ rotateRight(e, by: 11)
+                ^ rotateRight(e, by: 25)
+            let choice = (e & f) ^ ((~e) & g)
+            let firstTemporary = h
+                &+ bigSigma1
+                &+ choice
+                &+ roundConstants[round]
+                &+ schedule[round]
+            let bigSigma0 = rotateRight(a, by: 2)
+                ^ rotateRight(a, by: 13)
+                ^ rotateRight(a, by: 22)
+            let majority = (a & b) ^ (a & c) ^ (b & c)
+            let secondTemporary = bigSigma0 &+ majority
+
+            h = g
+            g = f
+            f = e
+            e = d &+ firstTemporary
+            d = c
+            c = b
+            b = a
+            a = firstTemporary &+ secondTemporary
+        }
+
+        state[0] = state[0] &+ a
+        state[1] = state[1] &+ b
+        state[2] = state[2] &+ c
+        state[3] = state[3] &+ d
+        state[4] = state[4] &+ e
+        state[5] = state[5] &+ f
+        state[6] = state[6] &+ g
+        state[7] = state[7] &+ h
     }
 
     private static func rotateRight(_ value: UInt32, by count: UInt32) -> UInt32 {

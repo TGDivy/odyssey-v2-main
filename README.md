@@ -97,6 +97,14 @@ distinct, exposes every field's source reference and immutable version lineage,
 and provides explicit Accept, Correct Category, and Dismiss actions. See
 [`docs/architecture/capture-interpretation.md`](docs/architecture/capture-interpretation.md).
 
+Protected local media storage now stages bounded file/data copies atomically,
+uses opaque UUIDv7 object references, streams SHA-256, applies owner-only
+permissions plus Apple Data Protection, and verifies bytes before reads. This
+version is intentionally local-only and does not claim encrypted upload or
+remote restore. Capture composition and recorder/picker surfaces follow
+separately. See
+[`docs/architecture/local-capture-attachments.md`](docs/architecture/local-capture-attachments.md).
+
 ## Accepted orientation state
 
 Owner-authenticated commands under `/v1/seasons/*` now append immutable
