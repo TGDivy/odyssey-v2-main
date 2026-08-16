@@ -18,7 +18,7 @@ def provenance(now: datetime) -> Provenance:
 def test_initial_event_registry_is_unique_and_versioned() -> None:
     event_types = [definition.event_type for definition in EVENT_DEFINITIONS]
 
-    assert len(event_types) == 30
+    assert len(event_types) == 32
     assert len(set(event_types)) == len(event_types)
     assert all(event_type.endswith(".v1") for event_type in event_types)
 
@@ -30,6 +30,28 @@ def test_event_schema_closes_payload_and_pins_type() -> None:
     assert schema["properties"]["event_type"] == {"const": "capture.recorded.v1"}
     assert schema["properties"]["payload"]["additionalProperties"] is False
     assert schema["properties"]["payload"]["required"] == ["capture_id"]
+
+
+def test_food_occurrence_events_match_native_payloads() -> None:
+    definitions = {
+        definition.event_type: definition
+        for definition in EVENT_DEFINITIONS
+        if definition.aggregate_type == "food_occurrence"
+    }
+
+    assert tuple(definitions) == (
+        "food.consumed.v1",
+        "food.consumption_corrected.v1",
+    )
+    assert definitions["food.consumed.v1"].required_payload_fields == (
+        "food_occurrence_id",
+        "food_preset_id",
+    )
+    assert definitions["food.consumption_corrected.v1"].required_payload_fields == (
+        "food_occurrence_id",
+        "food_preset_id",
+        "change",
+    )
 
 
 def test_domain_event_preserves_device_clock_skew() -> None:

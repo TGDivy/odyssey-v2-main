@@ -2,7 +2,7 @@
   "artifacts": [
     {
       "path": "schemas/events/registry.v1.json",
-      "sha256": "7391a4eac7d82c717476e8f25243e6096b50b52ba2e34d80c60da8882267d9e7"
+      "sha256": "a0f55bb222bf4e2d3670ad311eda273fe3ecb1d44d73a6bf6e24f8dacc8d03aa"
     },
     {
       "path": "schemas/events/v1/action.status_changed.v1.schema.json",
@@ -59,6 +59,14 @@
     {
       "path": "schemas/events/v1/experiment.assignment_created.v1.schema.json",
       "sha256": "2a5ed390cccf3ad082f1605178e0bfdc69781e6f6997bcc470f4ca943f7e2cb0"
+    },
+    {
+      "path": "schemas/events/v1/food.consumed.v1.schema.json",
+      "sha256": "be01ff0f6c97bdef1486e2855039565e2b35428147022c415fbb47d1e73820fc"
+    },
+    {
+      "path": "schemas/events/v1/food.consumption_corrected.v1.schema.json",
+      "sha256": "3907bf7745ccfbf54e2bb425c35cf368ca99f2b1651170487ea3b6fac2a93271"
     },
     {
       "path": "schemas/events/v1/food_preset.created.v1.schema.json",

@@ -32,6 +32,18 @@
       "schema": "schemas/events/v1/food_preset.revised.v1.schema.json"
     },
     {
+      "aggregate_type": "food_occurrence",
+      "event_type": "food.consumed.v1",
+      "purpose": "Durable food or drink occurrence snapshot",
+      "schema": "schemas/events/v1/food.consumed.v1.schema.json"
+    },
+    {
+      "aggregate_type": "food_occurrence",
+      "event_type": "food.consumption_corrected.v1",
+      "purpose": "Optimistic food occurrence correction or void",
+      "schema": "schemas/events/v1/food.consumption_corrected.v1.schema.json"
+    },
+    {
       "aggregate_type": "observation",
       "event_type": "observation.normalized.v1",
       "purpose": "Normalized source-linked observation",

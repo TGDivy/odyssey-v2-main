@@ -128,9 +128,9 @@ usage history.
 
 ## Current boundary
 
-This slice does **not** provide a quick-log UI, HealthKit writes, registered
-cross-stack occurrence-event schemas/consumers, or a live experiment assignment.
-Generated schemas register both preset event names. Backend
+This slice does **not** provide a quick-log UI, HealthKit writes, a cross-stack
+occurrence-event consumer, or a live experiment assignment. Generated schemas
+register both preset and both occurrence event names. Backend
 integration proves that native-shaped disjoint edits normalize mechanical
 metadata and converge while overlapping owner fields remain conflicts; a
 portable pull-persistence regression proves the resulting canonical document is

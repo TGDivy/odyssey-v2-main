@@ -129,7 +129,8 @@ ledger/projection/sync-outbox commit, preserves immutable identity and
 provenance, emits changed-field sync updates, and prevents tombstone
 resurrection. See
 [`docs/architecture/food-presets.md`](../docs/architecture/food-presets.md).
-Generated event contracts now register create/revise payloads. A backend
+Generated event contracts now register preset create/revise and occurrence
+consume/correct payloads. A backend
 native-document test normalizes mechanical metadata during disjoint merges, and
 a portable pull-persistence test decodes the resulting canonical revision;
 overlapping owner fields remain explicit conflicts.
@@ -202,7 +203,7 @@ swift test --package-path apple
 ../tools/apple/generate-project.sh
 ```
 
-The portable package currently reports 113 tests passing under the official
+The portable package currently reports 116 tests passing under the official
 Swift 6.1 release toolchain on Linux. That result does not type-check SwiftUI or
 replace the required Xcode, simulator, accessibility, signing, and device runs.
 

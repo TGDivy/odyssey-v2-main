@@ -73,6 +73,18 @@ EVENT_DEFINITIONS: tuple[EventDefinition, ...] = (
         purpose="Optimistic food preset revision or archive",
     ),
     EventDefinition(
+        "food.consumed.v1",
+        "food_occurrence",
+        ("food_occurrence_id", "food_preset_id"),
+        purpose="Durable food or drink occurrence snapshot",
+    ),
+    EventDefinition(
+        "food.consumption_corrected.v1",
+        "food_occurrence",
+        ("food_occurrence_id", "food_preset_id", "change"),
+        purpose="Optimistic food occurrence correction or void",
+    ),
+    EventDefinition(
         "observation.normalized.v1",
         "observation",
         ("observation_id", "source_record_id"),

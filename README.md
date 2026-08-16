@@ -131,8 +131,9 @@ now commit an immutable local ledger event, current projection, and sync-outbox
 operation atomically; updates send only changed fields and archives are true
 tombstones. See
 [`docs/architecture/food-presets.md`](docs/architecture/food-presets.md).
-The matching created/revised domain events are registered in generated schemas,
-and backend/native regressions preserve disjoint edits while surfacing
+The preset created/revised and occurrence consumed/corrected domain events are
+registered in generated schemas, and backend/native regressions preserve
+disjoint preset edits while surfacing
 overlapping owner fields for review; physical two-device convergence is not yet
 claimed.
 `FoodOccurrenceService` now records those immutable snapshots durably, corrects
