@@ -1057,6 +1057,18 @@ final class OdysseyAppModel: ObservableObject {
         )
     }
 
+    func recordTomorrowMapPlanDeviation(
+        deviation: TomorrowMapProductTelemetryPlanDeviation,
+        influence: TomorrowMapProductTelemetryInfluence
+    ) async {
+        guard let recorder = localServices?.productTelemetryRecorder else { return }
+        let disposition = await recorder.recordTomorrowMapPlanDeviation(
+            deviation: deviation,
+            influence: influence
+        )
+        productTelemetryMessage = telemetryFeedbackMessage(for: disposition)
+    }
+
     func dismissProductTelemetryMessage() {
         productTelemetryMessage = nil
     }

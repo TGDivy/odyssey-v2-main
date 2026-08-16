@@ -242,6 +242,9 @@ private struct ArchiveView: View {
 
 private struct WeeklyProductReviewView: View {
     @EnvironmentObject private var model: OdysseyAppModel
+    @State private var planDeviation: TomorrowMapProductTelemetryPlanDeviation = .unknown
+    @State private var mapInfluence: TomorrowMapProductTelemetryInfluence = .uncertain
+    @State private var isRecordingPlanDeviation = false
 
     var body: some View {
         Group {
@@ -375,6 +378,55 @@ private struct WeeklyProductReviewView: View {
                             + artifact.tomorrowMap.orphanedFinishCount
                     )
                 )
+            }
+
+            Section("Optional Next-Day Check-In") {
+                Text(
+                    "Record one bounded retrospective response without plan titles, calendar "
+                        + "content, or an explanation."
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                Picker("Plan deviation", selection: $planDeviation) {
+                    ForEach(
+                        TomorrowMapProductTelemetryPlanDeviation.allCases,
+                        id: \.rawValue
+                    ) { deviation in
+                        Text(deviation.ownerTitle).tag(deviation)
+                    }
+                }
+                Picker("Map influence", selection: $mapInfluence) {
+                    ForEach(
+                        TomorrowMapProductTelemetryInfluence.allCases,
+                        id: \.rawValue
+                    ) { influence in
+                        Text(influence.ownerTitle).tag(influence)
+                    }
+                }
+                Button("Save Local Check-In") {
+                    model.dismissProductTelemetryMessage()
+                    isRecordingPlanDeviation = true
+                    Task {
+                        await model.recordTomorrowMapPlanDeviation(
+                            deviation: planDeviation,
+                            influence: mapInfluence
+                        )
+                        await model.refreshWeeklyProductReview()
+                        isRecordingPlanDeviation = false
+                    }
+                }
+                .disabled(isRecordingPlanDeviation)
+                if isRecordingPlanDeviation {
+                    ProgressView("Saving local check-in…")
+                } else if let message = model.productTelemetryMessage {
+                    Button {
+                        model.dismissProductTelemetryMessage()
+                    } label: {
+                        Label(message, systemImage: "lock.shield")
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
+                }
             }
 
             Section("Review Observations") {
@@ -2045,6 +2097,28 @@ private extension ProductTelemetryCollectionMode {
         switch self {
         case .off: "Off"
         case .localOnly: "Local only"
+        }
+    }
+}
+
+private extension TomorrowMapProductTelemetryPlanDeviation {
+    var ownerTitle: String {
+        switch self {
+        case .none: "No meaningful deviation"
+        case .minor: "Minor deviation"
+        case .material: "Material deviation"
+        case .unknown: "Not sure"
+        }
+    }
+}
+
+private extension TomorrowMapProductTelemetryInfluence {
+    var ownerTitle: String {
+        switch self {
+        case .helped: "The map helped"
+        case .noEffect: "The map had no effect"
+        case .addedBurden: "The map added burden"
+        case .uncertain: "Not sure"
         }
     }
 }

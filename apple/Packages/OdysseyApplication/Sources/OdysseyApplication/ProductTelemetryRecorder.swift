@@ -34,20 +34,20 @@ public struct ProductTelemetryRecorderDiagnostics: Hashable, Sendable {
     public let lastFailureAt: Date?
 }
 
-public enum CaptureProductTelemetryOutcome: String, Codable, CaseIterable, Sendable {
+public enum CaptureProductTelemetryOutcome: String, Codable, CaseIterable, Hashable, Sendable {
     case committed
     case failed
     case abandoned
 }
 
-public enum CaptureProductTelemetryExitStage: String, Codable, CaseIterable, Sendable {
+public enum CaptureProductTelemetryExitStage: String, Codable, CaseIterable, Hashable, Sendable {
     case entry
     case selection
     case saving
     case localCommit = "local_commit"
 }
 
-public enum ProductTelemetryDurationBucket: String, Codable, CaseIterable, Sendable {
+public enum ProductTelemetryDurationBucket: String, Codable, CaseIterable, Hashable, Sendable {
     case underOneSecond = "under_1s"
     case oneToThreeSeconds = "1_to_3s"
     case threeToFiveSeconds = "3_to_5s"
@@ -75,13 +75,17 @@ public enum ProductTelemetryDurationBucket: String, Codable, CaseIterable, Senda
     }
 }
 
-public enum CaptureProductTelemetryFeedbackRating: String, Codable, CaseIterable, Sendable {
+public enum CaptureProductTelemetryFeedbackRating:
+    String, Codable, CaseIterable, Hashable, Sendable
+{
     case useful
     case neutral
     case addedFriction = "added_friction"
 }
 
-public enum CaptureProductTelemetryFeedbackReason: String, Codable, CaseIterable, Sendable {
+public enum CaptureProductTelemetryFeedbackReason:
+    String, Codable, CaseIterable, Hashable, Sendable
+{
     case fast
     case tooManySteps = "too_many_steps"
     case wrongContext = "wrong_context"
@@ -90,25 +94,33 @@ public enum CaptureProductTelemetryFeedbackReason: String, Codable, CaseIterable
     case other
 }
 
-public enum TomorrowMapProductTelemetryEntryPoint: String, Codable, CaseIterable, Sendable {
+public enum TomorrowMapProductTelemetryEntryPoint:
+    String, Codable, CaseIterable, Hashable, Sendable
+{
     case automaticNow = "automatic_now"
     case notification
     case widget
 }
 
-public enum TomorrowMapProductTelemetrySessionOutcome: String, Codable, CaseIterable, Sendable {
+public enum TomorrowMapProductTelemetrySessionOutcome:
+    String, Codable, CaseIterable, Hashable, Sendable
+{
     case dismissed
     case feedback
     case backgrounded
 }
 
-public enum TomorrowMapProductTelemetryFeedbackRating: String, Codable, CaseIterable, Sendable {
+public enum TomorrowMapProductTelemetryFeedbackRating:
+    String, Codable, CaseIterable, Hashable, Sendable
+{
     case useful
     case notUseful = "not_useful"
     case addedFriction = "added_friction"
 }
 
-public enum TomorrowMapProductTelemetryFeedbackReason: String, Codable, CaseIterable, Sendable {
+public enum TomorrowMapProductTelemetryFeedbackReason:
+    String, Codable, CaseIterable, Hashable, Sendable
+{
     case wrongContext = "wrong_context"
     case badTiming = "bad_timing"
     case alreadyHandled = "already_handled"
@@ -120,14 +132,18 @@ public enum TomorrowMapProductTelemetryFeedbackReason: String, Codable, CaseIter
     case other
 }
 
-public enum TomorrowMapProductTelemetryPlanDeviation: String, Codable, CaseIterable, Sendable {
+public enum TomorrowMapProductTelemetryPlanDeviation:
+    String, Codable, CaseIterable, Hashable, Sendable
+{
     case none
     case minor
     case material
     case unknown
 }
 
-public enum TomorrowMapProductTelemetryInfluence: String, Codable, CaseIterable, Sendable {
+public enum TomorrowMapProductTelemetryInfluence:
+    String, Codable, CaseIterable, Hashable, Sendable
+{
     case helped
     case noEffect = "no_effect"
     case addedBurden = "added_burden"

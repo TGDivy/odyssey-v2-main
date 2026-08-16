@@ -204,9 +204,13 @@ func productTelemetryRecorderCapturesBoundedTomorrowMapLifecycle() async throws 
         session,
         outcome: .feedback
     ) == .recorded)
+    #expect(await recorder.recordTomorrowMapPlanDeviation(
+        deviation: .material,
+        influence: .helped
+    ) == .recorded)
 
     let events = try fixture.events(from: productTelemetryRecorderDate.addingTimeInterval(-20))
-    #expect(events.count == 4)
+    #expect(events.count == 5)
     let availability = try #require(events.first {
         $0.eventName == .tomorrowMapAvailabilityEvaluated
     })
@@ -224,6 +228,9 @@ func productTelemetryRecorderCapturesBoundedTomorrowMapLifecycle() async throws 
     let finished = try #require(events.first {
         $0.eventName == .tomorrowMapSessionFinished
     })
+    let deviation = try #require(events.first {
+        $0.eventName == .tomorrowMapPlanDeviationRecorded
+    })
     #expect(viewed.properties["entry_point"] == .string("automatic_now"))
     #expect(feedback.properties == [
         "rating": .string("not_useful"),
@@ -232,6 +239,10 @@ func productTelemetryRecorderCapturesBoundedTomorrowMapLifecycle() async throws 
     #expect(finished.properties == [
         "duration_bucket": .string("5_to_10s"),
         "outcome": .string("feedback"),
+    ])
+    #expect(deviation.properties == [
+        "deviation": .string("material"),
+        "map_influence": .string("helped"),
     ])
     #expect(feedback.sessionID == viewed.sessionID)
     #expect(finished.sessionID == viewed.sessionID)
