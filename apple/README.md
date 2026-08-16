@@ -61,6 +61,15 @@ decoded into read-only plain-language history. A `409` remains a visible
 terminal meaning conflict with no auto-merge; the owner must refresh history and
 start a new reviewed revision.
 
+The iPhone Map consumes only that immutable accepted Season history. A portable
+deterministic projector derives qualitative paths, protected terrain, open
+horizon, transition/review landmarks, and deliberately dormant areas without
+scores, inferred progress, or tasks. The calm SwiftUI `Canvas` prototype has a
+first-class Plain Language presentation that lists the complete projection;
+visual limits never hide policy from the alternative. Drafts and queued
+proposals cannot appear as current orientation. See
+[`docs/architecture/season-map-prototype.md`](../docs/architecture/season-map-prototype.md).
+
 `OdysseyAuth` defines the closed challenge, exchange, refresh, recovery, and
 device lifecycle values. Its actor-isolated access-token session keeps access
 tokens in memory, refreshes through a device-bound credential, and persists
@@ -117,7 +126,7 @@ swift test --package-path apple
 ../tools/apple/generate-project.sh
 ```
 
-The portable package currently reports 72 tests passing under the official
+The portable package currently reports 78 tests passing under the official
 Swift 6.1 release toolchain on Linux. That result does not type-check SwiftUI or
 replace the required Xcode, simulator, accessibility, signing, and device runs.
 

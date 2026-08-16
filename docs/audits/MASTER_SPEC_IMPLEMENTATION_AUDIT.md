@@ -6,7 +6,7 @@ than a feature list: a schema, route declaration, or UI placeholder is not
 treated as implemented behavior. Update this file in the same commit that
 changes a requirement's status.
 
-Snapshot reviewed: current `main` on 2026-08-15.
+Snapshot reviewed: current `main` on 2026-08-16.
 
 ## Status vocabulary
 
@@ -30,7 +30,7 @@ deployment, external account configuration, or physical-device behavior.
 | --- | --- | --- | --- |
 | §§1–5 product thesis, Constitution, premise, research consequences | `documented` | `docs/constitution.md`, `docs/ASSUMPTIONS.md`, master specification | Add automated copy/invariant checks where behavior becomes executable. |
 | §6 good-life model | `partial` | deliberate owner-only immutable Charter revisions, optimistic supersession/history, provenance/ledger/outbox, as-of context resolution, local-only typed drafts, editable commission seed, semantic review, offline acceptance ceremony and immutable native history | Direction service, explicit recommendation citations, Xcode proof and owner-lived Charter. |
-| §7 life-stage and season model | `partial` | owner-reviewed descriptive life-stage versions; Charter-bound typed season editor, legal terminal state machine, hash-bound frozen outgoing summary, optional accepted/skipped retrospective, explicit successor drafts, local-first acceptance, immutable history and terminal conflict UI | Map prototype, Xcode and two-device proof. |
+| §7 life-stage and season model | `partial` | owner-reviewed descriptive life-stage versions; Charter-bound typed season editor, legal terminal state machine, hash-bound frozen outgoing summary, optional accepted/skipped retrospective, explicit successor drafts, local-first acceptance, immutable history, terminal conflict UI and accepted-history-only season map | Direction service, Xcode and two-device proof. |
 | §8 ontology and knowledge model | `partial` | provenance, temporal, assertion, event, person, relationship contracts; durable ledger | Admission, supersession, graph derivation, contradiction, redaction, and retrieval services. |
 | §9 decision architecture | `partial` | decision contracts/events, B.5 immutable context-bound preparation and B.7 idempotent recommendation feedback/event-only assertion supersession with exact durable-change reporting | Full lifecycle/choice/outcome service, future-learning correction consumption, replay and product UI. |
 | §10 temporal consequence engine | `partial` | versioned bounded graph traversal with time/depth/path limits, cycle/accumulation controls, uncertainty propagation, causal-status preservation, correlated-path collapse and deterministic ranking | Domain rule registry, direct-effect services, calibration reports, persistence, APIs, narrative/UI and historical replay suite. |
@@ -41,8 +41,8 @@ deployment, external account configuration, or physical-device behavior.
 | §15 score philosophy | `partial` | Constitution prohibits universal Life Score/people ranking; optional C.5 qualitative day-alignment policy is disabled by default, non-scalar, coverage/exception/comparison guarded and canonical-history independent | Owner-approved experiment flag, product surface and longitudinal harm/usefulness evaluation only if deliberately enabled. |
 | §16 AI philosophy | `contract-only` | `ai/models.py` | Capability router, structured fallbacks, refusal/uncertainty, provenance, evaluations, rollback. |
 | §17 trust and agency | `partial` | deterministic authority policy plus B.7 append-only event correction that reports whether future recommendations change and fails closed for unconsumed future scope | Durable Trust Center, future correction retrieval, revocation UI and autonomous-action audit UI. |
-| §18 experience architecture | `partial` | iPhone quiet Now, capture, Archive, typed reviewed life-model Workshop, sync/repair surfaces and deterministic guilt-free re-entry surface contract | Tomorrow Map, rendered re-entry, decision/evidence flows, accessibility and complete platform depth. |
-| §19 visual and art direction | `partial` | native SwiftUI shells and shared assets scaffold | Tokens, map/world states, motion/accessibility treatment, snapshots, reduced-motion proof. |
+| §18 experience architecture | `partial` | iPhone quiet Now, capture, Archive, typed reviewed life-model Workshop, accepted Season landscape/plain-language Map, sync/repair surfaces and deterministic guilt-free re-entry surface contract | Tomorrow Map, rendered re-entry, decision/evidence flows, Xcode accessibility and complete platform depth. |
+| §19 visual and art direction | `partial` | calm SwiftUI/Canvas regional prototype, deterministic qualitative paths/terrain/landmarks, complete plain-language alternative, native shells and shared assets | Theme tokens, richer prototype, atlas/world states, snapshots, Xcode accessibility and dogfood proof. |
 | §20 Apple ecosystem | `partial` | iOS/Watch/macOS shells, widgets/intents/share targets, portable data/auth/sync packages | Real HealthKit/EventKit/location/watch/widget adapters and Xcode/device validation. |
 | §21 integrations | `deferred` | entitlements and adapter seams only | Implement consented adapters incrementally; keep OAuth/webhooks/provider credentials disabled. |
 | §22 data architecture | `partial` | append-only ledger, projections, provenance contracts, encrypted owner export/import foundations, accepted life-model history and 17 migrations | Complete semantic services, selective memory, retention/redaction, scale budgets. |
@@ -58,7 +58,7 @@ deployment, external account configuration, or physical-device behavior.
 | §32 failure modes/pre-mortem | `partial` | kill switches, retry/conflict diagnostics, incident/recovery runbooks | Regression scenarios for each severe failure and owner drills. |
 | §33 technology choices | `documented` | master specification, ADR 0001, lockfiles, OpenTofu and XcodeGen manifests | Add ADRs whenever implementation departs from selected architecture. |
 | §34 repository architecture | `verified` | monorepo layout, portable paths, package/infra/docs/tool boundaries | Keep directory contract synchronized as editions are added. |
-| §35 testing strategy | `partial` | 207 backend tests pass at 86.90% coverage, 72 portable Swift 6.1 tests pass, and deterministic policy golden replay plus schema/fixture/IaC checks pass in this Linux snapshot | Clear repository-wide formatter drift; historical/model, UI, performance, broader fault, Apple integration and live recovery suites remain. |
+| §35 testing strategy | `partial` | 208 backend tests pass at 86.86% coverage, 78 portable Swift 6.1 tests pass, and deterministic policy golden replay plus schema/fixture/IaC checks pass in this Linux snapshot | Clear repository-wide formatter drift; historical/model, UI, performance, broader fault, Apple integration and live recovery suites remain. |
 | §36 deployment architecture | `implemented` | GCP OpenTofu, deployment workflow examples, migration/canary/rollback and handoff docs | Owner provisions accounts, imports secrets, deploys, validates alerts/backups/restore and signs apps. |
 | §37 development environments | `verified` | lockfiles, Compose, environment diagnostics, `make verify`, Mac-only skip reporting | Fresh personal Mac proof is owner-only. |
 | §38 roadmap | `partial` | Edition 0 substrate and iPhone capture/auth/sync slice | Edition 1–4 product loops and milestone acceptance artifacts remain. |
@@ -85,7 +85,7 @@ deployment, external account configuration, or physical-device behavior.
 | 0.2 local ledger/projections | `partial` | Durable ledger/rebuild/export exist; 10-year performance and every-version migration matrix are not yet proven. |
 | 0.3 cloud core/sync | `verified` | Auth, sync, attachments, conflicts and convergence/fault tests exist; live cloud proof is owner-only. |
 | 0.4 durability/observability | `implemented` | Tools/runbooks/IaC exist; isolated live restore and external alert evidence are owner-only. |
-| 1.1 Charter/Season Workshop | `partial` | Server acceptance/history/context loop, typed local draft ledger/editors, editable seed, semantic review ceremony, immutable native history, frozen outgoing summaries, optional retrospectives, explicit successor flow, offline queue, authenticated delivery, history refresh and terminal conflict guidance exist; map prototype, Xcode and two-device proof remain. |
+| 1.1 Charter/Season Workshop | `implemented` | Server acceptance/history/context loop, typed local draft ledger/editors, editable seed, semantic review ceremony, immutable native history, frozen outgoing summaries, optional retrospectives, explicit successor flow, offline queue, authenticated delivery, terminal conflict guidance and accepted-history-only plain/Canvas map exist; Xcode/accessibility and two-device proof remain owner-only. |
 | 1.2 capture/personal library | `partial` | Offline durable text capture and local Archive exist; media/import/search/annotation breadth remains. |
 | 1.3 Apple context adapters | `missing` | Targets/seams exist without real incremental HealthKit/calendar/location adapters. |
 | 1.4 Now/Tomorrow Map v1 | `partial` | Quiet Now, C.7 re-entry policy and immutable deterministic model-free server context assembly exist; Tomorrow Map and rendered re-entry do not. |
@@ -175,9 +175,10 @@ At this snapshot:
   mocked plans, including encrypted-export secret, storage, IAM and worker
   wiring across seventeen migrations. OpenTofu is unavailable for a current
   rerun in this environment.
-- The complete portable Swift package reports 76 tests passing under the
+- The complete portable Swift package reports 78 tests passing under the
   official Swift 6.1 release toolchain in a local Ubuntu container. This includes
-  typed Workshop/editor/reducer coverage and temporal/acronym codec regressions.
+  typed Workshop/editor/reducer coverage, deterministic Season map projection,
+  and temporal/acronym codec regressions.
 - iOS sources passed Swift parser/structure validation and `apple/project.yml`
   passed YAML structure checks; SwiftUI still requires Xcode type-checking.
 - No Xcode build, signing, simulator, Apple framework integration, TestFlight,

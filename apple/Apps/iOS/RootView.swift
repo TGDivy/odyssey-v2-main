@@ -50,11 +50,7 @@ struct RootView: View {
             .tag(PrimarySpace.now)
 
             NavigationStack {
-                PlaceholderSpace(
-                    title: "Map",
-                    symbol: "map",
-                    description: "The current season map will remain calm and locally available."
-                )
+                SeasonMapView { selection = .workshop }
             }
             .tabItem { Label("Map", systemImage: "map") }
             .tag(PrimarySpace.map)
@@ -247,20 +243,5 @@ private struct CaptureSheet: View {
             }
             .onAppear { isFocused = true }
         }
-    }
-}
-
-private struct PlaceholderSpace: View {
-    let title: String
-    let symbol: String
-    let description: String
-
-    var body: some View {
-        ContentUnavailableView(
-            title,
-            systemImage: symbol,
-            description: Text(description)
-        )
-        .navigationTitle(title)
     }
 }
