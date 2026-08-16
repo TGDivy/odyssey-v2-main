@@ -126,7 +126,12 @@ rename, and supports staged/committed crash reconciliation. Object directories
 and files use owner-only permissions; Apple mobile targets additionally fail
 closed unless Data Protection can be applied. This first manifest version is
 local-only and excluded from backup, upload, provider interpretation, and remote
-restore. Media capture composition and UI are not wired yet. See
+restore. `LocalMediaCaptureService` now composes that store with the immutable
+capture ledger: bytes publish first, one capture/projection/outbox transaction
+commits second, and manifest promotion follows with explicit recovery state.
+Known failed ledger handoffs discard only their own staging; bootstrap promotes
+referenced staging and preserves uncertain data for repair. Recorder and picker
+UI are not wired yet. See
 [`docs/architecture/local-capture-attachments.md`](../docs/architecture/local-capture-attachments.md).
 
 `NativeLocalServices` opens the stable Keychain device identity, protected
@@ -157,7 +162,7 @@ swift test --package-path apple
 ../tools/apple/generate-project.sh
 ```
 
-The portable package currently reports 93 tests passing under the official
+The portable package currently reports 96 tests passing under the official
 Swift 6.1 release toolchain on Linux. That result does not type-check SwiftUI or
 replace the required Xcode, simulator, accessibility, signing, and device runs.
 

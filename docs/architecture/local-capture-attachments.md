@@ -8,7 +8,7 @@ client-side encryption, transcription, provider access, or remote restore.
 
 `LocalCaptureAttachmentStore` places each attachment in a versioned Application
 Support root under a UUIDv7 directory. The synchronized capture sees only an
-opaque reference such as `odyssey-attachment:v1:<uuid>`, never an absolute path,
+opaque reference such as `odyssey-local-attachment:v1:<uuid>`, never an absolute path,
 source filename, temporary picker URL, or security-scoped bookmark.
 
 Each object directory contains:
@@ -43,12 +43,36 @@ before an object becomes visible.
 The staged state supports the filesystem/database handoff. After a capture
 ledger transaction references the opaque object, composition marks the
 manifest committed. On startup, reconciliation promotes referenced staged
-objects and removes only unreferenced staged objects. It never garbage-collects
-a committed object merely because a current projection does not reference it;
+objects. An unreferenced staged object is retained for explicit repair review,
+because a bounded projection scan cannot prove that older owner data is
+orphaned. The in-process capture coordinator may discard staging only when it
+knows the ledger transaction failed. Recovery never garbage-collects a
+committed object merely because a current projection does not reference it;
 deletion requires a future durable tombstone and retention policy.
 
 Reads require an exact `CaptureAttachmentReference`, committed state, matching
 byte count, and a freshly streamed content hash. A mismatch fails closed.
+
+## Capture composition
+
+`LocalMediaCaptureService` is the only composition path from protected bytes to
+`ManualCaptureService`. It accepts a bounded file URL or in-memory payload plus
+the media kind, media type, capture context, invoking surface and sensitivity.
+It then:
+
+1. publishes a complete staged local-only object;
+2. creates one `CaptureAttachmentReference` from that exact manifest;
+3. commits the immutable capture, projection and ordered sync operation through
+   the existing ledger transaction;
+4. marks the referenced manifest committed.
+
+If capture validation or the ledger transaction fails, the service knows the
+staged object is unreferenced and discards it. If final manifest promotion fails
+after the ledger commit, the receipt reports `recovery_required` rather than
+claiming the capture failed or attempting to rewrite it. Native bootstrap scans
+recent capture projections, promotes referenced staging, retains uncertain
+staging for repair, and exposes a typed recovery report. Corruption in this
+attachment recovery pass does not disable text capture or the primary ledger.
 
 ## Protection boundary
 
@@ -70,6 +94,6 @@ enabled.
 
 The default object limit is 128 MiB. The SHA-256 utility supports incremental
 updates and bounded file reads, with NIST known-answer and chunk-boundary tests.
-This slice supplies the protected object dependency only. The media capture
-coordinator, AVFoundation recorder, picker imports, playback, and lifecycle UI
-follow in separate Milestone 1.2 slices.
+The protected object and durable media-capture coordinator are implemented.
+The AVFoundation recorder, picker imports, playback, repair UI, and attachment
+lifecycle/tombstone flow follow in separate Milestone 1.2 slices.

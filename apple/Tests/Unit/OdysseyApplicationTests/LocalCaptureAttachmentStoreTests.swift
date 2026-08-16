@@ -37,7 +37,7 @@ func protectedAttachmentStoreCopiesOpaqueContentAndVerifiesCommittedBytes() asyn
     #expect(staged.retention == .localOnly)
     #expect(staged.byteCount == Int64(original.count))
     #expect(staged.contentHash == SHA256Digest.hexDigest(of: original))
-    #expect(staged.objectReference == "odyssey-attachment:v1:\(attachmentID)")
+    #expect(staged.objectReference == "odyssey-local-attachment:v1:\(attachmentID)")
     #expect(!staged.objectReference.contains(directory.path))
     await #expect(throws: LocalCaptureAttachmentError.integrityFailure) {
         try await store.verifiedContentURL(for: staged.captureReference)
@@ -152,12 +152,10 @@ func protectedAttachmentStoreReconcilesOnlyOpaqueLocalStagingReferences() async 
     ])
 
     #expect(report.stagedAttachmentsCommitted == 1)
-    #expect(report.stagedAttachmentsDiscarded == 1)
+    #expect(report.stagedAttachmentsAwaitingReview == 1)
     #expect(report.missingReferencedAttachments == 1)
     #expect(try await store.manifest(for: referenced.attachmentID).state == .committed)
-    await #expect(throws: LocalCaptureAttachmentError.attachmentNotFound) {
-        try await store.manifest(for: abandoned.attachmentID)
-    }
+    #expect(try await store.manifest(for: abandoned.attachmentID).state == .staged)
 }
 
 private func attachmentStoreTemporaryDirectory(_ suffix: String) -> URL {

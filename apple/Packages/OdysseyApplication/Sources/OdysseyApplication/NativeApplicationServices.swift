@@ -85,6 +85,12 @@ public struct NativeLocalConfiguration: Sendable {
             .appendingPathComponent("Migrations", isDirectory: true)
     }
 
+    public var attachmentDirectory: URL {
+        applicationSupportDirectory
+            .appendingPathComponent("Attachments", isDirectory: true)
+            .appendingPathComponent("v1", isDirectory: true)
+    }
+
     public var keychainConfiguration: KeychainCredentialConfiguration {
         KeychainCredentialConfiguration(
             service: "\(applicationIdentifier).credentials",
@@ -170,8 +176,11 @@ public struct NativeLocalServices: Sendable {
     public let deviceID: UUIDv7
     public let ledgerStore: SQLiteLedgerStore
     public let captureService: ManualCaptureService
+    public let captureAttachmentStore: LocalCaptureAttachmentStore
+    public let mediaCaptureService: LocalMediaCaptureService
     public let captureInterpretationService: CaptureInterpretationService
     public let lifeModelWorkshopService: LifeModelWorkshopService
+    public let attachmentRecoveryState: LocalCaptureAttachmentRecoveryState
 
     public static func bootstrap(
         configuration: NativeLocalConfiguration
@@ -199,6 +208,15 @@ public struct NativeLocalServices: Sendable {
             deviceID: deviceID,
             ownerActorID: configuration.ownerActorID
         )
+        let captureAttachmentStore = try LocalCaptureAttachmentStore(
+            configuration: LocalCaptureAttachmentStoreConfiguration(
+                rootDirectory: configuration.attachmentDirectory
+            )
+        )
+        let mediaCaptureService = LocalMediaCaptureService(
+            attachmentStore: captureAttachmentStore,
+            captureService: captureService
+        )
         let captureInterpretationService = CaptureInterpretationService(
             store: ledgerStore
         )
@@ -212,18 +230,61 @@ public struct NativeLocalServices: Sendable {
             deviceID: deviceID,
             ledgerStore: ledgerStore,
             captureService: captureService,
+            captureAttachmentStore: captureAttachmentStore,
+            mediaCaptureService: mediaCaptureService,
             captureInterpretationService: captureInterpretationService,
-            lifeModelWorkshopService: lifeModelWorkshopService
+            lifeModelWorkshopService: lifeModelWorkshopService,
+            attachmentRecoveryState: await attachmentRecoveryState(
+                store: captureAttachmentStore,
+                ledgerStore: ledgerStore
+            )
         )
     }
 
+    private static func attachmentRecoveryState(
+        store: LocalCaptureAttachmentStore,
+        ledgerStore: SQLiteLedgerStore
+    ) async -> LocalCaptureAttachmentRecoveryState {
+        do {
+            let captures = try ledgerStore.projectedEntities(
+                entityType: ManualCaptureService.entityType,
+                limit: 500
+            ).map {
+                try SyncJSONCoding.makeDecoder().decode(
+                    CaptureRecord.self,
+                    from: $0.document
+                )
+            }
+            let references = Set(captures.flatMap { capture in
+                capture.attachments.map(\.objectRef)
+            })
+            return .completed(try await store.reconcile(
+                referencedObjectReferences: references
+            ))
+        } catch {
+            return .requiresRepair
+        }
+    }
+
     public func localDiagnostics(
-        attachmentBacklog: Int = 0
+        attachmentBacklog: Int? = nil
     ) async throws -> NativeSyncDiagnostics {
-        guard attachmentBacklog >= 0 else {
+        if let attachmentBacklog, attachmentBacklog < 0 {
             throw DurableSyncCoordinatorError.invalidLocalState(
                 "Attachment backlog cannot be negative."
             )
+        }
+        let resolvedAttachmentBacklog: Int
+        if let attachmentBacklog {
+            resolvedAttachmentBacklog = attachmentBacklog
+        } else {
+            switch attachmentRecoveryState {
+            case let .completed(report):
+                resolvedAttachmentBacklog = report.stagedAttachmentsAwaitingReview
+                    + report.missingReferencedAttachments
+            case .requiresRepair:
+                resolvedAttachmentBacklog = 1
+            }
         }
         let local = try await ledgerStore.localSyncDiagnostics()
         let state = local.syncState
@@ -243,7 +304,7 @@ public struct NativeLocalServices: Sendable {
             operationsQueued: local.operationsQueued,
             oldestUnsyncedOperationAt: local.oldestUnsyncedOperationAt,
             conflictCount: local.conflictCount,
-            attachmentBacklog: attachmentBacklog,
+            attachmentBacklog: resolvedAttachmentBacklog,
             deviceCursor: try SyncCursor(state.cursor),
             serverCursor: try SyncCursor(state.serverCursor),
             serverSchemaVersion: serverSchemaVersion,

@@ -101,8 +101,10 @@ Protected local media storage now stages bounded file/data copies atomically,
 uses opaque UUIDv7 object references, streams SHA-256, applies owner-only
 permissions plus Apple Data Protection, and verifies bytes before reads. This
 version is intentionally local-only and does not claim encrypted upload or
-remote restore. Capture composition and recorder/picker surfaces follow
-separately. See
+remote restore. A tested coordinator now copies bytes first, commits exactly one
+capture/ledger/outbox transaction, promotes the manifest afterward, cleans up a
+known failed handoff, and reports post-commit finalization for startup recovery.
+Recorder/picker surfaces follow separately. See
 [`docs/architecture/local-capture-attachments.md`](docs/architecture/local-capture-attachments.md).
 
 ## Accepted orientation state

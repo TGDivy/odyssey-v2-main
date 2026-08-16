@@ -70,7 +70,7 @@ public enum LocalCaptureAttachmentProtection: String, Codable, Hashable, Sendabl
 
 public struct LocalCaptureAttachmentManifest: Codable, Hashable, Sendable {
     public static let currentSchemaVersion = 1
-    public static let objectReferencePrefix = "odyssey-attachment:v1:"
+    public static let objectReferencePrefix = "odyssey-local-attachment:v1:"
 
     public let schemaVersion: Int
     public let attachmentID: UUIDv7
@@ -254,18 +254,23 @@ public struct LocalCaptureAttachmentStoreConfiguration: Hashable, Sendable {
 
 public struct LocalCaptureAttachmentReconciliationReport: Hashable, Sendable {
     public let stagedAttachmentsCommitted: Int
-    public let stagedAttachmentsDiscarded: Int
+    public let stagedAttachmentsAwaitingReview: Int
     public let missingReferencedAttachments: Int
 
     public init(
         stagedAttachmentsCommitted: Int,
-        stagedAttachmentsDiscarded: Int,
+        stagedAttachmentsAwaitingReview: Int,
         missingReferencedAttachments: Int
     ) {
         self.stagedAttachmentsCommitted = stagedAttachmentsCommitted
-        self.stagedAttachmentsDiscarded = stagedAttachmentsDiscarded
+        self.stagedAttachmentsAwaitingReview = stagedAttachmentsAwaitingReview
         self.missingReferencedAttachments = missingReferencedAttachments
     }
+}
+
+public enum LocalCaptureAttachmentRecoveryState: Hashable, Sendable {
+    case completed(LocalCaptureAttachmentReconciliationReport)
+    case requiresRepair
 }
 
 public actor LocalCaptureAttachmentStore {
@@ -431,7 +436,7 @@ public actor LocalCaptureAttachmentStore {
         referencedObjectReferences: Set<String>
     ) throws -> LocalCaptureAttachmentReconciliationReport {
         var committedCount = 0
-        var discardedCount = 0
+        var awaitingReviewCount = 0
         var knownReferences = Set<String>()
         for manifest in try manifests() {
             knownReferences.insert(manifest.objectReference)
@@ -440,8 +445,7 @@ public actor LocalCaptureAttachmentStore {
                 _ = try markCommitted(manifest.attachmentID)
                 committedCount += 1
             } else {
-                try discardStaged(manifest.attachmentID)
-                discardedCount += 1
+                awaitingReviewCount += 1
             }
         }
         let expectedLocalReferences = Set(referencedObjectReferences.filter {
@@ -449,7 +453,7 @@ public actor LocalCaptureAttachmentStore {
         })
         return LocalCaptureAttachmentReconciliationReport(
             stagedAttachmentsCommitted: committedCount,
-            stagedAttachmentsDiscarded: discardedCount,
+            stagedAttachmentsAwaitingReview: awaitingReviewCount,
             missingReferencedAttachments: expectedLocalReferences.subtracting(
                 knownReferences
             ).count

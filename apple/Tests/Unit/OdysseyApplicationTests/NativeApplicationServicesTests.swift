@@ -39,6 +39,7 @@ func localServicesUseStableCredentialIdentityAndApplicationSupportLayout() async
     #expect(configuration.databaseURL.lastPathComponent == "odyssey.sqlite")
     #expect(configuration.databaseURL.path.contains("/Data/"))
     #expect(configuration.preMigrationBackupDirectory.path.hasSuffix("/Backups/Migrations"))
+    #expect(configuration.attachmentDirectory.path.hasSuffix("/Attachments/v1"))
     #expect(FileManager.default.fileExists(atPath: configuration.databaseURL.path))
     #expect(receipt.deviceSequence == 1)
     let diagnostics = try await services.localDiagnostics()
