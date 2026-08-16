@@ -21,6 +21,8 @@ public actor AccessTokenSession: BearerTokenProvider {
     private let clock: @Sendable () -> Date
     private let refreshLeeway: TimeInterval
     private var cachedToken: CachedAccessToken?
+    private var refreshAttempt: RefreshAttempt?
+    private var nextRefreshAttemptID = 0
 
     public init(
         vault: any CredentialVault,
@@ -47,6 +49,7 @@ public actor AccessTokenSession: BearerTokenProvider {
         else {
             throw AuthSessionError.invalidServerResponse
         }
+        cancelRefreshAttempt()
         let deviceID = try await vault.loadOrCreateDeviceID()
         guard enrollment.device.deviceID == deviceID else {
             throw AuthSessionError.deviceMismatch
@@ -70,50 +73,99 @@ public actor AccessTokenSession: BearerTokenProvider {
         {
             return cachedToken.value
         }
-        guard let credential = try await vault.refreshCredential() else {
-            throw AuthSessionError.notEnrolled
+        if let refreshAttempt {
+            return try await resolve(refreshAttempt, requestedAt: now)
         }
-        let deviceID = try await vault.loadOrCreateDeviceID()
-        guard credential.deviceID == deviceID else {
-            throw AuthSessionError.deviceMismatch
-        }
-        guard credential.expiresAt > now else {
-            cachedToken = nil
-            try await vault.clearRefreshCredential()
-            throw AuthSessionError.refreshCredentialExpired
-        }
-        let response = try await client.refreshAccessToken(
-            AccessTokenRefreshRequest(
-                deviceID: credential.deviceID,
-                refreshCredential: credential.value
-            )
+        nextRefreshAttemptID += 1
+        let attempt = RefreshAttempt(
+            id: nextRefreshAttemptID,
+            task: Task { [client, vault] in
+                try Task.checkCancellation()
+                guard let credential = try await vault.refreshCredential() else {
+                    throw AuthSessionError.notEnrolled
+                }
+                try Task.checkCancellation()
+                let deviceID = try await vault.loadOrCreateDeviceID()
+                try Task.checkCancellation()
+                guard credential.deviceID == deviceID else {
+                    throw AuthSessionError.deviceMismatch
+                }
+                guard credential.expiresAt > now else {
+                    try await vault.clearRefreshCredential()
+                    throw AuthSessionError.refreshCredentialExpired
+                }
+                let response = try await client.refreshAccessToken(
+                    AccessTokenRefreshRequest(
+                        deviceID: credential.deviceID,
+                        refreshCredential: credential.value
+                    )
+                )
+                try Task.checkCancellation()
+                guard response.tokenType == "Bearer",
+                      !response.accessToken.isEmpty,
+                      response.accessToken.utf8.count <= 8_192,
+                      response.accessTokenExpiresAt > now
+                else {
+                    throw AuthSessionError.invalidServerResponse
+                }
+                return CachedAccessToken(
+                    value: response.accessToken,
+                    expiresAt: response.accessTokenExpiresAt
+                )
+            }
         )
-        guard response.tokenType == "Bearer",
-              !response.accessToken.isEmpty,
-              response.accessToken.utf8.count <= 8_192,
-              response.accessTokenExpiresAt > now
-        else {
-            throw AuthSessionError.invalidServerResponse
-        }
-        let token = CachedAccessToken(
-            value: response.accessToken,
-            expiresAt: response.accessTokenExpiresAt
-        )
-        cachedToken = token
-        return token.value
+        refreshAttempt = attempt
+        return try await resolve(attempt, requestedAt: now)
     }
 
     public func invalidateAccessToken() {
+        cancelRefreshAttempt()
         cachedToken = nil
     }
 
     public func clearEnrollment() async throws {
+        cancelRefreshAttempt()
         cachedToken = nil
         try await vault.clearRefreshCredential()
+    }
+
+    private func resolve(
+        _ attempt: RefreshAttempt,
+        requestedAt: Date
+    ) async throws -> String {
+        do {
+            let token = try await attempt.task.value
+            if refreshAttempt?.id == attempt.id {
+                cachedToken = token
+                refreshAttempt = nil
+                return token.value
+            }
+            if let cachedToken,
+               cachedToken.expiresAt.timeIntervalSince(requestedAt) > refreshLeeway
+            {
+                return cachedToken.value
+            }
+            throw CancellationError()
+        } catch {
+            if refreshAttempt?.id == attempt.id {
+                refreshAttempt = nil
+            }
+            throw error
+        }
+    }
+
+    private func cancelRefreshAttempt() {
+        refreshAttempt?.task.cancel()
+        refreshAttempt = nil
     }
 }
 
 private struct CachedAccessToken: Sendable {
     let value: String
     let expiresAt: Date
+}
+
+private struct RefreshAttempt: Sendable {
+    let id: Int
+    let task: Task<CachedAccessToken, Error>
 }
