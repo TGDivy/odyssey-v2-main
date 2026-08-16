@@ -413,15 +413,23 @@ public actor LifeModelWorkshopService {
         kind: LifeModelKind,
         versionID: UUIDv7
     ) throws -> [String: JSONValue] {
+        let version = try acceptedVersion(kind: kind, versionID: versionID)
+        return try SyncJSONCoding.makeDecoder().decode(
+            [String: JSONValue].self,
+            from: version.document
+        )
+    }
+
+    private func acceptedVersion(
+        kind: LifeModelKind,
+        versionID: UUIDv7
+    ) throws -> CachedLifeModelVersion {
         guard let version = try store.cachedLifeModelVersions(kind: kind, limit: 1_000)
             .first(where: { $0.versionID == versionID })
         else {
             throw LifeModelWorkshopError.acceptedVersionUnavailable(versionID)
         }
-        return try SyncJSONCoding.makeDecoder().decode(
-            [String: JSONValue].self,
-            from: version.document
-        )
+        return version
     }
 
     private func reviewWarnings(
@@ -643,13 +651,18 @@ public actor LifeModelWorkshopService {
                 }
                 guard season.metadata.id == versionID,
                       season.metadata.revision == versionNumber,
-                      season.supersedesSeasonID == baseVersionID,
                       acceptanceMethod == expectedMethod
                 else {
                     throw LifeModelWorkshopError.invalidDraft(
                         "The season identity, predecessor, or creation source changed inside the draft."
                     )
                 }
+                try validateSeasonLineage(
+                    season,
+                    logicalID: logicalID,
+                    versionNumber: versionNumber,
+                    baseVersionID: baseVersionID
+                )
                 try validateOwnerMetadata(season.metadata)
                 try requireCanonical(season, matches: document)
                 return .season(season)
@@ -659,6 +672,45 @@ public actor LifeModelWorkshopService {
         } catch {
             throw LifeModelWorkshopError.invalidDraft(
                 "The Workshop document does not satisfy the typed life-model contract."
+            )
+        }
+    }
+
+    private func validateSeasonLineage(
+        _ season: Season,
+        logicalID: UUIDv7,
+        versionNumber: Int,
+        baseVersionID: UUIDv7?
+    ) throws {
+        guard let baseVersionID else {
+            guard versionNumber == 1, season.supersedesSeasonID == nil else {
+                throw LifeModelWorkshopError.invalidDraft(
+                    "A first season must begin at version one without a predecessor."
+                )
+            }
+            return
+        }
+        let base = try acceptedVersion(kind: .season, versionID: baseVersionID)
+        let previous = try SyncJSONCoding.makeDecoder().decode(
+            Season.self,
+            from: base.document
+        )
+        if base.logicalID == logicalID {
+            guard versionNumber == base.versionNumber + 1,
+                  season.supersedesSeasonID == previous.supersedesSeasonID
+            else {
+                throw LifeModelWorkshopError.invalidDraft(
+                    "A season revision must preserve its transition lineage and advance once."
+                )
+            }
+            return
+        }
+        guard versionNumber == 1,
+              previous.status == .complete || previous.status == .abandoned,
+              season.supersedesSeasonID == base.logicalID
+        else {
+            throw LifeModelWorkshopError.invalidDraft(
+                "A successor must start at version one and name a terminal outgoing season."
             )
         }
     }

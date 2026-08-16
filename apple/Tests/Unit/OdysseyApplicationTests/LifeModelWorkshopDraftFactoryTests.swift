@@ -59,12 +59,15 @@ func workshopDraftFactoryRevisionPreservesIdentityAndNamesPredecessor() throws {
     let revision = revisions[0]
     let originalCharter = try decodedCharter(initial)
     let revisedCharter = try decodedCharter(revision)
+    let originalSeason = try decodedSeason(proposals[2])
+    let revisedSeason = try decodedSeason(revisions[2])
 
     #expect(revisedCharter.charterID == originalCharter.charterID)
     #expect(revisedCharter.metadata.createdAt == originalCharter.metadata.createdAt)
     #expect(revisedCharter.metadata.lastRevisedAt == draftFactoryDate)
     #expect(revisedCharter.metadata.provenanceID != originalCharter.metadata.provenanceID)
     #expect(revisedCharter.supersedesVersionID == initial.versionID)
+    #expect(revisedSeason.supersedesSeasonID == originalSeason.supersedesSeasonID)
 }
 
 @Test
@@ -93,7 +96,44 @@ func workshopDraftFactoryCreatesSuccessorOnlyAfterTerminalSeason() throws {
     #expect(successor.baseVersionID == active.versionID)
     #expect(successorSeason.status == .calibration)
     #expect(successorSeason.charterRevisionID == charterVersionID)
-    #expect(successorSeason.supersedesSeasonID == active.versionID)
+    #expect(successorSeason.supersedesSeasonID == active.logicalID)
+}
+
+@Test
+func workshopServiceRejectsVersionIdentifiersUsedAsSeasonLineage() async throws {
+    let fixture = try DraftFactoryServiceFixture()
+    defer { fixture.remove() }
+    let factory = try makeFactory(identifierStart: 3_500, provenanceStart: 3_500)
+    let active = try factory.initialSeason(
+        charterVersionID: try draftFactoryIdentifier(903)
+    )
+    var terminalDocument = active.document
+    terminalDocument["status"] = .string(SeasonStatus.complete.rawValue)
+    let terminal = try cachedVersion(
+        from: active,
+        document: terminalDocument,
+        acceptanceSequence: 1
+    )
+    try fixture.store.cacheLifeModelVersion(terminal)
+    let successor = try factory.successorSeason(after: terminal)
+    var malformedDocument = successor.document
+    malformedDocument["supersedes_season_id"] = .string(terminal.versionID.description)
+    let malformed = try LifeModelDraftProposal(
+        kind: successor.kind,
+        versionID: successor.versionID,
+        logicalID: successor.logicalID,
+        versionNumber: successor.versionNumber,
+        baseVersionID: successor.baseVersionID,
+        acceptanceMethod: successor.acceptanceMethod,
+        document: malformedDocument
+    )
+
+    await #expect(throws: LifeModelWorkshopError.self) {
+        try await fixture.service.createDraft(malformed)
+    }
+    let created = try await fixture.service.createDraft(successor)
+    #expect(created.baseVersionID == terminal.versionID)
+    #expect(try decodedSeason(successor).supersedesSeasonID == terminal.logicalID)
 }
 
 @Test
@@ -117,6 +157,7 @@ func workshopDraftFactoryProposalsPassWorkshopValidation() async throws {
 
 private struct DraftFactoryServiceFixture {
     let directory: URL
+    let store: SQLiteLedgerStore
     let service: LifeModelWorkshopService
 
     init() throws {
@@ -129,7 +170,7 @@ private struct DraftFactoryServiceFixture {
             withIntermediateDirectories: true
         )
         let deviceID = try draftFactoryIdentifier(990)
-        let store = try SQLiteLedgerStore(
+        store = try SQLiteLedgerStore(
             configuration: SQLiteLedgerConfiguration(
                 databaseURL: directory.appendingPathComponent("ledger.sqlite3"),
                 deviceID: deviceID,

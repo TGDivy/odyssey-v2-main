@@ -358,7 +358,7 @@ public struct LifeModelWorkshopDraftFactory: Sendable {
                     transitionTriggers: current.transitionTriggers,
                     reviewCadence: current.reviewCadence,
                     transitionNotes: current.transitionNotes,
-                    supersedesSeasonID: accepted.versionID,
+                    supersedesSeasonID: current.supersedesSeasonID,
                     primaryOverrideExplanation: current.primaryOverrideExplanation
                 )
                 return try proposal(
@@ -426,7 +426,7 @@ public struct LifeModelWorkshopDraftFactory: Sendable {
             transitionTriggers: current.transitionTriggers,
             reviewCadence: "Every two weeks during calibration",
             transitionNotes: "Carry forward only what still fits after reviewing the outgoing season.",
-            supersedesSeasonID: accepted.versionID,
+            supersedesSeasonID: accepted.logicalID,
             primaryOverrideExplanation: current.primaryOverrideExplanation
         )
         return try proposal(
