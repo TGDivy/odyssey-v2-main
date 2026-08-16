@@ -76,6 +76,7 @@ final class OdysseyAppModel: ObservableObject {
             await refreshDiagnostics()
             refreshRecentCaptures()
             await refreshWorkshop()
+            await refreshFoodQuickLog()
             Task { [weak self] in
                 await self?.resumePendingCaptureInterpretations()
             }
@@ -191,6 +192,126 @@ final class OdysseyAppModel: ObservableObject {
 
     func dismissCaptureStatus() {
         apply(.captureDismissed)
+    }
+
+    func refreshFoodQuickLog() async {
+        guard localServices != nil, state.localReadiness == .ready else { return }
+        apply(.foodLoadStarted)
+        do {
+            apply(.foodLoaded(try await foodQuickLogSnapshot(at: Date())))
+        } catch let error as LocalizedError {
+            apply(.foodFailed(
+                error.errorDescription ?? "The food library could not be read safely."
+            ))
+        } catch {
+            apply(.foodFailed("The food library could not be read safely."))
+        }
+    }
+
+    func createFoodPreset(_ draft: FoodPresetDraft) async -> Bool {
+        guard let localServices, state.canUseFoodQuickLog else { return false }
+        apply(.foodMutationStarted)
+        do {
+            let receipt = try await localServices.foodPresetService.create(
+                draft,
+                sensitivity: .sensitive
+            )
+            await completeFoodMutation(.presetCreated(receipt.preset.metadata.id))
+            return true
+        } catch let error as LocalizedError {
+            apply(.foodFailed(error.errorDescription ?? "The food preset was not saved."))
+        } catch {
+            apply(.foodFailed("The food preset was not saved."))
+        }
+        return false
+    }
+
+    func logFood(
+        preset: FoodPreset,
+        quantity: Double = 1,
+        occurredAt: Date = Date()
+    ) async -> Bool {
+        guard let localServices, state.canUseFoodQuickLog else { return false }
+        apply(.foodMutationStarted)
+        do {
+            let receipt = try await localServices.foodOccurrenceService.record(
+                FoodOccurrenceDraft(
+                    presetID: preset.metadata.id,
+                    expectedPresetRevision: preset.metadata.revision,
+                    quantity: quantity,
+                    occurredAt: occurredAt,
+                    timeZoneID: TimeZone.current.identifier
+                )
+            )
+            await completeFoodMutation(.occurrenceRecorded(
+                receipt.occurrence.metadata.id,
+                at: receipt.occurrence.occurredAt
+            ))
+            return true
+        } catch let error as LocalizedError {
+            apply(.foodFailed(error.errorDescription ?? "The food was not logged."))
+        } catch {
+            apply(.foodFailed("The food was not logged."))
+        }
+        return false
+    }
+
+    func correctFoodOccurrence(
+        _ occurrence: FoodOccurrence,
+        preset: FoodPreset,
+        quantity: Double,
+        occurredAt: Date
+    ) async -> Bool {
+        guard let localServices, state.canUseFoodQuickLog else { return false }
+        apply(.foodMutationStarted)
+        do {
+            let receipt = try await localServices.foodOccurrenceService.correct(
+                occurrenceID: occurrence.metadata.id,
+                draft: FoodOccurrenceCorrectionDraft(
+                    expectedOccurrenceRevision: occurrence.metadata.revision,
+                    presetID: preset.metadata.id,
+                    expectedPresetRevision: preset.metadata.revision,
+                    quantity: quantity,
+                    occurredAt: occurredAt,
+                    timeZoneID: TimeZone.current.identifier
+                )
+            )
+            await completeFoodMutation(.occurrenceCorrected(
+                receipt.occurrence.metadata.id,
+                at: receipt.occurrence.metadata.lastRevisedAt
+            ))
+            return true
+        } catch let error as LocalizedError {
+            apply(.foodFailed(error.errorDescription ?? "The correction was not saved."))
+        } catch {
+            apply(.foodFailed("The correction was not saved."))
+        }
+        return false
+    }
+
+    func voidFoodOccurrence(_ occurrence: FoodOccurrence) async -> Bool {
+        guard let localServices, state.canUseFoodQuickLog else { return false }
+        apply(.foodMutationStarted)
+        do {
+            let receipt = try await localServices.foodOccurrenceService.void(
+                occurrenceID: occurrence.metadata.id,
+                expectedRevision: occurrence.metadata.revision
+            )
+            await completeFoodMutation(.occurrenceVoided(
+                receipt.occurrence.metadata.id,
+                at: receipt.occurrence.metadata.lastRevisedAt
+            ))
+            return true
+        } catch let error as LocalizedError {
+            apply(.foodFailed(error.errorDescription ?? "The food log was not voided."))
+        } catch {
+            apply(.foodFailed("The food log was not voided."))
+        }
+        return false
+    }
+
+    func dismissFoodStatus() {
+        apply(.foodDismissed)
     }
 
     func refreshCaptureArchive() async {
@@ -521,6 +642,48 @@ final class OdysseyAppModel: ObservableObject {
             apply(.diagnosticsUpdated(try await localServices.localDiagnostics()))
         } catch {
             return
+        }
+    }
+
+    private func foodQuickLogSnapshot(at date: Date) async throws -> FoodQuickLogSnapshot {
+        guard let localServices else {
+            throw FoodOccurrenceServiceError.invalidConfiguration(
+                "The local food library is unavailable."
+            )
+        }
+        let presets = try await localServices.foodPresetService.activePresets()
+        let usages = try await localServices.foodOccurrenceService.rankingUsages()
+        let occurrences = try await localServices.foodOccurrenceService.recentOccurrences(
+            limit: 20
+        )
+        return try FoodQuickLogProjector.project(
+            presets: presets,
+            usages: usages,
+            recentOccurrences: occurrences,
+            at: date,
+            timeZoneID: TimeZone.current.identifier
+        )
+    }
+
+    private func completeFoodMutation(_ success: FoodQuickLogSuccess) async {
+        let fallback = state.foodSnapshot
+        do {
+            apply(.foodMutationSucceeded(success, try await foodQuickLogSnapshot(at: Date())))
+        } catch {
+            if let fallback {
+                apply(.foodMutationSucceeded(success, fallback))
+            } else {
+                apply(.foodFailed(
+                    "The food change was saved, but the local library could not be refreshed."
+                ))
+            }
+        }
+        await refreshDiagnostics()
+        scheduleBackgroundRefresh()
+        if state.canSynchronize {
+            Task { [weak self] in
+                await self?.synchronize()
+            }
         }
     }
 

@@ -125,8 +125,8 @@ protein grams, caffeine milligrams, and alcohol grams. A versioned pure ranker
 orders active presets from a 90-day usage window using repeated coarse local
 context, recent and total frequency, recency, and stable lexical/UUID ties; its
 frequency-only fallback uses the same auditable outputs. This slice has no
-quick-log UI, HealthKit write, recipe/restaurant model, or live experiment
-assignment. Preset create, optimistic revision, and archive
+HealthKit write, recipe/restaurant model, or live experiment assignment. Preset
+create, optimistic revision, and archive
 now commit an immutable local ledger event, current projection, and sync-outbox
 operation atomically; updates send only changed fields and archives are true
 tombstones. See
@@ -142,8 +142,11 @@ tombstone. Every mutation atomically commits its local ledger event, complete
 projection, and ordered sync operation; active occurrences also supply the
 ranker's usage history. Existing occurrence snapshots retain their exact preset
 revision/name/serving, quantity, total kcal/protein/caffeine/alcohol values,
-occurrence time, IANA zone, and original UTC offset. No native quick-log surface
-or permission-gated HealthKit write exists yet.
+occurrence time, IANA zone, and original UTC offset. The iPhone Now surface and
+global quick-action menu open a local-first food sheet with four ranked one-tap
+presets, searchable fallback, preset creation, recent history, and explicit
+correction/void flows. Those sources are parser-validated only; no Xcode,
+accessibility, device timing, or permission-gated HealthKit write is claimed.
 
 ## Accepted orientation state
 

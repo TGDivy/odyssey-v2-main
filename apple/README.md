@@ -140,8 +140,12 @@ occurrence time, IANA zone, and original UTC offset. `FoodOccurrenceService` is
 composed during native bootstrap and atomically records, optimistically
 corrects, or tombstones occurrences across the ledger, current projection, and
 sync outbox. Active occurrences produce deterministic ranking history without
-rewriting older preset snapshots. A native quick-log surface, HealthKit side
-effect, and live ranking experiment remain absent.
+rewriting older preset snapshots. The iPhone Now surface and global quick-action
+menu now open a local-first food sheet with four deterministic suggestions,
+search across all presets and aliases, preset creation, recent history, and
+explicit correction/void actions. A portable projector/reducer owns loading and
+mutation state. The SwiftUI source is parser-validated but not Xcode-built or
+device-timed; HealthKit side effects and a live ranking experiment remain absent.
 
 `LocalCaptureAttachmentStore` now supplies the protected local object boundary
 needed by voice/photo/file capture. It copies files through a bounded stream,
@@ -203,7 +207,7 @@ swift test --package-path apple
 ../tools/apple/generate-project.sh
 ```
 
-The portable package currently reports 116 tests passing under the official
+The portable package currently reports 118 tests passing under the official
 Swift 6.1 release toolchain on Linux. That result does not type-check SwiftUI or
 replace the required Xcode, simulator, accessibility, signing, and device runs.
 

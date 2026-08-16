@@ -71,8 +71,10 @@ public struct ApplicationFeatureState: Equatable, Sendable {
     public var syncPhase: ApplicationSyncPhase
     public var maintenancePhase: ApplicationMaintenancePhase
     public var workshopPhase: ApplicationWorkshopPhase
+    public var foodPhase: ApplicationFoodPhase
     public var diagnostics: NativeSyncDiagnostics?
     public var recentCaptures: [CaptureRecord]
+    public var foodSnapshot: FoodQuickLogSnapshot?
     public var workshopSnapshot: LifeModelWorkshopSnapshot?
     public var workshopReview: LifeModelDraftReview?
 
@@ -84,8 +86,10 @@ public struct ApplicationFeatureState: Equatable, Sendable {
         syncPhase: ApplicationSyncPhase = .idle,
         maintenancePhase: ApplicationMaintenancePhase = .idle,
         workshopPhase: ApplicationWorkshopPhase = .idle,
+        foodPhase: ApplicationFoodPhase = .idle,
         diagnostics: NativeSyncDiagnostics? = nil,
         recentCaptures: [CaptureRecord] = [],
+        foodSnapshot: FoodQuickLogSnapshot? = nil,
         workshopSnapshot: LifeModelWorkshopSnapshot? = nil,
         workshopReview: LifeModelDraftReview? = nil
     ) {
@@ -96,8 +100,10 @@ public struct ApplicationFeatureState: Equatable, Sendable {
         self.syncPhase = syncPhase
         self.maintenancePhase = maintenancePhase
         self.workshopPhase = workshopPhase
+        self.foodPhase = foodPhase
         self.diagnostics = diagnostics
         self.recentCaptures = recentCaptures
+        self.foodSnapshot = foodSnapshot
         self.workshopSnapshot = workshopSnapshot
         self.workshopReview = workshopReview
     }
@@ -114,6 +120,10 @@ public struct ApplicationFeatureState: Equatable, Sendable {
 
     public var canUseWorkshop: Bool {
         localReadiness == .ready && !workshopPhase.isBusy
+    }
+
+    public var canUseFoodQuickLog: Bool {
+        localReadiness == .ready && foodSnapshot != nil && !foodPhase.isBusy
     }
 }
 
@@ -136,6 +146,12 @@ public enum ApplicationFeatureAction: Equatable, Sendable {
     case syncFailed(String)
     case diagnosticsUpdated(NativeSyncDiagnostics)
     case recentCapturesUpdated([CaptureRecord])
+    case foodLoadStarted
+    case foodLoaded(FoodQuickLogSnapshot)
+    case foodMutationStarted
+    case foodMutationSucceeded(FoodQuickLogSuccess, FoodQuickLogSnapshot)
+    case foodFailed(String)
+    case foodDismissed
     case maintenanceStarted
     case maintenanceSucceeded(String)
     case maintenanceFailed(String)
@@ -176,6 +192,8 @@ public enum ApplicationFeatureReducer {
             state.syncPhase = .idle
             state.diagnostics = nil
             state.recentCaptures = []
+            state.foodPhase = .idle
+            state.foodSnapshot = nil
             state.workshopPhase = .idle
             state.workshopSnapshot = nil
             state.workshopReview = nil
@@ -229,6 +247,31 @@ public enum ApplicationFeatureReducer {
         case let .recentCapturesUpdated(captures):
             guard state.localReadiness == .ready else { return }
             state.recentCaptures = captures
+        case .foodLoadStarted:
+            guard state.localReadiness == .ready,
+                  !state.foodPhase.isBusy
+            else { return }
+            state.foodPhase = .loading
+        case let .foodLoaded(snapshot):
+            guard state.foodPhase == .loading else { return }
+            state.foodSnapshot = snapshot
+            state.foodPhase = .ready
+        case .foodMutationStarted:
+            guard state.localReadiness == .ready,
+                  state.foodSnapshot != nil,
+                  !state.foodPhase.isBusy
+            else { return }
+            state.foodPhase = .saving
+        case let .foodMutationSucceeded(success, snapshot):
+            guard state.foodPhase == .saving else { return }
+            state.foodSnapshot = snapshot
+            state.foodPhase = .succeeded(success)
+        case let .foodFailed(message):
+            guard state.foodPhase.isBusy else { return }
+            state.foodPhase = .failed(message)
+        case .foodDismissed:
+            guard !state.foodPhase.isBusy else { return }
+            state.foodPhase = state.foodSnapshot == nil ? .idle : .ready
         case .maintenanceStarted:
             guard state.localReadiness == .ready,
                   state.maintenancePhase != .running

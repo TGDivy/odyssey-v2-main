@@ -18,6 +18,7 @@ struct RootView: View {
     @EnvironmentObject private var model: OdysseyAppModel
     @State private var selection: PrimarySpace = .now
     @State private var isCapturePresented = false
+    @State private var isFoodLogPresented = false
 
     var body: some View {
         Group {
@@ -43,12 +44,16 @@ struct RootView: View {
             CaptureSheet()
                 .environmentObject(model)
         }
+        .sheet(isPresented: $isFoodLogPresented) {
+            FoodQuickLogView()
+                .environmentObject(model)
+        }
     }
 
     private var tabs: some View {
         TabView(selection: $selection) {
             NavigationStack {
-                NowView(openCapture: presentCapture)
+                NowView(openCapture: presentCapture, openFood: presentFoodLog)
             }
             .tabItem { Label("Now", systemImage: "location.fill") }
             .tag(PrimarySpace.now)
@@ -72,15 +77,22 @@ struct RootView: View {
             .tag(PrimarySpace.workshop)
         }
         .overlay(alignment: .bottomTrailing) {
-            Button(action: presentCapture) {
+            Menu {
+                Button(action: presentFoodLog) {
+                    Label("Log Food", systemImage: "fork.knife")
+                }
+                Button(action: presentCapture) {
+                    Label("Capture", systemImage: "square.and.pencil")
+                }
+            } label: {
                 Image(systemName: "square.and.pencil")
                     .font(.title2)
                     .frame(width: 52, height: 52)
             }
             .buttonStyle(.borderedProminent)
             .buttonBorderShape(.circle)
-            .accessibilityLabel("Capture")
-            .accessibilityHint("Saves a note to the local ledger before any network request")
+            .accessibilityLabel("Quick actions")
+            .accessibilityHint("Log food or save a capture locally before any network request")
             .padding(.trailing, 20)
             .padding(.bottom, 72)
         }
@@ -89,6 +101,11 @@ struct RootView: View {
     private func presentCapture() {
         model.dismissCaptureStatus()
         isCapturePresented = true
+    }
+
+    private func presentFoodLog() {
+        model.dismissFoodStatus()
+        isFoodLogPresented = true
     }
 }
 
@@ -788,6 +805,7 @@ private func captureJSONDescription(_ value: JSONValue) -> String {
 private struct NowView: View {
     @EnvironmentObject private var model: OdysseyAppModel
     let openCapture: () -> Void
+    let openFood: () -> Void
 
     private let context = DeterministicContextProjector().project(
         DeterministicContextInput(
@@ -807,8 +825,12 @@ private struct NowView: View {
                 } description: {
                     Text("Odyssey is intentionally quiet. Your current state is \(context.rawValue).")
                 } actions: {
-                    Button("Capture", action: openCapture)
-                        .buttonStyle(.borderedProminent)
+                    HStack {
+                        Button("Log Food", action: openFood)
+                            .buttonStyle(.borderedProminent)
+                        Button("Capture", action: openCapture)
+                            .buttonStyle(.bordered)
+                    }
                 }
 
                 if let diagnostics = model.state.diagnostics,

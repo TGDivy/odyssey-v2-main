@@ -128,25 +128,32 @@ usage history.
 
 ## Current boundary
 
-This slice does **not** provide a quick-log UI, HealthKit writes, a cross-stack
+The iPhone Now surface and global quick-action menu now open a local-first
+quick-log sheet. It presents the top four deterministic context/frequency
+results as one-tap one-serving logs, supports alias-aware search across all
+active presets, creates owner-estimated presets without requesting Health
+permission, and exposes recent corrections and voids as explicit revision
+actions. Portable projector/reducer state keeps loading and mutation transitions
+deterministic. This slice does **not** provide HealthKit writes, a cross-stack
 occurrence-event consumer, or a live experiment assignment. Generated schemas
 register both preset and both occurrence event names. Backend
 integration proves that native-shaped disjoint edits normalize mechanical
 metadata and converge while overlapping owner fields remain conflicts; a
 portable pull-persistence regression proves the resulting canonical document is
 still a valid `FoodPreset`. No authenticated physical two-device run has been
-performed, so live convergence remains owner evidence. Native UI, permission,
-and integration slices remain. In particular, the presence of
+performed, so live convergence remains owner evidence. Xcode/accessibility,
+warm-device timing, permission, and integration proof remain. In particular,
+the presence of
 optional nutrient values does not authorize HealthKit access or write anything
 to Apple Health.
 
-Sixteen focused tests cover value validation, time-zone-aware context derivation,
+Eighteen focused tests cover value validation, time-zone-aware context derivation,
 both ranking strategies, threshold behavior, deterministic ordering, excluded
 history, idempotent deduplication, fail-closed identity handling, atomic preset
 lifecycle commits, partial/null sync payloads, optimistic revision, and
 tombstones, including server-normalized pull materialization, immutable
 occurrence snapshots, DST-aware offsets, malformed nutrient rejection, and
 atomic occurrence record/correct/void behavior. The full portable Swift package
-reports 116 tests passing under the official Swift
+reports 118 tests passing under the official Swift
 6.1 Linux toolchain. This does not type-check SwiftUI or prove Xcode, HealthKit,
 signing, simulator, accessibility, or physical-device behavior.
