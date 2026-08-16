@@ -10,6 +10,7 @@ public enum HealthImportError: Error, Equatable, Sendable {
     case invalidBatch
     case duplicateProjectionIdentity
     case unexpectedSyntheticCursor
+    case invalidObservation
 }
 
 public enum HealthSampleKind: String, Codable, CaseIterable, Hashable, Sendable {
@@ -239,6 +240,23 @@ public protocol IncrementalHealthImporting: Sendable {
     ) async throws -> HealthImportBatch
 }
 
+public enum HealthChangeObservationState: String, Codable, Hashable, Sendable {
+    case unsupported
+    case inactive
+    case active
+}
+
+public typealias HealthChangeHandler = @Sendable (HealthSampleKind) async -> Void
+
+public protocol HealthChangeObserving: Sendable {
+    func changeObservationState() async -> HealthChangeObservationState
+    func startObservingChanges(
+        for kinds: Set<HealthSampleKind>,
+        handler: @escaping HealthChangeHandler
+    ) async throws -> HealthChangeObservationState
+    func stopObservingChanges() async
+}
+
 public struct HealthImportProjection: Sendable {
     public let samples: [HealthImportedSample]
     public let cursors: [HealthSampleKind: HealthImportCursor]
@@ -370,12 +388,16 @@ public struct SyntheticHealthImportPage: Hashable, Sendable {
     }
 }
 
-public actor SyntheticHealthImportAdapter: IncrementalHealthImporting {
+public actor SyntheticHealthImportAdapter: IncrementalHealthImporting,
+    HealthChangeObserving
+{
     private let importCapability: HealthImportCapability
     private let authorizationAfterRequest: IntegrationPermissionState
     private let pages: [HealthSampleKind: [SyntheticHealthImportPage]]
     private let clock: @Sendable () -> Date
     private var permission: IntegrationPermissionState
+    private var observedKinds = Set<HealthSampleKind>()
+    private var changeHandler: HealthChangeHandler?
 
     public init(
         capability: HealthImportCapability,
@@ -437,6 +459,41 @@ public actor SyntheticHealthImportAdapter: IncrementalHealthImporting {
             throw HealthImportError.unexpectedSyntheticCursor
         }
         return page.batch
+    }
+
+    public func changeObservationState() async -> HealthChangeObservationState {
+        changeHandler == nil ? .inactive : .active
+    }
+
+    public func startObservingChanges(
+        for kinds: Set<HealthSampleKind>,
+        handler: @escaping HealthChangeHandler
+    ) async throws -> HealthChangeObservationState {
+        guard !kinds.isEmpty,
+              importCapability.availability == .available,
+              kinds.isSubset(of: importCapability.supportedKinds)
+        else {
+            throw HealthImportError.invalidObservation
+        }
+        observedKinds = kinds
+        changeHandler = handler
+        return .active
+    }
+
+    public func stopObservingChanges() async {
+        observedKinds.removeAll()
+        changeHandler = nil
+    }
+
+    @discardableResult
+    public func emitObservedChange(
+        for kind: HealthSampleKind
+    ) async -> Bool {
+        guard observedKinds.contains(kind), let changeHandler else {
+            return false
+        }
+        await changeHandler(kind)
+        return true
     }
 
     private func unavailableBatch(

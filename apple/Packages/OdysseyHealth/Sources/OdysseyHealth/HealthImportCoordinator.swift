@@ -60,16 +60,21 @@ public struct HealthImportOverview: Sendable {
     public let permission: IntegrationPermissionState
     public let sampleCountByKind: [HealthSampleKind: Int]
     public let newestSourceTimestamp: Date?
+    public let cursorKindCount: Int
+    public let changeObservationState: HealthChangeObservationState
 
     public init(
         observedAt: Date,
         capability: HealthImportCapability,
         permission: IntegrationPermissionState,
         sampleCountByKind: [HealthSampleKind: Int],
-        newestSourceTimestamp: Date?
+        newestSourceTimestamp: Date?,
+        cursorKindCount: Int = 0,
+        changeObservationState: HealthChangeObservationState = .unsupported
     ) throws {
         guard observedAt.timeIntervalSinceReferenceDate.isFinite,
-              newestSourceTimestamp?.timeIntervalSinceReferenceDate.isFinite ?? true
+              newestSourceTimestamp?.timeIntervalSinceReferenceDate.isFinite ?? true,
+              (0 ... HealthSampleKind.allCases.count).contains(cursorKindCount)
         else {
             throw HealthImportError.invalidClock
         }
@@ -78,6 +83,8 @@ public struct HealthImportOverview: Sendable {
         self.permission = permission
         self.sampleCountByKind = sampleCountByKind
         self.newestSourceTimestamp = newestSourceTimestamp
+        self.cursorKindCount = cursorKindCount
+        self.changeObservationState = changeObservationState
     }
 
     public var totalSampleCount: Int {
@@ -112,6 +119,24 @@ public actor HealthImportCoordinator {
     ) async throws -> IntegrationPermissionState {
         guard !kinds.isEmpty else { return .notRequired }
         return try await importer.requestAuthorization(for: kinds)
+    }
+
+    public func startChangeObservation(
+        for kinds: Set<HealthSampleKind>,
+        handler: @escaping HealthChangeHandler
+    ) async throws -> HealthChangeObservationState {
+        guard let observer = importer as? any HealthChangeObserving else {
+            return .unsupported
+        }
+        return try await observer.startObservingChanges(
+            for: kinds,
+            handler: handler
+        )
+    }
+
+    public func stopChangeObservation() async {
+        guard let observer = importer as? any HealthChangeObserving else { return }
+        await observer.stopObservingChanges()
     }
 
     public func importChanges(
@@ -224,26 +249,39 @@ public actor HealthImportCoordinator {
         }
         var sampleCountByKind = [HealthSampleKind: Int]()
         var newestSourceTimestamp: Date?
+        var cursorKindCount = 0
         for kind in HealthSampleKind.allCases {
             let snapshot = try await localSnapshot(for: kind)
             sampleCountByKind[kind] = snapshot.samples.count
+            if snapshot.cursor != nil {
+                cursorKindCount += 1
+            }
             if let newest = snapshot.samples.map(\.endDate).max(),
                newestSourceTimestamp.map({ newest > $0 }) ?? true
             {
                 newestSourceTimestamp = newest
             }
         }
+        let changeObservationState: HealthChangeObservationState
+        if let observer = importer as? any HealthChangeObserving {
+            changeObservationState = await observer.changeObservationState()
+        } else {
+            changeObservationState = .unsupported
+        }
         return try HealthImportOverview(
             observedAt: observedAt,
             capability: capability,
             permission: permission,
             sampleCountByKind: sampleCountByKind,
-            newestSourceTimestamp: newestSourceTimestamp
+            newestSourceTimestamp: newestSourceTimestamp,
+            cursorKindCount: cursorKindCount,
+            changeObservationState: changeObservationState
         )
     }
 
     public func revokeLocalHealthData() async throws -> Int {
-        try await store.clearIntegrationData(connector: .health)
+        await stopChangeObservation()
+        return try await store.clearIntegrationData(connector: .health)
     }
 
     private static func normalizedPage(
