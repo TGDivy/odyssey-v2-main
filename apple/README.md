@@ -158,8 +158,13 @@ Xcode-built or device-tested; a live ranking experiment also remains absent.
 text/opaque-preset food commands and a Data-Protected, backup-excluded atomic
 App Group file queue with UUID idempotency, claim/ack/retry, malformed-command
 quarantine, and interrupted-claim recovery. Extensions still do not write the
-ledger directly. App Intent/widget/control producers, iPhone draining, and
-WatchConnectivity remain separate implementation slices; see
+ledger directly. The text App Intent queues offline without opening Odyssey,
+while the food intent opens the private ranked sheet without publishing preset
+labels. The iPhone performs bounded non-reentrant startup/foreground/background
+drains through a portable-tested processor. Command identity is reused for the
+entity and outbox operation, so post-commit crash replay verifies the projection
+instead of duplicating it. Widget/control producers and WatchConnectivity remain
+separate implementation slices; see
 [`docs/architecture/extension-quick-capture.md`](../docs/architecture/extension-quick-capture.md).
 
 `LocalCaptureAttachmentStore` now supplies the protected local object boundary
@@ -222,7 +227,7 @@ swift test --package-path apple
 ../tools/apple/generate-project.sh
 ```
 
-The portable package currently reports 122 tests passing under the official
+The portable package currently reports 126 tests passing under the official
 Swift 6.1 release toolchain on Linux. That result does not type-check SwiftUI or
 replace the required Xcode, simulator, accessibility, signing, and device runs.
 

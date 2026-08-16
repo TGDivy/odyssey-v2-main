@@ -7,6 +7,7 @@ import OdysseyApplication
 import OdysseyAuth
 import OdysseyData
 import OdysseyDomain
+import OdysseyExtensionBridge
 import OdysseyHealth
 import OdysseySync
 import UIKit
@@ -30,11 +31,15 @@ final class OdysseyAppModel: ObservableObject {
     @Published private(set) var state = ApplicationFeatureState()
     @Published private(set) var foodHealthAuthorization: FoodHealthAuthorizationState = .unavailable
     @Published private(set) var foodHealthMessage: String?
+    @Published private(set) var extensionCommandMessage: String?
 
     private var localServices: NativeLocalServices?
     private var remoteServices: NativeRemoteServices?
     private var workshopDraftFactory: LifeModelWorkshopDraftFactory?
     private var isBootstrapping = false
+    private var isDrainingExtensionCommands = false
+    private var extensionCommandQueue: ExtensionCommandQueue?
+    private var extensionCommandProcessor: ExtensionCommandProcessor?
 
     #if canImport(HealthKit)
     private let foodHealthCoordinator = FoodHealthWriteCoordinator(
@@ -69,6 +74,9 @@ final class OdysseyAppModel: ObservableObject {
         localServices = nil
         remoteServices = nil
         workshopDraftFactory = nil
+        extensionCommandQueue = nil
+        extensionCommandProcessor = nil
+        extensionCommandMessage = nil
 
         let local: NativeLocalServices
         do {
@@ -81,11 +89,23 @@ final class OdysseyAppModel: ObservableObject {
                 configuration: localConfiguration
             )
             localServices = local
+            extensionCommandProcessor = ExtensionCommandProcessor(
+                store: local.ledgerStore,
+                captureService: local.captureService,
+                foodOccurrenceService: local.foodOccurrenceService
+            )
+            do {
+                extensionCommandQueue = try makeExtensionCommandQueue()
+            } catch {
+                extensionCommandMessage =
+                    "Extension quick capture is unavailable until the App Group is configured."
+            }
             apply(.localReady)
             await refreshDiagnostics()
             refreshRecentCaptures()
             await refreshWorkshop()
             await refreshFoodQuickLog()
+            await drainExtensionCommands()
             if foodHealthAuthorization == .authorized {
                 Task { [weak self] in
                     await self?.reconcileFoodHealthWrites()
@@ -381,6 +401,10 @@ final class OdysseyAppModel: ObservableObject {
         foodHealthMessage = nil
     }
 
+    func dismissExtensionCommandMessage() {
+        extensionCommandMessage = nil
+    }
+
     func refreshCaptureArchive() async {
         refreshRecentCaptures()
         await refreshDiagnostics()
@@ -475,6 +499,7 @@ final class OdysseyAppModel: ObservableObject {
     }
 
     func performBackgroundRefresh() async {
+        await processPendingExtensionCommands()
         await resumePendingCaptureInterpretations()
         guard let remoteServices, state.canSynchronize else { return }
         await withTaskCancellationHandler {
@@ -493,6 +518,10 @@ final class OdysseyAppModel: ObservableObject {
         )
         request.earliestBeginDate = Date().addingTimeInterval(15 * 60)
         try? BGTaskScheduler.shared.submit(request)
+    }
+
+    func processPendingExtensionCommands() async {
+        await drainExtensionCommands()
     }
 
     func verifyLocalData() async {
@@ -1014,6 +1043,96 @@ final class OdysseyAppModel: ObservableObject {
                 isDirectory: true
             )
         )
+    }
+
+    private func makeExtensionCommandQueue() throws -> ExtensionCommandQueue {
+        guard let appGroup = Bundle.main.object(
+            forInfoDictionaryKey: "ODYSSEY_APP_GROUP"
+        ) as? String,
+            !appGroup.isEmpty
+        else {
+            throw ExtensionCommandError.appGroupUnavailable
+        }
+        return try ExtensionCommandQueue(
+            rootDirectory: ExtensionCommandQueue.appGroupRoot(identifier: appGroup)
+        )
+    }
+
+    private func drainExtensionCommands(limit: Int = 50) async {
+        guard !isDrainingExtensionCommands else { return }
+        guard let queue = extensionCommandQueue,
+              let processor = extensionCommandProcessor
+        else { return }
+        isDrainingExtensionCommands = true
+        defer { isDrainingExtensionCommands = false }
+        do {
+            _ = try await queue.recoverInterruptedClaims()
+            var processedCount = 0
+            commandLoop: for _ in 0 ..< limit {
+                guard let claim = try await queue.claimNext() else { break }
+                do {
+                    let result = try await processor.process(
+                        claim.command,
+                        captureTimeZoneID: TimeZone.current.identifier,
+                        captureLocationPermissionState: .unavailable
+                    )
+                    switch result {
+                    case let .captureCommitted(receipt):
+                        Task { [weak self] in
+                            await self?.interpretCapture(receipt.capture.metadata.id)
+                        }
+                    case let .captureAlreadyCommitted(capture):
+                        Task { [weak self] in
+                            await self?.interpretCapture(capture.metadata.id)
+                        }
+                    case let .foodCommitted(receipt):
+                        Task { [weak self, occurrence = receipt.occurrence] in
+                            await self?.writeFoodOccurrenceToHealth(occurrence)
+                        }
+                    case let .foodAlreadyCommitted(occurrence):
+                        Task { [weak self] in
+                            await self?.writeFoodOccurrenceToHealth(occurrence)
+                        }
+                    }
+                    try await queue.acknowledge(claim)
+                    if result.committedNewMutation {
+                        processedCount += 1
+                    }
+                } catch let error as FoodOccurrenceServiceError {
+                    switch error {
+                    case .presetNotFound, .invalidPresetProjection, .stalePresetRevision,
+                         .presetArchived, .invalidConfiguration:
+                        try await queue.reject(claim)
+                        continue
+                    default:
+                        try await queue.retry(claim)
+                        break commandLoop
+                    }
+                } catch let error as ExtensionCommandError {
+                    _ = error
+                    try await queue.reject(claim)
+                    continue
+                } catch let error as ExtensionCommandProcessingError {
+                    _ = error
+                    try await queue.reject(claim)
+                    continue
+                } catch {
+                    try await queue.retry(claim)
+                    break commandLoop
+                }
+            }
+            if processedCount > 0 {
+                extensionCommandMessage = "Committed \(processedCount) extension command"
+                    + "\(processedCount == 1 ? "" : "s") to the local ledger."
+                refreshRecentCaptures()
+                await refreshFoodQuickLog()
+                await refreshDiagnostics()
+                scheduleBackgroundRefresh()
+            }
+        } catch {
+            extensionCommandMessage =
+                "Extension commands remain protected and will retry on the next launch."
+        }
     }
 
     private func makeRemoteConfiguration() throws -> NativeRemoteConfiguration {

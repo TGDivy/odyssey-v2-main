@@ -68,6 +68,7 @@ targets:
         ODYSSEY_APPLE_CLIENT_ID: $(ODYSSEY_APPLE_CLIENT_ID)
         ODYSSEY_ENVIRONMENT: $(ODYSSEY_ENVIRONMENT)
         ODYSSEY_BACKGROUND_REFRESH_IDENTIFIER: $(ODYSSEY_BUNDLE_PREFIX).refresh
+        ODYSSEY_APP_GROUP: $(ODYSSEY_APP_GROUP)
     dependencies:
       - package: OdysseyPackages
         product: OdysseyDomain
@@ -79,6 +80,8 @@ targets:
         product: OdysseyAuth
       - package: OdysseyPackages
         product: OdysseyApplication
+      - package: OdysseyPackages
+        product: OdysseyExtensionBridge
       - package: OdysseyPackages
         product: OdysseyHealth
       - package: OdysseyPackages
@@ -195,11 +198,14 @@ targets:
       path: Extensions/Intents/Info.plist
       properties:
         CFBundleDisplayName: Odyssey Intents
+        ODYSSEY_APP_GROUP: $(ODYSSEY_APP_GROUP)
         NSExtension:
           NSExtensionPointIdentifier: com.apple.intents-service
     dependencies:
       - package: OdysseyPackages
         product: OdysseyDomain
+      - package: OdysseyPackages
+        product: OdysseyExtensionBridge
 
   OdysseyShare:
     type: app-extension

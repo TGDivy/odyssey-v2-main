@@ -16,6 +16,10 @@ struct OdysseyApp: App {
                 .onChange(of: scenePhase) { _, newPhase in
                     if newPhase == .background {
                         model.scheduleBackgroundRefresh()
+                    } else if newPhase == .active {
+                        Task {
+                            await model.processPendingExtensionCommands()
+                        }
                     }
                 }
         }

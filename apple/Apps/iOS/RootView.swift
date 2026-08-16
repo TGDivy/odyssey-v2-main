@@ -856,6 +856,18 @@ private struct NowView: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                 }
+
+                if let message = model.extensionCommandMessage {
+                    Button {
+                        model.dismissExtensionCommandMessage()
+                    } label: {
+                        Label(message, systemImage: "tray.and.arrow.down")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityHint("Dismisses this extension command status.")
+                }
             }
             .frame(maxWidth: .infinity)
             .padding()

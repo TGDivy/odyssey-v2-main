@@ -158,8 +158,13 @@ The portable `OdysseyExtensionBridge` now supplies the protected atomic handoff
 needed by App Intents, controls, widgets, and same-device extensions. It queues
 bounded text or opaque-ID food commands as one Data-Protected, backup-excluded
 file per UUID, deduplicates repeated delivery, and supports claim/retry/crash
-recovery without allowing extensions to write the ledger directly. Producers
-and the iPhone drain remain to be wired. See
+recovery without allowing extensions to write the ledger directly. The text App
+Intent now writes that queue without opening Odyssey; the iPhone drains it at
+startup, foreground activation, and opportunistic background refresh. Command
+UUIDs become entity/outbox identities, so a crash after commit but before queue
+acknowledgment replays without duplicate mutation. The food shortcut opens the
+private in-app ranking surface rather than exposing preset names to system
+suggestions. Widget/control producers and Watch transport remain. See
 [`docs/architecture/extension-quick-capture.md`](docs/architecture/extension-quick-capture.md).
 
 ## Accepted orientation state
