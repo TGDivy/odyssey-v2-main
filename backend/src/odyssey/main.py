@@ -32,6 +32,7 @@ from odyssey.auth.service import AuthService
 from odyssey.config import Environment, Settings, get_settings
 from odyssey.db.session import Database
 from odyssey.logging import configure_logging, correlation_id_context
+from odyssey.telemetry.feature_flags import FeatureConfigurationSigner
 from odyssey.telemetry.runtime import TelemetryRuntime, create_telemetry_runtime
 
 SAFE_CORRELATION_ID = re.compile(r"^[A-Za-z0-9_.:-]{1,128}$")
@@ -44,6 +45,7 @@ def create_app(
     upload_token_signer: UploadTokenSigner | None = None,
     telemetry: TelemetryRuntime | None = None,
     apple_identity_verifier: AppleIdentityVerifier | None = None,
+    feature_configuration_signer: FeatureConfigurationSigner | None = None,
 ) -> FastAPI:
     active_settings = settings or get_settings()
     active_database = database or Database(
@@ -64,6 +66,14 @@ def create_app(
         service_name="odyssey-api",
         service_version=__version__,
     )
+    active_feature_configuration_signer = feature_configuration_signer
+    if active_feature_configuration_signer is None:
+        private_key = active_settings.feature_config_signing_private_key.get_secret_value()
+        if private_key:
+            active_feature_configuration_signer = FeatureConfigurationSigner(
+                key_id=active_settings.feature_config_signing_key_id,
+                private_key_base64=private_key,
+            )
     configure_logging(active_settings.log_level)
     logger = structlog.get_logger(__name__)
 
@@ -102,6 +112,7 @@ def create_app(
     application.state.upload_token_signer = active_upload_token_signer
     application.state.telemetry = active_telemetry
     application.state.auth_service = active_auth_service
+    application.state.feature_configuration_signer = active_feature_configuration_signer
 
     @application.middleware("http")
     async def correlation_middleware(

@@ -22,7 +22,7 @@ def test_initial_migration_creates_immutable_ledger(
 
     connection = sqlite3.connect(database_path)
     revision = connection.execute("SELECT version_num FROM alembic_version").fetchone()
-    assert revision == ("20260815_0017",)
+    assert revision == ("20260815_0018",)
 
     provenance_id = str(uuid4())
     connection.execute(
@@ -257,6 +257,49 @@ def test_life_model_versions_migration_is_append_only(
 
     with pytest.raises(sqlite3.IntegrityError, match="append-only"):
         connection.execute("UPDATE life_model_versions SET status = 'changed'")
+
+    connection.close()
+    get_settings.cache_clear()
+
+
+def test_feature_configuration_migration_is_append_only(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    database_path = tmp_path / "feature-configuration-migration.sqlite"
+    monkeypatch.setenv("ODYSSEY_DATABASE_URL", f"sqlite+aiosqlite:///{database_path}")
+    get_settings.cache_clear()
+    command.upgrade(Config("alembic.ini"), "head")
+    connection = sqlite3.connect(database_path)
+    configuration_id = str(uuid4())
+    connection.execute(
+        """
+        INSERT INTO feature_configurations (
+          id, owner_id, environment, audience, version, issued_at, not_before,
+          expires_at, key_id, public_key, payload, payload_sha256, signature,
+          request_sha256, reason, created_by, created_at
+        ) VALUES (?, 'owner', 'test', 'com.example.odyssey.app', 1, ?, ?, ?,
+                  'synthetic-key-1', ?, ?, ?, ?, ?, 'Synthetic publication.', 'tests', ?)
+        """,
+        (
+            configuration_id,
+            "2026-08-16T00:00:00Z",
+            "2026-08-16T00:00:00Z",
+            "2026-08-23T00:00:00Z",
+            bytes(range(32)),
+            b"{}",
+            "a" * 64,
+            bytes(range(64)),
+            "b" * 64,
+            "2026-08-16T00:00:00Z",
+        ),
+    )
+    connection.commit()
+
+    with pytest.raises(sqlite3.IntegrityError, match="append-only"):
+        connection.execute("UPDATE feature_configurations SET reason = 'changed'")
+    connection.rollback()
+    with pytest.raises(sqlite3.IntegrityError, match="append-only"):
+        connection.execute("DELETE FROM feature_configurations")
 
     connection.close()
     get_settings.cache_clear()

@@ -10,6 +10,7 @@ from odyssey.api.decisions import router as decisions_router
 from odyssey.api.evidence import router as evidence_router
 from odyssey.api.exports import router as exports_router
 from odyssey.api.intents import router as intents_router
+from odyssey.api.product import router as product_router
 from odyssey.api.recommendations import router as recommendations_router
 from odyssey.api.seasons import router as seasons_router
 from odyssey.api.sync import router as sync_router
@@ -24,6 +25,7 @@ router.include_router(decisions_router)
 router.include_router(evidence_router)
 router.include_router(exports_router)
 router.include_router(intents_router)
+router.include_router(product_router)
 router.include_router(recommendations_router)
 router.include_router(seasons_router)
 router.include_router(sync_router)

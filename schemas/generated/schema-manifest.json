@@ -330,7 +330,7 @@
     },
     {
       "path": "schemas/openapi/odyssey-v1.openapi.json",
-      "sha256": "46909953d2dfb6b52a6ae641192b71629b6a4997cea701c72899ca8ea8252ce0"
+      "sha256": "049e2006f3718afe81463aa480cfc73f4532c3264ed18d8953b44b36dbbb485e"
     },
     {
       "path": "schemas/product-telemetry/registry.v1.json",

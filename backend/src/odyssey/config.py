@@ -91,6 +91,8 @@ class Settings(BaseSettings):
     telemetry_sample_ratio: float = Field(default=1.0, ge=0.0, le=1.0)
     telemetry_export_interval_seconds: int = Field(default=60, ge=1, le=3600)
     telemetry_export_timeout_seconds: int = Field(default=10, ge=1, le=300)
+    feature_config_signing_key_id: str = ""
+    feature_config_signing_private_key: SecretStr = SecretStr("")
     commit_sha: str = "development"
     api_docs_enabled: bool = True
     minimum_client_schema_version: int = Field(default=1, ge=1)
@@ -175,6 +177,20 @@ class Settings(BaseSettings):
             if telemetry_endpoint.scheme not in {"http", "https"} or not telemetry_endpoint.netloc:
                 raise ValueError("OTLP HTTP telemetry requires an HTTP(S) endpoint")
             self.telemetry_headers()
+        feature_key_id = self.feature_config_signing_key_id
+        feature_private_key = self.feature_config_signing_private_key.get_secret_value()
+        if bool(feature_key_id) != bool(feature_private_key):
+            raise ValueError(
+                "feature configuration key ID and private key must be configured together"
+            )
+        if feature_key_id and (
+            len(feature_key_id) > 100
+            or not all(
+                character.isascii() and (character.isalnum() or character in "._-")
+                for character in feature_key_id
+            )
+        ):
+            raise ValueError("feature configuration key ID is invalid")
         return self
 
     def telemetry_headers(self) -> dict[str, str]:
@@ -216,6 +232,9 @@ class Settings(BaseSettings):
             "telemetry_enabled": self.telemetry_exporter is not TelemetryExporter.NONE,
             "telemetry_otlp_endpoint_configured": bool(self.telemetry_otlp_endpoint),
             "telemetry_sample_ratio": self.telemetry_sample_ratio,
+            "feature_config_signing_configured": bool(
+                self.feature_config_signing_private_key.get_secret_value()
+            ),
             "commit_sha": self.commit_sha,
             "minimum_client_schema_version": self.minimum_client_schema_version,
             "current_sync_schema_version": self.current_sync_schema_version,

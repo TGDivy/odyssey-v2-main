@@ -2495,6 +2495,212 @@
         "title": "ExportScope",
         "type": "string"
       },
+      "FeatureConfigurationCreateRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "audience": {
+            "maxLength": 255,
+            "minLength": 3,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9.-]+[A-Za-z0-9]$",
+            "title": "Audience",
+            "type": "string"
+          },
+          "configuration_id": {
+            "format": "uuid",
+            "title": "Configuration Id",
+            "type": "string"
+          },
+          "expected_current_version": {
+            "minimum": 0.0,
+            "title": "Expected Current Version",
+            "type": "integer"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "flags": {
+            "items": {
+              "$ref": "#/components/schemas/FeatureFlagRule"
+            },
+            "maxItems": 50,
+            "title": "Flags",
+            "type": "array"
+          },
+          "not_before": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Not Before"
+          },
+          "reason": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "configuration_id",
+          "expected_current_version",
+          "audience",
+          "expires_at",
+          "flags",
+          "reason"
+        ],
+        "title": "FeatureConfigurationCreateRequest",
+        "type": "object"
+      },
+      "FeatureConfigurationEnvelope": {
+        "additionalProperties": false,
+        "properties": {
+          "key_id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_.-]+$",
+            "title": "Key Id",
+            "type": "string"
+          },
+          "payload_base64": {
+            "maxLength": 90000,
+            "minLength": 4,
+            "title": "Payload Base64",
+            "type": "string"
+          },
+          "payload_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Payload Sha256",
+            "type": "string"
+          },
+          "schema_version": {
+            "default": 1,
+            "maximum": 1.0,
+            "minimum": 1.0,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "signature_base64": {
+            "maxLength": 200,
+            "minLength": 4,
+            "title": "Signature Base64",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key_id",
+          "payload_base64",
+          "payload_sha256",
+          "signature_base64"
+        ],
+        "title": "FeatureConfigurationEnvelope",
+        "type": "object"
+      },
+      "FeatureConfigurationPublication": {
+        "additionalProperties": false,
+        "properties": {
+          "configuration_id": {
+            "format": "uuid",
+            "title": "Configuration Id",
+            "type": "string"
+          },
+          "created": {
+            "title": "Created",
+            "type": "boolean"
+          },
+          "envelope": {
+            "$ref": "#/components/schemas/FeatureConfigurationEnvelope"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "issued_at": {
+            "format": "date-time",
+            "title": "Issued At",
+            "type": "string"
+          },
+          "not_before": {
+            "format": "date-time",
+            "title": "Not Before",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1.0,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "configuration_id",
+          "version",
+          "issued_at",
+          "not_before",
+          "expires_at",
+          "reason",
+          "created",
+          "envelope"
+        ],
+        "title": "FeatureConfigurationPublication",
+        "type": "object"
+      },
+      "FeatureFlagKey": {
+        "enum": [
+          "product_telemetry.capture_question",
+          "product_telemetry.tomorrow_map_question",
+          "product_telemetry.weekly_review",
+          "intervention.proactive_notifications"
+        ],
+        "title": "FeatureFlagKey",
+        "type": "string"
+      },
+      "FeatureFlagRule": {
+        "additionalProperties": false,
+        "properties": {
+          "assignment_salt": {
+            "maxLength": 100,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_.-]+$",
+            "title": "Assignment Salt",
+            "type": "string"
+          },
+          "key": {
+            "$ref": "#/components/schemas/FeatureFlagKey"
+          },
+          "rollout_basis_points": {
+            "maximum": 10000.0,
+            "minimum": 0.0,
+            "title": "Rollout Basis Points",
+            "type": "integer"
+          },
+          "variant": {
+            "maxLength": 100,
+            "minLength": 1,
+            "pattern": "^[a-z0-9_.-]+$",
+            "title": "Variant",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "variant",
+          "rollout_basis_points",
+          "assignment_salt"
+        ],
+        "title": "FeatureFlagRule",
+        "type": "object"
+      },
       "FrozenOutgoingSeasonSummary": {
         "additionalProperties": false,
         "properties": {
@@ -6138,6 +6344,102 @@
         "summary": "Evaluate Opportunity",
         "tags": [
           "intents"
+        ]
+      }
+    },
+    "/v1/product/feature-configuration": {
+      "get": {
+        "operationId": "get_feature_configuration_v1_product_feature_configuration_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "audience",
+            "required": true,
+            "schema": {
+              "maxLength": 255,
+              "minLength": 3,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9.-]+[A-Za-z0-9]$",
+              "title": "Audience",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeatureConfigurationEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Feature Configuration",
+        "tags": [
+          "product"
+        ]
+      }
+    },
+    "/v1/product/feature-configurations": {
+      "post": {
+        "operationId": "publish_feature_configuration_v1_product_feature_configurations_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeatureConfigurationCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeatureConfigurationPublication"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Publish Feature Configuration",
+        "tags": [
+          "product"
         ]
       }
     },

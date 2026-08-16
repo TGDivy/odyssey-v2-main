@@ -228,6 +228,28 @@ DATASET_SPECS = (
         ),
     ),
     ExportDatasetSpec(
+        "feature_configurations",
+        (
+            "id",
+            "owner_id",
+            "environment",
+            "audience",
+            "version",
+            "issued_at",
+            "not_before",
+            "expires_at",
+            "key_id",
+            "public_key",
+            "payload",
+            "payload_sha256",
+            "signature",
+            "request_sha256",
+            "reason",
+            "created_by",
+            "created_at",
+        ),
+    ),
+    ExportDatasetSpec(
         "integrity_runs",
         (
             "id",

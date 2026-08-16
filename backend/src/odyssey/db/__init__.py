@@ -13,6 +13,7 @@ from odyssey.exports import persistence as export_persistence
 from odyssey.intent import persistence as intent_persistence
 from odyssey.life import persistence as life_persistence
 from odyssey.sync import models as sync_models
+from odyssey.telemetry import persistence as telemetry_persistence
 
 assert (
     attachment_models
@@ -26,6 +27,7 @@ assert (
     and intent_persistence
     and life_persistence
     and sync_models
+    and telemetry_persistence
 )
 
 __all__ = ["Base", "Database"]

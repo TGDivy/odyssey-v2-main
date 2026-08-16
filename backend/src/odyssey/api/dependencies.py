@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from odyssey.attachments.service import UploadTokenSigner
 from odyssey.attachments.storage import AttachmentStore
 from odyssey.db.session import Database
+from odyssey.telemetry.feature_flags import FeatureConfigurationSigner
 from odyssey.telemetry.runtime import TelemetryRuntime
 
 
@@ -46,3 +47,13 @@ def get_telemetry_runtime(request: Request) -> TelemetryRuntime:
 
 
 TelemetryDependency = Annotated[TelemetryRuntime, Depends(get_telemetry_runtime)]
+
+
+def get_feature_configuration_signer(request: Request) -> FeatureConfigurationSigner | None:
+    return cast(FeatureConfigurationSigner | None, request.app.state.feature_configuration_signer)
+
+
+FeatureConfigurationSignerDependency = Annotated[
+    FeatureConfigurationSigner | None,
+    Depends(get_feature_configuration_signer),
+]

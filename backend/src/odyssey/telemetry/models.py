@@ -147,3 +147,37 @@ class FeatureConfigurationEnvelope(StrictModel):
     payload_base64: str = Field(min_length=4, max_length=90_000)
     payload_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     signature_base64: str = Field(min_length=4, max_length=200)
+
+
+class FeatureConfigurationCreateRequest(StrictModel):
+    configuration_id: UUID7
+    expected_current_version: int = Field(ge=0)
+    audience: str = Field(
+        min_length=3,
+        max_length=255,
+        pattern=r"^[A-Za-z0-9][A-Za-z0-9.-]+[A-Za-z0-9]$",
+    )
+    not_before: AwareDatetime | None = None
+    expires_at: AwareDatetime
+    flags: tuple[FeatureFlagRule, ...] = Field(max_length=50)
+    reason: str = Field(min_length=1, max_length=500)
+
+    @model_validator(mode="after")
+    def validate_request(self) -> "FeatureConfigurationCreateRequest":
+        if self.not_before is not None and self.expires_at <= self.not_before:
+            raise ValueError("expires_at must follow not_before")
+        keys = [rule.key for rule in self.flags]
+        if len(set(keys)) != len(keys):
+            raise ValueError("feature flag rules must be unique by key")
+        return self
+
+
+class FeatureConfigurationPublication(StrictModel):
+    configuration_id: UUID7
+    version: int = Field(ge=1)
+    issued_at: AwareDatetime
+    not_before: AwareDatetime
+    expires_at: AwareDatetime
+    reason: str
+    created: bool
+    envelope: FeatureConfigurationEnvelope

@@ -127,6 +127,8 @@ async def database_checks(connection: AsyncConnection) -> list[IntegrityCheckRes
             "attachment_chunks_reject_update",
             "attachment_objects_reject_delete",
             "attachment_objects_reject_update",
+            "feature_configurations_reject_delete",
+            "feature_configurations_reject_update",
             "integrity_runs_reject_delete",
             "integrity_runs_reject_update",
             "kill_switch_audit_reject_delete",
@@ -185,6 +187,7 @@ async def database_checks(connection: AsyncConnection) -> list[IntegrityCheckRes
     required_triggers = {
         "attachment_chunks_immutable",
         "attachment_objects_immutable",
+        "feature_configurations_immutable",
         "integrity_runs_immutable",
         "kill_switch_audit_immutable",
         "ledger_events_immutable",
