@@ -50,6 +50,12 @@ extension SQLiteLedgerStore {
                 appliedAt: clock()
             )
         }
+        migrator.registerMigration("v4-local-integration-mirrors", foreignKeyChecks: .immediate) { database in
+            try applyVersionFour(
+                SQLiteSession(database: database),
+                appliedAt: clock()
+            )
+        }
         return migrator
     }
 
@@ -651,6 +657,48 @@ extension SQLiteLedgerStore {
         try migration.bind([.text(SQLiteValueCodec.dateString(appliedAt))])
         _ = try migration.step()
         try connection.execute("PRAGMA user_version = 3")
+    }
+
+    private static func applyVersionFour(
+        _ connection: SQLiteSession,
+        appliedAt: Date
+    ) throws {
+        try connection.execute(
+            """
+            CREATE TABLE integration_records (
+                connector TEXT NOT NULL CHECK (length(connector) BETWEEN 1 AND 100),
+                stream TEXT NOT NULL CHECK (length(stream) BETWEEN 1 AND 100),
+                external_identifier TEXT NOT NULL
+                    CHECK (length(external_identifier) BETWEEN 1 AND 200),
+                source_timestamp TEXT NOT NULL,
+                document BLOB NOT NULL
+                    CHECK (length(document) BETWEEN 1 AND 1048576),
+                document_sha256 TEXT NOT NULL CHECK (length(document_sha256) = 64),
+                imported_at TEXT NOT NULL,
+                PRIMARY KEY (connector, stream, external_identifier)
+            ) STRICT, WITHOUT ROWID;
+
+            CREATE INDEX integration_records_source_index
+                ON integration_records (connector, stream, source_timestamp);
+
+            CREATE TABLE integration_cursors (
+                connector TEXT NOT NULL CHECK (length(connector) BETWEEN 1 AND 100),
+                stream TEXT NOT NULL CHECK (length(stream) BETWEEN 1 AND 100),
+                cursor BLOB NOT NULL CHECK (length(cursor) BETWEEN 1 AND 65536),
+                updated_at TEXT NOT NULL,
+                PRIMARY KEY (connector, stream)
+            ) STRICT, WITHOUT ROWID;
+            """
+        )
+        let migration = try connection.statement(
+            """
+            INSERT INTO schema_migrations (version, name, applied_at)
+            VALUES (4, 'local-only integration mirrors and cursors', ?)
+            """
+        )
+        try migration.bind([.text(SQLiteValueCodec.dateString(appliedAt))])
+        _ = try migration.step()
+        try connection.execute("PRAGMA user_version = 4")
     }
 
     private static func backupTimestamp(_ date: Date) -> String {
