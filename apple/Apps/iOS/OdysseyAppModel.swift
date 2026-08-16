@@ -55,6 +55,7 @@ final class OdysseyAppModel: ObservableObject {
     private var workshopDraftFactory: LifeModelWorkshopDraftFactory?
     private var isBootstrapping = false
     private var isDrainingExtensionCommands = false
+    private var nowRefreshGeneration: UInt64 = 0
     private var extensionCommandQueue: ExtensionCommandQueue?
     private var extensionCommandProcessor: ExtensionCommandProcessor?
     private var nowWidgetSnapshotStore: NowWidgetSnapshotStore?
@@ -149,6 +150,7 @@ final class OdysseyAppModel: ObservableObject {
         foodWarmPathMeasurement = nil
         extensionCommandMessage = nil
         extensionPresentationRequest = nil
+        nowRefreshGeneration &+= 1
         nowContextProjection = nil
         reentrySurface = nil
         nowExperienceMessage = nil
@@ -961,6 +963,7 @@ final class OdysseyAppModel: ObservableObject {
         reason: NowStateCorrectionReason
     ) async {
         guard let service = localServices?.nowExperienceService else { return }
+        nowRefreshGeneration &+= 1
         let createdAt = Date()
         do {
             let correction = try NowStateCorrection(
@@ -979,6 +982,7 @@ final class OdysseyAppModel: ObservableObject {
 
     func clearNowStateCorrection() async {
         guard let service = localServices?.nowExperienceService else { return }
+        nowRefreshGeneration &+= 1
         do {
             _ = try await service.clearCorrection()
             await refreshNowExperience(markSeen: false)
@@ -995,6 +999,7 @@ final class OdysseyAppModel: ObservableObject {
         else {
             return false
         }
+        nowRefreshGeneration &+= 1
         let respondedAt = Date()
         do {
             if option == .stayQuiet {
@@ -1357,6 +1362,8 @@ final class OdysseyAppModel: ObservableObject {
 
     private func refreshNowExperience(markSeen: Bool) async {
         guard let localServices else { return }
+        nowRefreshGeneration &+= 1
+        let generation = nowRefreshGeneration
         let generatedAt = Date()
         do {
             var record = try await localServices.nowExperienceService.record()
@@ -1399,10 +1406,12 @@ final class OdysseyAppModel: ObservableObject {
                     at: generatedAt
                 )
             }
+            guard generation == nowRefreshGeneration else { return }
             nowContextProjection = projection
             reentrySurface = reentry
             publishNowWidgetSnapshot(projection)
         } catch {
+            guard generation == nowRefreshGeneration else { return }
             nowExperienceMessage = nowContextProjection == nil
                 ? "Current context could not be built from the local cache."
                 : "Current context could not be refreshed; the last local result remains visible."
