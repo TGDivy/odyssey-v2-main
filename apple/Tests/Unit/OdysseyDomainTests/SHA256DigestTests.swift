@@ -1,5 +1,5 @@
 import Foundation
-import OdysseyData
+import OdysseyDomain
 import Testing
 
 @Test

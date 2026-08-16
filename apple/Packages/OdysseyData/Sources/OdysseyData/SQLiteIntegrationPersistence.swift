@@ -1,4 +1,5 @@
 import Foundation
+import OdysseyDomain
 import OdysseyIntegrations
 
 extension SQLiteLedgerStore: IntegrationLocalRecordStoring {

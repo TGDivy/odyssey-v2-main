@@ -1,4 +1,5 @@
 import Foundation
+import OdysseyDomain
 
 public enum LocalApplicationStateError: Error, Equatable, Sendable {
     case invalidKey

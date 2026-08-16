@@ -1,4 +1,5 @@
 import Foundation
+import OdysseyDomain
 import OdysseyTelemetry
 
 public enum ProductTelemetryPersistenceError: Error, Equatable, Sendable {
