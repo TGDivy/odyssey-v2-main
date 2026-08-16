@@ -75,6 +75,9 @@ struct HealthContextIntegrationState {
         guard overview?.capability.availability == .available else {
             return .disabled
         }
+        if overview?.changeObservationState == .failed {
+            return .degraded
+        }
         switch overview?.permission {
         case .denied, .restricted, .unavailable:
             return .degraded
@@ -82,6 +85,21 @@ struct HealthContextIntegrationState {
             return lastSuccessfulImportAt == nil ? .idle : .healthy
         case .notDetermined, .notRequired, .none:
             return .idle
+        }
+    }
+}
+
+extension HealthChangeObservationState {
+    var ownerDisplayName: String {
+        switch self {
+        case .unsupported:
+            "Unsupported"
+        case .inactive:
+            "Inactive"
+        case .active:
+            "Registered"
+        case .failed:
+            "Registration failed"
         }
     }
 }

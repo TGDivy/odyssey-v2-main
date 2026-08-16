@@ -519,6 +519,14 @@ struct WorkshopView: View {
                     "Local records",
                     value: String(overview.totalSampleCount)
                 )
+                LabeledContent(
+                    "Anchored sample types",
+                    value: String(overview.cursorKindCount)
+                )
+                LabeledContent(
+                    "Observer delivery",
+                    value: overview.changeObservationState.ownerDisplayName
+                )
             }
             if let health = model.healthContextState.integrationHealth {
                 LabeledContent(
@@ -558,7 +566,9 @@ struct WorkshopView: View {
             }
             Text(
                 "Odyssey currently contributes only user-approved Health context to local "
-                    + "planning and interpretation. Health data is not sent to cloud AI by this import."
+                    + "planning and interpretation. Observer delivery only advances anchored "
+                    + "local imports after explicit access; it is opportunistic, not a clock. "
+                    + "Health data is not sent to cloud AI by this import."
             )
             .font(.footnote)
             .foregroundStyle(.secondary)

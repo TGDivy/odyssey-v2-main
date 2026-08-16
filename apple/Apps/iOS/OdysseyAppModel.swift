@@ -195,14 +195,24 @@ final class OdysseyAppModel: ObservableObject {
             Task { [weak self] in
                 await self?.resumePendingCaptureInterpretations()
             }
-            if healthContextState.canImport {
+            if NativeIntegrationActivationPolicy.shouldResumeHealthImport(
+                healthContextState.overview
+            ) {
                 Task { [weak self] in
-                    await self?.importHealthContext(showCompletionMessage: false)
+                    await self?.importHealthContext(
+                        showCompletionMessage: false,
+                        requiresExistingActivation: true
+                    )
                 }
             }
-            if calendarContextState.canRefresh {
+            if NativeIntegrationActivationPolicy.shouldResumeCalendarMirror(
+                calendarContextState.overview
+            ) {
                 Task { [weak self] in
-                    await self?.refreshCalendarContext(showCompletionMessage: false)
+                    await self?.refreshCalendarContext(
+                        showCompletionMessage: false,
+                        requiresExistingMirror: true
+                    )
                 }
             }
         } catch {
@@ -1004,8 +1014,14 @@ final class OdysseyAppModel: ObservableObject {
     func performBackgroundRefresh() async {
         await processPendingExtensionCommands()
         await resumePendingCaptureInterpretations()
-        await importHealthContext(showCompletionMessage: false)
-        await refreshCalendarContext(showCompletionMessage: false)
+        await importHealthContext(
+            showCompletionMessage: false,
+            requiresExistingActivation: true
+        )
+        await refreshCalendarContext(
+            showCompletionMessage: false,
+            requiresExistingMirror: true
+        )
         guard let remoteServices, state.canSynchronize else { return }
         await withTaskCancellationHandler {
             await synchronize()
@@ -1247,7 +1263,10 @@ final class OdysseyAppModel: ObservableObject {
     }
 
     private func importHealthContext(
-        showCompletionMessage: Bool
+        for requestedKinds: Set<HealthSampleKind>? = nil,
+        showCompletionMessage: Bool,
+        requiresExistingActivation: Bool = false,
+        maintainObservation: Bool = true
     ) async {
         guard let coordinator = localServices?.healthImportCoordinator else { return }
         if healthContextState.overview == nil {
@@ -1266,6 +1285,15 @@ final class OdysseyAppModel: ObservableObject {
             }
             return
         }
+        guard !requiresExistingActivation
+            || NativeIntegrationActivationPolicy.shouldResumeHealthImport(overview)
+        else {
+            return
+        }
+        let importKinds = requestedKinds.map {
+            $0.intersection(overview.capability.supportedKinds)
+        } ?? overview.capability.supportedKinds
+        guard !importKinds.isEmpty else { return }
         if showCompletionMessage {
             healthContextState.message = nil
         }
@@ -1277,7 +1305,7 @@ final class OdysseyAppModel: ObservableObject {
         var degradedKindCount = 0
         var failedKindCount = 0
         var latestSuccessfulImport: Date?
-        for kind in overview.capability.supportedKinds.sorted(by: {
+        for kind in importKinds.sorted(by: {
             $0.rawValue < $1.rawValue
         }) {
             do {
@@ -1322,6 +1350,9 @@ final class OdysseyAppModel: ObservableObject {
         } else {
             healthContextState.activity = .idle
         }
+        if latestSuccessfulImport != nil, maintainObservation {
+            await startHealthChangeObservationIfNeeded()
+        }
         guard showCompletionMessage else { return }
         if failedKindCount > 0 {
             healthContextState.message =
@@ -1337,12 +1368,52 @@ final class OdysseyAppModel: ObservableObject {
         }
     }
 
+    private func startHealthChangeObservationIfNeeded() async {
+        guard let coordinator = localServices?.healthImportCoordinator,
+              let overview = healthContextState.overview,
+              overview.capability.availability == .available,
+              overview.permission == .authorized || overview.permission == .partial,
+              overview.changeObservationState != .active
+        else {
+            return
+        }
+        do {
+            _ = try await coordinator.startChangeObservation(
+                for: overview.capability.supportedKinds
+            ) { [weak self] kind in
+                await self?.importObservedHealthChange(kind)
+            }
+            healthContextState.overview = try await coordinator.overview()
+        } catch {
+            healthContextState.overview = try? await coordinator.overview()
+            healthContextState.message =
+                "Apple Health background observation could not be registered. Owner-requested and app-refresh imports still work."
+        }
+    }
+
+    private func importObservedHealthChange(_ kind: HealthSampleKind) async {
+        await importHealthContext(
+            for: [kind],
+            showCompletionMessage: false,
+            requiresExistingActivation: true,
+            maintainObservation: false
+        )
+    }
+
     private func refreshCalendarContext(
-        showCompletionMessage: Bool
+        showCompletionMessage: Bool,
+        requiresExistingMirror: Bool = false
     ) async {
         guard let coordinator = localServices?.calendarMirrorCoordinator else { return }
         if calendarContextState.overview == nil {
             await refreshCalendarContextStatus()
+        }
+        guard !requiresExistingMirror
+            || NativeIntegrationActivationPolicy.shouldResumeCalendarMirror(
+                calendarContextState.overview
+            )
+        else {
+            return
         }
         guard calendarContextState.overview?.capability.availability == .available,
               calendarContextState.overview?.permission == .authorized,

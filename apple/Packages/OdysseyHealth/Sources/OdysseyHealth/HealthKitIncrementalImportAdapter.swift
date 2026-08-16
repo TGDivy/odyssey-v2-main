@@ -9,6 +9,7 @@ public actor HealthKitIncrementalImportAdapter: IncrementalHealthImporting,
     private let store: HKHealthStore
     private let clock: @Sendable () -> Date
     private var observerQueries = [HealthSampleKind: HKObserverQuery]()
+    private var observationFailed = false
 
     public init(
         store: HKHealthStore = HKHealthStore(),
@@ -132,7 +133,10 @@ public actor HealthKitIncrementalImportAdapter: IncrementalHealthImporting,
     }
 
     public func changeObservationState() async -> HealthChangeObservationState {
-        observerQueries.isEmpty ? .inactive : .active
+        if observationFailed {
+            return .failed
+        }
+        return observerQueries.isEmpty ? .inactive : .active
     }
 
     public func startObservingChanges(
@@ -150,6 +154,7 @@ public actor HealthKitIncrementalImportAdapter: IncrementalHealthImporting,
             throw HealthImportError.invalidObservation
         }
         await stopObservingChanges()
+        observationFailed = false
         do {
             for (kind, type) in registrations {
                 try await enableBackgroundDelivery(for: type)
@@ -171,6 +176,7 @@ public actor HealthKitIncrementalImportAdapter: IncrementalHealthImporting,
             throw CancellationError()
         } catch {
             await stopObservingChanges()
+            observationFailed = true
             throw HealthImportError.invalidObservation
         }
         return .active
@@ -179,6 +185,7 @@ public actor HealthKitIncrementalImportAdapter: IncrementalHealthImporting,
     public func stopObservingChanges() async {
         let registrations = observerQueries
         observerQueries.removeAll()
+        observationFailed = false
         for query in registrations.values {
             store.stop(query)
         }

@@ -244,6 +244,7 @@ public enum HealthChangeObservationState: String, Codable, Hashable, Sendable {
     case unsupported
     case inactive
     case active
+    case failed
 }
 
 public typealias HealthChangeHandler = @Sendable (HealthSampleKind) async -> Void
