@@ -22,6 +22,16 @@ permission to use the corresponding data or perform an external action.
 | Photos | iOS | Add usage description | User-selected references only | Archive without photo enrichment |
 | Foundation Models | supported Apple targets | No cloud credential; availability-gated | Optional rendering/enrichment, never canonical mutation | Deterministic local or evaluated cloud fallback |
 
+Workshop derives an eight-entry runtime matrix for Health sample reads, Health
+nutrient writes, calendar reads, calendar writes, current weather, weather
+forecasts, foreground Location, and significant/background Location. Each row
+reports adapter availability separately from permission. Calendar write and
+significant/background Location are always `disabledByPolicy`; they are never
+inferred as available from an OS version or entitlement. A separate connector
+health catalog aggregates Health, Calendar, Weather, and Location freshness,
+contribution, rejection, rate-limit, schema, and operational state without
+rendering imported values or coordinates.
+
 The food HealthKit write path is narrower than the entitlement. It asks from an
 explicit food-sheet action for write-only dietary energy, protein, and caffeine
 types currently used by the food library. The local occurrence is committed
@@ -53,13 +63,25 @@ receipt. None of these local records is added to the sync outbox.
 Workshop exposes a privacy-safe overview rather than sample values: capability,
 permission, supported types, local count, last successful import, newest source
 timestamp, lag, rejected/quarantined count, schema status, rate-limit status,
-and the statement that this connector contributes only approved Health context.
-Permission denial does not erase prior local context. **Remove Local Health
-Mirror** deletes every local Health record and anchor while leaving HealthKit
-samples and system permission untouched. Foreground launch, owner refresh, and
-opportunistic app refresh invoke the same coordinator. HealthKit observer-query
-registration/background delivery, Xcode compilation, and physical device
-authorization/deduplication/deletion evidence remain owner work.
+anchored-type count, observer-registration state, and the statement that this
+connector contributes only approved Health context. Permission denial does not
+erase prior local context. **Remove Local Health Mirror** first stops change
+observation and then deletes every local Health record and anchor while leaving
+HealthKit samples and system permission untouched. Launch and opportunistic app
+refresh resume Health import only when a durable per-kind cursor proves prior
+owner activation; local revocation therefore cannot silently repopulate itself.
+
+The guarded Apple adapter registers one `HKObserverQuery` and immediate
+background-delivery request per supported sample type after a successful import
+with durable owner activation. A callback advances only the signaled type through the same
+anchored coordinator, and calls the HealthKit completion handler only after that
+async import callback returns. Registration failure is exposed as degraded while
+owner-requested and opportunistic app-refresh imports remain usable. The
+portable observation seam, scoped callback behavior, durable activation policy,
+and revocation ordering are tested; the guarded source is parser-validated and
+strict-concurrency type-checked against disposable modules shaped from public
+signatures. Xcode compilation and physical authorization, delivery,
+deduplication, deletion, suspension, and relaunch evidence remain owner work.
 
 The EventKit read path and its local-only bounded reconciliation are specified in
 `docs/architecture/calendar-context.md`. It is independent from any future
@@ -79,9 +101,13 @@ device proof remain owner work. See `docs/architecture/weather-context.md`.
 The Core Location path stores one mutable broad-place record with precision,
 time zone, capture time, and expiry. Coordinates and horizontal accuracy exist
 only in a non-`Codable` transient fix and disappear after the immediate Weather
-handoff. Workshop exposes explicit authorization, refresh, health, and local
-revocation controls without showing coordinates. The app declares only
-when-in-use usage and intentionally omits the location background mode. See
+handoff. Location denial suppresses Weather; Weather failure preserves the newly
+acquired broad place and any prior forecast according to each connector's own
+rules. Launch and background tasks never acquire Location or refresh Weather.
+Workshop exposes explicit authorization, refresh, health, and local revocation
+controls without showing coordinates. The app declares only when-in-use usage
+and intentionally omits the location background mode. Named-zone travel fixtures
+verify local-day reassignment without 24-hour arithmetic. See
 `docs/architecture/location-context.md`.
 
 `apple/Config/*.xcconfig` intentionally contains placeholder bundle IDs and

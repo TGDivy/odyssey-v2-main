@@ -24,7 +24,7 @@ it does not prove an owner deployment:
   environment.
 - No Apple-platform package build, Xcode archive, signing operation, TestFlight
   upload, or physical-device test has been performed. The portable Swift
-  package has been compiled and its 162 deterministic tests have run under the
+  package has been compiled and its 175 deterministic tests have run under the
   official Linux Swift 6.1 toolchain; that is not Apple-platform validation.
 - The cloud model remains `deterministic`. Adding a model-provider key alone
   enables nothing; no evaluated cloud-model adapter is implemented.
@@ -66,24 +66,37 @@ it does not prove an owner deployment:
   per-kind anchors, source metadata, immutable UUID deduplication, source
   deletions, a hash-verified local-only SQLite mirror, and explicit local
   revocation. Workshop sources expose permission/capability, freshness, lag,
-  rejection, contribution, import, and local-removal controls. The guarded
-  HealthKit and SwiftUI sources are parser-validated only; no Apple SDK build,
-  authorization, observer delivery, or physical sample behavior is claimed.
+  rejection, contribution, anchored-type count, observer state, import, and
+  local-removal controls. A portable observation seam and guarded one-query-per-
+  type `HKObserverQuery` adapter now support scoped anchored callbacks, immediate
+  background-delivery registration, registration-failure diagnostics, durable
+  prior-opt-in resume, and stop-before-revocation ordering. The guarded HealthKit
+  and SwiftUI sources are parser-validated, and the guarded observer branch was
+  strict-concurrency type-checked against disposable public-signature modules;
+  no Apple SDK build, authorization, actual observer delivery, or physical sample
+  behavior is claimed.
   A guarded EventKit reader and durable mutable calendar coordinator also exist.
   They require explicit full access, treat write-only as unreadable, mirror only
   a bounded local window, retain source/version/cancellation/timezone semantics,
   reconcile source deletion without modifying external events, and support
   local-only revocation. EventKit and Calendar SwiftUI paths are parser-validated
-  only; no Apple SDK build, account, permission, recurrence, cancellation, or
-  travel-timezone behavior is claimed.
+  only. Portable named-zone travel/local-day fixtures pass, but no Apple SDK
+  build, account, permission, recurrence, cancellation, or physical travel
+  behavior is claimed.
   A provider-neutral Weather contract, mutable coordinate-free local mirror,
   guarded WeatherKit adapter, non-Apple fallback, provider attribution assets,
   and Workshop integration health/revocation surface now exist. The guarded
   branch was parser-validated and strict-concurrency type-checked against
   disposable modules shaped from Apple’s documented signatures. No Apple SDK,
   signed WeatherKit entitlement, live request, quota, attribution rendering, or
-  device proof is claimed. Foreground location-to-weather refresh remains
-  intentionally blocked until the conservative place resolver lands.
+  device proof is claimed. A guarded one-shot when-in-use Core Location adapter,
+  broad-place resolver, coordinate-free mutable mirror, explicit foreground
+  Location-to-Weather handoff, independent failure preservation, and local
+  revocation now exist. Portable denial, provider-failure, travel, local-day,
+  and background-suppression fixtures pass; no live Location permission,
+  geocoding, service, handoff, or device behavior is claimed. Workshop also
+  renders the complete eight-capability runtime matrix and four-connector health
+  catalog without values, accuracy, or coordinates.
   A portable protected App Group command queue also exists for bounded text and
   opaque-preset food handoff with idempotency and crash recovery. The text App
   Intent queues without opening Odyssey, the food intent opens only the private
@@ -1273,9 +1286,15 @@ Do not enter real owner data. Then execute this staged flow:
    confirm only Odyssey-tagged samples disappear. Relaunch and reconcile to
    exercise durable tombstone cleanup. Retain counts and metadata identifiers,
    never screenshots or real health values.
-16. In **Workshop → Apple Health Context**, confirm the panel initially reports
-   capability and permission without displaying sample values. Choose **Request
-   Health Context Access** only from this explicit action. On a disposable
+16. In **Workshop**, confirm the **Device Capability Matrix** contains exactly
+   Health read/write, Calendar read/write, current/forecast Weather, and
+   foreground/significant Location rows. Calendar write and significant
+   Location must say disabled by policy. Confirm the **Integration Health
+   Catalog** contains Health, Calendar, Weather, and Location without imported
+   values or coordinates. Then, in **Apple Health Context**, confirm the panel
+   initially reports capability and permission without displaying sample
+   values. Choose **Request Health Context Access** only from this explicit
+   action. On a disposable
    install, deny access first: status must degrade without blocking Capture,
    Food, Workshop, or any previously mirrored context. Do not infer granted read
    types from the authorization sheet; Apple intentionally keeps that private.
@@ -1285,13 +1304,19 @@ Do not enter real owner data. Then execute this staged flow:
    rejected count update without exposing values. Import the unchanged set
    again and confirm UUID duplicates do not increase local count. Add and delete
    one synthetic sample, import after each action, and confirm only that source
-   identity changes. Force-quit/relaunch and confirm the per-kind anchor resumes
-   rather than replaying a full overwrite.
+   identity changes. Confirm **Anchored sample types** advances and **Observer
+   delivery** reports **Registered**. Add one synthetic sample of one supported
+   type and retain timing/count evidence that its observer callback advances only
+   that type before completion. Force-quit/relaunch and confirm durable prior
+   opt-in resumes the per-kind anchor and re-registers observation rather than
+   replaying a full overwrite.
 18. Choose **Remove Local Health Mirror** and accept the explicit warning.
    Confirm local Health records and anchors are removed while the synthetic
-   Apple Health samples and system permission remain unchanged. Re-import only
-   if the test protocol requires it. This is local mirror revocation, not a
-   HealthKit permission reset.
+   Apple Health samples and system permission remain unchanged. Trigger another
+   synthetic Health change, foreground, and exercise app refresh: no observer or
+   automatic import may repopulate the revoked mirror. Re-import only through the
+   explicit owner action if the test protocol requires it. This is local mirror
+   revocation, not a HealthKit permission reset.
 19. In **Workshop → Calendar Context**, confirm status inspection causes no
    permission prompt and shows no event titles. Choose **Request Full Calendar
    Access** only from this explicit action. On a disposable install, deny first:
@@ -1404,10 +1429,16 @@ the backend owner runbook until a device-registry UI is implemented.
   temporary residue; food logging remains local-first before/after Health denial;
   authorized exact energy/protein/caffeine samples replace idempotently while
   alcohol and foreign samples remain untouched; permitted Health context uses
-  anchored UUID deduplication/deletion, reports privacy-safe health, and local
-  mirror removal leaves Apple Health unchanged; full-access calendar refresh
+  anchored UUID deduplication/deletion, scoped observer delivery, durable
+  activation, and privacy-safe health, while local mirror removal leaves Apple
+  Health unchanged and prevents automatic repopulation; the complete capability
+  matrix and connector-health catalog report policy and degraded states without
+  private values; full-access calendar refresh
   preserves mutable source/version/cancellation/timezone behavior and local
-  removal leaves source calendars unchanged; authenticated push/pull clears
+  removal leaves source calendars unchanged; explicit foreground Location
+  resolves only a broad place, hands transient coordinates directly to Weather,
+  preserves each connector independently on failure, and leaves no coordinate
+  or sync artifact; authenticated push/pull clears
   the queue; cursors advance; integrity/rebuild succeed; app refresh is observed
   as opportunistic rather than exact; all forty predeclared ranked-food trials
   meet the strict warm-path rule and all four negative controls stay unmeasured.
