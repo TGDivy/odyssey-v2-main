@@ -88,6 +88,74 @@ class SeasonPortfolioItem(StrictModel):
     review_date: date | None = None
 
 
+class SeasonRetrospectiveStatus(StrEnum):
+    DRAFT = "draft"
+    ACCEPTED = "accepted"
+    SKIPPED = "skipped"
+
+
+class FrozenOutgoingSeasonSummary(StrictModel):
+    outgoing_season_version_id: UUID7
+    outgoing_season_id: UUID7
+    outgoing_content_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    frozen_at: AwareDatetime
+    title: str = Field(min_length=1, max_length=200)
+    status: SeasonStatus
+    effective_interval: TemporalInterval
+    plain_language_summary: str = Field(min_length=1, max_length=8_000)
+
+    @model_validator(mode="after")
+    def validate_terminal_source(self) -> "FrozenOutgoingSeasonSummary":
+        if self.status not in {SeasonStatus.COMPLETE, SeasonStatus.ABANDONED}:
+            raise ValueError("an outgoing summary requires a terminal season")
+        if self.title != self.title.strip() or self.plain_language_summary != (
+            self.plain_language_summary.strip()
+        ):
+            raise ValueError("outgoing summary text must be trimmed")
+        return self
+
+
+class SeasonRetrospective(StrictModel):
+    status: SeasonRetrospectiveStatus = SeasonRetrospectiveStatus.DRAFT
+    overview: str = Field(min_length=1, max_length=8_000)
+    achievements: tuple[str, ...] = ()
+    disappointments: tuple[str, ...] = ()
+    decisions_that_changed_direction: tuple[str, ...] = ()
+    practices_to_carry_forward: tuple[str, ...] = ()
+    beliefs_strengthened: tuple[str, ...] = ()
+    beliefs_invalidated: tuple[str, ...] = ()
+    people_and_experiences_that_mattered: tuple[str, ...] = ()
+    data_and_model_quality_notes: tuple[str, ...] = ()
+    unfinished_commitment_decisions: tuple[str, ...] = ()
+
+    @model_validator(mode="after")
+    def validate_bounded_entries(self) -> "SeasonRetrospective":
+        if self.overview != self.overview.strip():
+            raise ValueError("retrospective overview must be trimmed")
+        lists = (
+            self.achievements,
+            self.disappointments,
+            self.decisions_that_changed_direction,
+            self.practices_to_carry_forward,
+            self.beliefs_strengthened,
+            self.beliefs_invalidated,
+            self.people_and_experiences_that_mattered,
+            self.data_and_model_quality_notes,
+            self.unfinished_commitment_decisions,
+        )
+        if any(len(values) > 100 for values in lists):
+            raise ValueError("retrospective lists may contain at most 100 entries")
+        if any(len(values) != len(set(values)) for values in lists):
+            raise ValueError("retrospective lists must not contain duplicates")
+        if any(
+            not 1 <= len(value) <= 1_000 or value != value.strip()
+            for values in lists
+            for value in values
+        ):
+            raise ValueError("retrospective entries must be trimmed and bounded")
+        return self
+
+
 class Season(StrictModel):
     metadata: EntityMetadata
     charter_revision_id: UUID7
@@ -110,6 +178,8 @@ class Season(StrictModel):
     review_cadence: str = Field(min_length=1, max_length=200)
     transition_notes: str | None = None
     supersedes_season_id: UUID7 | None = None
+    outgoing_summary: FrozenOutgoingSeasonSummary | None = None
+    retrospective: SeasonRetrospective | None = None
     primary_override_explanation: str | None = None
 
     @model_validator(mode="after")
@@ -132,6 +202,8 @@ class Season(StrictModel):
         )
         if any(len(values) != len(set(values)) for values in string_lists):
             raise ValueError("season policy lists must not contain duplicates")
+        if self.retrospective is not None and self.outgoing_summary is None:
+            raise ValueError("a retrospective requires a frozen outgoing summary")
         return self
 
 

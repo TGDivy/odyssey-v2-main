@@ -26,10 +26,13 @@ from odyssey.domain.life import (
     CharterValue,
     CharterVersion,
     DirectionRole,
+    FrozenOutgoingSeasonSummary,
     LifeStageVersion,
     Season,
     SeasonCreationSource,
     SeasonPortfolioItem,
+    SeasonRetrospective,
+    SeasonRetrospectiveStatus,
     SeasonStatus,
 )
 from odyssey.life.contracts import (
@@ -169,6 +172,8 @@ def season_request(
     created_at: datetime = CREATED_AT,
     expected_current_version_id: object | None = None,
     supersedes_season_id: object | None = None,
+    outgoing_summary: FrozenOutgoingSeasonSummary | None = None,
+    retrospective: SeasonRetrospective | None = None,
 ) -> dict[str, object]:
     season = Season(
         metadata=metadata(
@@ -211,6 +216,8 @@ def season_request(
         transition_triggers=("The role transition resolves.",),
         review_cadence="P2W",
         supersedes_season_id=supersedes_season_id,
+        outgoing_summary=outgoing_summary,
+        retrospective=retrospective,
     )
     return SeasonRevisionRequest(
         event_id=new_uuid7(),
@@ -579,7 +586,26 @@ def test_season_state_machine_is_versioned_and_terminal(tmp_path: Path) -> None:
             ),
         )
         successor_id = new_uuid7()
-        successor = client.post(
+        successor_created_at = CREATED_AT + timedelta(minutes=5)
+        complete_document = complete.json()["version"]["document"]
+        summary = FrozenOutgoingSeasonSummary(
+            outgoing_season_version_id=complete_version_id,
+            outgoing_season_id=season_id,
+            outgoing_content_hash=complete.json()["version"]["content_hash"],
+            frozen_at=successor_created_at,
+            title=complete_document["title"],
+            status=SeasonStatus(complete_document["status"]),
+            effective_interval=complete_document["effective_interval"],
+            plain_language_summary=(
+                "The outgoing decision policy is preserved without grading the person."
+            ),
+        )
+        retrospective = SeasonRetrospective(
+            overview=summary.plain_language_summary,
+            practices_to_carry_forward=("One focused block each week.",),
+            data_and_model_quality_notes=("Verify this draft against source history.",),
+        )
+        missing_summary = client.post(
             "/v1/seasons/revisions",
             json=season_request(
                 season_id=successor_id,
@@ -588,10 +614,88 @@ def test_season_state_machine_is_versioned_and_terminal(tmp_path: Path) -> None:
                 direction_id=new_uuid7(),
                 revision=1,
                 status=SeasonStatus.DRAFT,
-                accepted_at=CREATED_AT + timedelta(minutes=5),
-                created_at=CREATED_AT + timedelta(minutes=5),
+                accepted_at=successor_created_at,
+                created_at=successor_created_at,
                 expected_current_version_id=complete_version_id,
                 supersedes_season_id=season_id,
+            ),
+        )
+        mismatched_summary = client.post(
+            "/v1/seasons/revisions",
+            json=season_request(
+                season_id=successor_id,
+                version_id=new_uuid7(),
+                charter_revision_id=charter_version_id,
+                direction_id=new_uuid7(),
+                revision=1,
+                status=SeasonStatus.DRAFT,
+                accepted_at=successor_created_at,
+                created_at=successor_created_at,
+                expected_current_version_id=complete_version_id,
+                supersedes_season_id=season_id,
+                outgoing_summary=summary.model_copy(update={"outgoing_content_hash": "b" * 64}),
+                retrospective=retrospective,
+            ),
+        )
+        successor_version_id = new_uuid7()
+        successor = client.post(
+            "/v1/seasons/revisions",
+            json=season_request(
+                season_id=successor_id,
+                version_id=successor_version_id,
+                charter_revision_id=charter_version_id,
+                direction_id=new_uuid7(),
+                revision=1,
+                status=SeasonStatus.DRAFT,
+                accepted_at=successor_created_at,
+                created_at=successor_created_at,
+                expected_current_version_id=complete_version_id,
+                supersedes_season_id=season_id,
+                outgoing_summary=summary,
+                retrospective=retrospective,
+            ),
+        )
+        active_successor_version_id = new_uuid7()
+        accepted_retrospective = retrospective.model_copy(
+            update={
+                "status": SeasonRetrospectiveStatus.ACCEPTED,
+                "achievements": ("Protected the stated foundation during transition.",),
+            }
+        )
+        active_successor = client.post(
+            "/v1/seasons/revisions",
+            json=season_request(
+                season_id=successor_id,
+                version_id=active_successor_version_id,
+                charter_revision_id=charter_version_id,
+                direction_id=new_uuid7(),
+                revision=2,
+                status=SeasonStatus.ACTIVE,
+                accepted_at=CREATED_AT + timedelta(minutes=6),
+                created_at=successor_created_at,
+                expected_current_version_id=successor_version_id,
+                supersedes_season_id=season_id,
+                outgoing_summary=summary,
+                retrospective=accepted_retrospective,
+            ),
+        )
+        rewritten_retrospective = client.post(
+            "/v1/seasons/revisions",
+            json=season_request(
+                season_id=successor_id,
+                version_id=new_uuid7(),
+                charter_revision_id=charter_version_id,
+                direction_id=new_uuid7(),
+                revision=3,
+                status=SeasonStatus.ACTIVE,
+                accepted_at=CREATED_AT + timedelta(minutes=7),
+                created_at=successor_created_at,
+                expected_current_version_id=active_successor_version_id,
+                supersedes_season_id=season_id,
+                outgoing_summary=summary,
+                retrospective=accepted_retrospective.model_copy(
+                    update={"achievements": ("Rewritten after acceptance.",)}
+                ),
             ),
         )
 
@@ -605,15 +709,28 @@ def test_season_state_machine_is_versioned_and_terminal(tmp_path: Path) -> None:
     assert complete.json()["version"]["acceptance_sequence"] == 3
     assert illegal.status_code == 400
     assert illegal.json()["error"]["code"] == "SEASON_TRANSITION_INVALID"
+    assert missing_summary.status_code == 400
+    assert missing_summary.json()["error"]["code"] == "SEASON_OUTGOING_SUMMARY_REQUIRED"
+    assert mismatched_summary.status_code == 400
+    assert mismatched_summary.json()["error"]["code"] == "SEASON_OUTGOING_SUMMARY_MISMATCH"
     assert successor.status_code == 200
     assert successor.json()["version"]["acceptance_sequence"] == 4
+    assert (
+        successor.json()["version"]["document"]["outgoing_summary"]["outgoing_content_hash"]
+        == complete.json()["version"]["content_hash"]
+    )
+    assert active_successor.status_code == 200
+    assert active_successor.json()["version"]["acceptance_sequence"] == 5
+    assert active_successor.json()["version"]["document"]["retrospective"]["status"] == ("accepted")
+    assert rewritten_retrospective.status_code == 400
+    assert rewritten_retrospective.json()["error"]["code"] == ("SEASON_RETROSPECTIVE_IMMUTABLE")
 
     async def verify_history() -> None:
         async with database.sessions() as session:
             count = int(
                 await session.scalar(select(func.count()).select_from(LifeModelVersionRecord)) or 0
             )
-            assert count == 5
+            assert count == 6
             event_types = set((await session.scalars(select(LedgerEventRecord.event_type))).all())
             assert "season.activated.v1" in event_types
             assert "season.revised.v1" in event_types

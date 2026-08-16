@@ -131,6 +131,61 @@
       "title": "EntityMetadata",
       "type": "object"
     },
+    "FrozenOutgoingSeasonSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "effective_interval": {
+          "$ref": "#/$defs/TemporalInterval"
+        },
+        "frozen_at": {
+          "format": "date-time",
+          "title": "Frozen At",
+          "type": "string"
+        },
+        "outgoing_content_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Outgoing Content Hash",
+          "type": "string"
+        },
+        "outgoing_season_id": {
+          "format": "uuid",
+          "title": "Outgoing Season Id",
+          "type": "string"
+        },
+        "outgoing_season_version_id": {
+          "format": "uuid",
+          "title": "Outgoing Season Version Id",
+          "type": "string"
+        },
+        "plain_language_summary": {
+          "maxLength": 8000,
+          "minLength": 1,
+          "title": "Plain Language Summary",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/SeasonStatus"
+        },
+        "title": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "outgoing_season_version_id",
+        "outgoing_season_id",
+        "outgoing_content_hash",
+        "frozen_at",
+        "title",
+        "status",
+        "effective_interval",
+        "plain_language_summary"
+      ],
+      "title": "FrozenOutgoingSeasonSummary",
+      "type": "object"
+    },
     "SeasonCreationSource": {
       "enum": [
         "user",
@@ -207,6 +262,107 @@
       ],
       "title": "SeasonPortfolioItem",
       "type": "object"
+    },
+    "SeasonRetrospective": {
+      "additionalProperties": false,
+      "properties": {
+        "achievements": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Achievements",
+          "type": "array"
+        },
+        "beliefs_invalidated": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Beliefs Invalidated",
+          "type": "array"
+        },
+        "beliefs_strengthened": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Beliefs Strengthened",
+          "type": "array"
+        },
+        "data_and_model_quality_notes": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Data And Model Quality Notes",
+          "type": "array"
+        },
+        "decisions_that_changed_direction": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Decisions That Changed Direction",
+          "type": "array"
+        },
+        "disappointments": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Disappointments",
+          "type": "array"
+        },
+        "overview": {
+          "maxLength": 8000,
+          "minLength": 1,
+          "title": "Overview",
+          "type": "string"
+        },
+        "people_and_experiences_that_mattered": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "People And Experiences That Mattered",
+          "type": "array"
+        },
+        "practices_to_carry_forward": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Practices To Carry Forward",
+          "type": "array"
+        },
+        "status": {
+          "$ref": "#/$defs/SeasonRetrospectiveStatus",
+          "default": "draft"
+        },
+        "unfinished_commitment_decisions": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Unfinished Commitment Decisions",
+          "type": "array"
+        }
+      },
+      "required": [
+        "overview"
+      ],
+      "title": "SeasonRetrospective",
+      "type": "object"
+    },
+    "SeasonRetrospectiveStatus": {
+      "enum": [
+        "draft",
+        "accepted",
+        "skipped"
+      ],
+      "title": "SeasonRetrospectiveStatus",
+      "type": "string"
     },
     "SeasonStatus": {
       "enum": [
@@ -364,6 +520,17 @@
       "title": "Opportunity Budgets",
       "type": "array"
     },
+    "outgoing_summary": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/FrozenOutgoingSeasonSummary"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
     "portfolio_items": {
       "items": {
         "$ref": "#/$defs/SeasonPortfolioItem"
@@ -404,6 +571,17 @@
       "minLength": 1,
       "title": "Rationale",
       "type": "string"
+    },
+    "retrospective": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SeasonRetrospective"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
     },
     "review_cadence": {
       "maxLength": 200,

@@ -55,6 +55,57 @@ func seasonRequiresPrimaryOverrideExplanation() throws {
 }
 
 @Test
+func seasonTransitionSummaryIsTerminalHashBoundAndRetrospectiveOptional() throws {
+    let frozenAt = Date(timeIntervalSince1970: 1_786_752_000)
+    let interval = try TemporalInterval(
+        start: .localDate(LocalDate(year: 2026, month: 5, day: 1)),
+        end: .localDate(LocalDate(year: 2026, month: 8, day: 1)),
+        timeZoneID: "UTC",
+        startPrecision: .day,
+        endPrecision: .day,
+        allDaySemantics: true
+    )
+    let summary = try FrozenOutgoingSeasonSummary(
+        outgoingSeasonVersionID: UUIDv7(),
+        outgoingSeasonID: UUIDv7(),
+        outgoingContentHash: String(repeating: "a", count: 64),
+        frozenAt: frozenAt,
+        title: "Outgoing synthetic season",
+        status: .complete,
+        effectiveInterval: interval,
+        plainLanguageSummary: "This preserves the outgoing decision policy without "
+            + "grading the person."
+    )
+    let retrospective = try SeasonRetrospective(
+        overview: summary.plainLanguageSummary,
+        practicesToCarryForward: ["Keep one protected recovery evening"],
+        dataAndModelQualityNotes: ["Verify this draft against source history"]
+    )
+
+    #expect(summary.status == .complete)
+    #expect(retrospective.status == .draft)
+    #expect(retrospective.achievements.isEmpty)
+    #expect(throws: DomainValidationError.invalidSeasonTransition) {
+        try FrozenOutgoingSeasonSummary(
+            outgoingSeasonVersionID: UUIDv7(),
+            outgoingSeasonID: UUIDv7(),
+            outgoingContentHash: String(repeating: "a", count: 64),
+            frozenAt: frozenAt,
+            title: "Still active",
+            status: .active,
+            effectiveInterval: interval,
+            plainLanguageSummary: "An active season cannot be frozen as outgoing."
+        )
+    }
+    #expect(throws: DomainValidationError.invalidSeasonTransition) {
+        try SeasonRetrospective(
+            overview: "Duplicate entries are not accepted.",
+            achievements: ["Same", "Same"]
+        )
+    }
+}
+
+@Test
 func charterAndLifeStageContractsPreserveOwnerReviewedVersions() throws {
     let now = Date(timeIntervalSince1970: 1_786_752_000)
     let metadata = try EntityMetadata(

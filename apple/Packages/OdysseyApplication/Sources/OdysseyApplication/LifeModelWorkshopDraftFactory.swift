@@ -359,6 +359,8 @@ public struct LifeModelWorkshopDraftFactory: Sendable {
                     reviewCadence: current.reviewCadence,
                     transitionNotes: current.transitionNotes,
                     supersedesSeasonID: current.supersedesSeasonID,
+                    outgoingSummary: current.outgoingSummary,
+                    retrospective: current.retrospective,
                     primaryOverrideExplanation: current.primaryOverrideExplanation
                 )
                 return try proposal(
@@ -399,6 +401,28 @@ public struct LifeModelWorkshopDraftFactory: Sendable {
         let now = try validNow()
         let versionID = identifier()
         let seasonID = identifier()
+        let plainLanguageSummary = Self.outgoingSummary(for: current)
+        let outgoingSummary = try FrozenOutgoingSeasonSummary(
+            outgoingSeasonVersionID: accepted.versionID,
+            outgoingSeasonID: accepted.logicalID,
+            outgoingContentHash: accepted.contentHash,
+            frozenAt: now,
+            title: current.title,
+            status: current.status,
+            effectiveInterval: current.effectiveInterval,
+            plainLanguageSummary: plainLanguageSummary
+        )
+        let retrospective = try SeasonRetrospective(
+            overview: plainLanguageSummary,
+            practicesToCarryForward: Self.unique(
+                current.portfolioItems.compactMap(\.minimumViableCommitment)
+            ),
+            peopleAndExperiencesThatMattered: current.protectedExperiences,
+            dataAndModelQualityNotes: [
+                "This draft uses the accepted Season Charter only; verify it against "
+                    + "source history."
+            ]
+        )
         let successor = try Season(
             metadata: metadata(
                 id: versionID,
@@ -427,6 +451,8 @@ public struct LifeModelWorkshopDraftFactory: Sendable {
             reviewCadence: "Every two weeks during calibration",
             transitionNotes: "Carry forward only what still fits after reviewing the outgoing season.",
             supersedesSeasonID: accepted.logicalID,
+            outgoingSummary: outgoingSummary,
+            retrospective: retrospective,
             primaryOverrideExplanation: current.primaryOverrideExplanation
         )
         return try proposal(
@@ -438,6 +464,24 @@ public struct LifeModelWorkshopDraftFactory: Sendable {
             acceptanceMethod: .ownerAuthored,
             value: successor
         )
+    }
+
+    private static func outgoingSummary(for season: Season) -> String {
+        let portfolioCount = season.portfolioItems.count
+        let foundationCount = season.portfolioItems.count { $0.role == .foundation }
+        let nonGoalCount = season.explicitNonGoals.count
+        return "“\(season.title)” is preserved as an outgoing decision policy, not a grade "
+            + "of the person. It carried \(portfolioCount) portfolio directions, protected "
+            + "\(foundationCount) foundations, and named \(nonGoalCount) explicit not-now "
+            + "areas. Review source history before recording achievements or disappointments."
+    }
+
+    private static func unique(_ values: [String]) -> [String] {
+        var seen: Set<String> = []
+        return values.filter {
+            !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                && seen.insert($0).inserted
+        }
     }
 
     private func proposal<Value: Encodable>(

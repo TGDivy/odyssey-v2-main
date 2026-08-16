@@ -260,6 +260,66 @@ public struct SeasonPortfolioItemEditor: Identifiable, Equatable, Sendable {
     }
 }
 
+public struct SeasonRetrospectiveEditor: Equatable, Sendable {
+    public let originalStatus: SeasonRetrospectiveStatus
+    public var status: SeasonRetrospectiveStatus
+    public var overview: String
+    public var achievements: [String]
+    public var disappointments: [String]
+    public var decisionsThatChangedDirection: [String]
+    public var practicesToCarryForward: [String]
+    public var beliefsStrengthened: [String]
+    public var beliefsInvalidated: [String]
+    public var peopleAndExperiencesThatMattered: [String]
+    public var dataAndModelQualityNotes: [String]
+    public var unfinishedCommitmentDecisions: [String]
+
+    public init(_ retrospective: SeasonRetrospective) {
+        originalStatus = retrospective.status
+        status = retrospective.status
+        overview = retrospective.overview
+        achievements = retrospective.achievements
+        disappointments = retrospective.disappointments
+        decisionsThatChangedDirection = retrospective.decisionsThatChangedDirection
+        practicesToCarryForward = retrospective.practicesToCarryForward
+        beliefsStrengthened = retrospective.beliefsStrengthened
+        beliefsInvalidated = retrospective.beliefsInvalidated
+        peopleAndExperiencesThatMattered = retrospective.peopleAndExperiencesThatMattered
+        dataAndModelQualityNotes = retrospective.dataAndModelQualityNotes
+        unfinishedCommitmentDecisions = retrospective.unfinishedCommitmentDecisions
+    }
+
+    public var allowedStatuses: [SeasonRetrospectiveStatus] {
+        switch originalStatus {
+        case .draft:
+            [.draft, .accepted, .skipped]
+        case .accepted:
+            [.accepted]
+        case .skipped:
+            [.skipped]
+        }
+    }
+
+    func value() throws -> SeasonRetrospective {
+        guard allowedStatuses.contains(status) else {
+            throw LifeModelWorkshopEditorError.invalidDocument(.season)
+        }
+        return try SeasonRetrospective(
+            status: status,
+            overview: overview,
+            achievements: achievements,
+            disappointments: disappointments,
+            decisionsThatChangedDirection: decisionsThatChangedDirection,
+            practicesToCarryForward: practicesToCarryForward,
+            beliefsStrengthened: beliefsStrengthened,
+            beliefsInvalidated: beliefsInvalidated,
+            peopleAndExperiencesThatMattered: peopleAndExperiencesThatMattered,
+            dataAndModelQualityNotes: dataAndModelQualityNotes,
+            unfinishedCommitmentDecisions: unfinishedCommitmentDecisions
+        )
+    }
+}
+
 public struct SeasonDraftEditor: Equatable, Sendable {
     public let draftID: UUIDv7
     public let expectedStateRevision: Int
@@ -281,6 +341,8 @@ public struct SeasonDraftEditor: Equatable, Sendable {
     public var transitionTriggers: [String]
     public var reviewCadence: String
     public var transitionNotes: String
+    public let outgoingSummary: FrozenOutgoingSeasonSummary?
+    public var retrospective: SeasonRetrospectiveEditor?
     public var primaryOverrideExplanation: String
 
     private let metadata: EntityMetadata
@@ -317,6 +379,8 @@ public struct SeasonDraftEditor: Equatable, Sendable {
         transitionTriggers = season.transitionTriggers
         reviewCadence = season.reviewCadence
         transitionNotes = season.transitionNotes ?? ""
+        outgoingSummary = season.outgoingSummary
+        retrospective = season.retrospective.map(SeasonRetrospectiveEditor.init)
         primaryOverrideExplanation = season.primaryOverrideExplanation ?? ""
         metadata = season.metadata
         charterRevisionID = season.charterRevisionID
@@ -373,6 +437,8 @@ public struct SeasonDraftEditor: Equatable, Sendable {
                     reviewCadence: reviewCadence,
                     transitionNotes: nilIfBlank(transitionNotes),
                     supersedesSeasonID: supersedesSeasonID,
+                    outgoingSummary: outgoingSummary,
+                    retrospective: try retrospective?.value(),
                     primaryOverrideExplanation: nilIfBlank(primaryOverrideExplanation)
                 )
             )

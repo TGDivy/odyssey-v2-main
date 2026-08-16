@@ -16,9 +16,11 @@ from odyssey.domain.common import (
 from odyssey.domain.life import (
     AllocationBand,
     DirectionRole,
+    FrozenOutgoingSeasonSummary,
     Season,
     SeasonCreationSource,
     SeasonPortfolioItem,
+    SeasonRetrospective,
     SeasonStatus,
 )
 from odyssey.domain.schema_registry import SCHEMA_MODELS
@@ -116,6 +118,43 @@ def test_season_requires_explanation_for_more_than_two_primaries() -> None:
 
     season = Season(**common, primary_override_explanation="Temporary launch concentration.")
     assert len(season.portfolio_items) == 3
+
+
+def test_season_transition_summary_is_terminal_and_retrospective_is_bounded() -> None:
+    now = datetime.now(UTC)
+    interval = TemporalInterval(start=now - timedelta(days=90), end=now)
+    summary = FrozenOutgoingSeasonSummary(
+        outgoing_season_version_id=new_uuid7(),
+        outgoing_season_id=new_uuid7(),
+        outgoing_content_hash="a" * 64,
+        frozen_at=now,
+        title="Outgoing synthetic season",
+        status=SeasonStatus.COMPLETE,
+        effective_interval=interval,
+        plain_language_summary="The outgoing policy is preserved without grading the person.",
+    )
+    retrospective = SeasonRetrospective(
+        overview=summary.plain_language_summary,
+        practices_to_carry_forward=("Keep one protected recovery evening.",),
+    )
+
+    assert retrospective.achievements == ()
+    with pytest.raises(ValidationError, match="terminal season"):
+        FrozenOutgoingSeasonSummary(
+            outgoing_season_version_id=new_uuid7(),
+            outgoing_season_id=new_uuid7(),
+            outgoing_content_hash="a" * 64,
+            frozen_at=now,
+            title="Still active",
+            status=SeasonStatus.ACTIVE,
+            effective_interval=interval,
+            plain_language_summary="This must not become a frozen outgoing summary.",
+        )
+    with pytest.raises(ValidationError, match="duplicates"):
+        SeasonRetrospective(
+            overview="Duplicate entries are invalid.",
+            achievements=("Same", "Same"),
+        )
 
 
 def test_registered_contracts_emit_json_schema() -> None:

@@ -10,6 +10,7 @@ public enum DomainValidationError: Error, Equatable, Sendable {
     case duplicateDirection
     case duplicateSeasonPolicyEntry
     case missingRequiredSeasonPolicy
+    case invalidSeasonTransition
     case invalidCharter
     case invalidLifeStage
 }
@@ -453,6 +454,193 @@ public struct SeasonPortfolioItem: Codable, Hashable, Sendable {
     }
 }
 
+public enum SeasonRetrospectiveStatus: String, Codable, CaseIterable, Hashable, Sendable {
+    case draft
+    case accepted
+    case skipped
+}
+
+public struct FrozenOutgoingSeasonSummary: Codable, Hashable, Sendable {
+    public let outgoingSeasonVersionID: UUIDv7
+    public let outgoingSeasonID: UUIDv7
+    public let outgoingContentHash: String
+    public let frozenAt: Date
+    public let title: String
+    public let status: SeasonStatus
+    public let effectiveInterval: TemporalInterval
+    public let plainLanguageSummary: String
+
+    public init(
+        outgoingSeasonVersionID: UUIDv7,
+        outgoingSeasonID: UUIDv7,
+        outgoingContentHash: String,
+        frozenAt: Date,
+        title: String,
+        status: SeasonStatus,
+        effectiveInterval: TemporalInterval,
+        plainLanguageSummary: String
+    ) throws {
+        let hexadecimal = CharacterSet(charactersIn: "0123456789abcdef")
+        let hashIsValid = outgoingContentHash.count == 64
+            && outgoingContentHash.unicodeScalars.allSatisfy(hexadecimal.contains)
+        guard hashIsValid,
+              frozenAt.timeIntervalSinceReferenceDate.isFinite,
+              status == .complete || status == .abandoned,
+              Self.validText(title, maximum: 200),
+              Self.validText(plainLanguageSummary, maximum: 8_000)
+        else {
+            throw DomainValidationError.invalidSeasonTransition
+        }
+        self.outgoingSeasonVersionID = outgoingSeasonVersionID
+        self.outgoingSeasonID = outgoingSeasonID
+        self.outgoingContentHash = outgoingContentHash
+        self.frozenAt = frozenAt
+        self.title = title
+        self.status = status
+        self.effectiveInterval = effectiveInterval
+        self.plainLanguageSummary = plainLanguageSummary
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        try self.init(
+            outgoingSeasonVersionID: container.decode(
+                UUIDv7.self,
+                forKey: .outgoingSeasonVersionID
+            ),
+            outgoingSeasonID: container.decode(UUIDv7.self, forKey: .outgoingSeasonID),
+            outgoingContentHash: container.decode(String.self, forKey: .outgoingContentHash),
+            frozenAt: container.decode(Date.self, forKey: .frozenAt),
+            title: container.decode(String.self, forKey: .title),
+            status: container.decode(SeasonStatus.self, forKey: .status),
+            effectiveInterval: container.decode(
+                TemporalInterval.self,
+                forKey: .effectiveInterval
+            ),
+            plainLanguageSummary: container.decode(String.self, forKey: .plainLanguageSummary)
+        )
+    }
+
+    private static func validText(_ value: String, maximum: Int) -> Bool {
+        (1 ... maximum).contains(value.count)
+            && value == value.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}
+
+public struct SeasonRetrospective: Codable, Hashable, Sendable {
+    public let status: SeasonRetrospectiveStatus
+    public let overview: String
+    public let achievements: [String]
+    public let disappointments: [String]
+    public let decisionsThatChangedDirection: [String]
+    public let practicesToCarryForward: [String]
+    public let beliefsStrengthened: [String]
+    public let beliefsInvalidated: [String]
+    public let peopleAndExperiencesThatMattered: [String]
+    public let dataAndModelQualityNotes: [String]
+    public let unfinishedCommitmentDecisions: [String]
+
+    public init(
+        status: SeasonRetrospectiveStatus = .draft,
+        overview: String,
+        achievements: [String] = [],
+        disappointments: [String] = [],
+        decisionsThatChangedDirection: [String] = [],
+        practicesToCarryForward: [String] = [],
+        beliefsStrengthened: [String] = [],
+        beliefsInvalidated: [String] = [],
+        peopleAndExperiencesThatMattered: [String] = [],
+        dataAndModelQualityNotes: [String] = [],
+        unfinishedCommitmentDecisions: [String] = []
+    ) throws {
+        let lists = [
+            achievements,
+            disappointments,
+            decisionsThatChangedDirection,
+            practicesToCarryForward,
+            beliefsStrengthened,
+            beliefsInvalidated,
+            peopleAndExperiencesThatMattered,
+            dataAndModelQualityNotes,
+            unfinishedCommitmentDecisions,
+        ]
+        guard Self.validText(overview, maximum: 8_000),
+              lists.allSatisfy(Self.validEntries)
+        else {
+            throw DomainValidationError.invalidSeasonTransition
+        }
+        self.status = status
+        self.overview = overview
+        self.achievements = achievements
+        self.disappointments = disappointments
+        self.decisionsThatChangedDirection = decisionsThatChangedDirection
+        self.practicesToCarryForward = practicesToCarryForward
+        self.beliefsStrengthened = beliefsStrengthened
+        self.beliefsInvalidated = beliefsInvalidated
+        self.peopleAndExperiencesThatMattered = peopleAndExperiencesThatMattered
+        self.dataAndModelQualityNotes = dataAndModelQualityNotes
+        self.unfinishedCommitmentDecisions = unfinishedCommitmentDecisions
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        try self.init(
+            status: try container.decodeIfPresent(
+                SeasonRetrospectiveStatus.self,
+                forKey: .status
+            ) ?? .draft,
+            overview: try container.decode(String.self, forKey: .overview),
+            achievements: try container.decodeIfPresent(
+                [String].self,
+                forKey: .achievements
+            ) ?? [],
+            disappointments: try container.decodeIfPresent(
+                [String].self,
+                forKey: .disappointments
+            ) ?? [],
+            decisionsThatChangedDirection: try container.decodeIfPresent(
+                [String].self,
+                forKey: .decisionsThatChangedDirection
+            ) ?? [],
+            practicesToCarryForward: try container.decodeIfPresent(
+                [String].self,
+                forKey: .practicesToCarryForward
+            ) ?? [],
+            beliefsStrengthened: try container.decodeIfPresent(
+                [String].self,
+                forKey: .beliefsStrengthened
+            ) ?? [],
+            beliefsInvalidated: try container.decodeIfPresent(
+                [String].self,
+                forKey: .beliefsInvalidated
+            ) ?? [],
+            peopleAndExperiencesThatMattered: try container.decodeIfPresent(
+                [String].self,
+                forKey: .peopleAndExperiencesThatMattered
+            ) ?? [],
+            dataAndModelQualityNotes: try container.decodeIfPresent(
+                [String].self,
+                forKey: .dataAndModelQualityNotes
+            ) ?? [],
+            unfinishedCommitmentDecisions: try container.decodeIfPresent(
+                [String].self,
+                forKey: .unfinishedCommitmentDecisions
+            ) ?? []
+        )
+    }
+
+    private static func validText(_ value: String, maximum: Int) -> Bool {
+        (1 ... maximum).contains(value.count)
+            && value == value.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private static func validEntries(_ values: [String]) -> Bool {
+        values.count <= 100
+            && Set(values).count == values.count
+            && values.allSatisfy { validText($0, maximum: 1_000) }
+    }
+}
+
 public struct Season: Codable, Hashable, Sendable {
     public let metadata: EntityMetadata
     public let charterRevisionID: UUIDv7
@@ -475,6 +663,8 @@ public struct Season: Codable, Hashable, Sendable {
     public let reviewCadence: String
     public let transitionNotes: String?
     public let supersedesSeasonID: UUIDv7?
+    public let outgoingSummary: FrozenOutgoingSeasonSummary?
+    public let retrospective: SeasonRetrospective?
     public let primaryOverrideExplanation: String?
 
     public init(
@@ -499,6 +689,8 @@ public struct Season: Codable, Hashable, Sendable {
         reviewCadence: String,
         transitionNotes: String? = nil,
         supersedesSeasonID: UUIDv7? = nil,
+        outgoingSummary: FrozenOutgoingSeasonSummary? = nil,
+        retrospective: SeasonRetrospective? = nil,
         primaryOverrideExplanation: String? = nil
     ) throws {
         let primaryCount = portfolioItems.count { $0.role == .primary }
@@ -527,6 +719,9 @@ public struct Season: Codable, Hashable, Sendable {
         {
             throw DomainValidationError.missingRequiredSeasonPolicy
         }
+        if retrospective != nil, outgoingSummary == nil {
+            throw DomainValidationError.invalidSeasonTransition
+        }
         self.metadata = metadata
         self.charterRevisionID = charterRevisionID
         self.title = title
@@ -548,6 +743,8 @@ public struct Season: Codable, Hashable, Sendable {
         self.reviewCadence = reviewCadence
         self.transitionNotes = transitionNotes
         self.supersedesSeasonID = supersedesSeasonID
+        self.outgoingSummary = outgoingSummary
+        self.retrospective = retrospective
         self.primaryOverrideExplanation = primaryOverrideExplanation
     }
 }

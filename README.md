@@ -94,10 +94,12 @@ commands sequentially with bounded retries, records `409` as an owner-review
 conflict, and caches auditable server history. The iPhone Workshop provides
 typed plain-language Charter, descriptive life-stage, and season editors; an
 editable commission-derived seed; exact semantic review and immutable
-acceptance confirmation; accepted history; terminal conflict guidance; and
-offline queue status. These SwiftUI paths are source-validated here but still
-require Xcode, simulator, accessibility, and physical-device validation. Do not
-seed real orientation data through SQL or treat model output as accepted.
+acceptance confirmation; a hash-bound frozen outgoing-season summary with an
+optional accepted/skipped retrospective; accepted history; terminal conflict
+guidance; and offline queue status. These SwiftUI paths are source-validated
+here but still require Xcode, simulator, accessibility, and physical-device
+validation. Do not seed real orientation data through SQL or treat model output
+as accepted.
 See [`docs/architecture/life-model-acceptance.md`](docs/architecture/life-model-acceptance.md).
 
 ## Safety invariants

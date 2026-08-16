@@ -3,7 +3,7 @@
 import json
 from datetime import UTC, datetime
 from hashlib import sha256
-from typing import cast
+from typing import Never, cast
 from uuid import UUID
 
 from pydantic import JsonValue, TypeAdapter
@@ -24,6 +24,8 @@ from odyssey.domain.life import (
     CharterVersion,
     LifeStageVersion,
     Season,
+    SeasonRetrospective,
+    SeasonRetrospectiveStatus,
     SeasonStatus,
 )
 from odyssey.life.contracts import (
@@ -536,6 +538,11 @@ class LifeModelService:
                     "SEASON_SUPERSESSION_MISMATCH",
                     "The first accepted season cannot supersede an unknown season.",
                 )
+            if season.outgoing_summary is not None or season.retrospective is not None:
+                LifeModelService._invalid(
+                    "SEASON_OUTGOING_SUMMARY_UNEXPECTED",
+                    "A first accepted season cannot contain an outgoing-season summary.",
+                )
             if season.status in _TERMINAL_SEASON_STATUSES | {SeasonStatus.TRANSITIONING}:
                 LifeModelService._invalid(
                     "SEASON_INITIAL_STATUS_INVALID",
@@ -553,6 +560,15 @@ class LifeModelService:
                     "SEASON_SUPERSESSION_CHANGED",
                     "A season revision cannot rewrite which prior season it superseded.",
                 )
+            if season.outgoing_summary != previous_document.outgoing_summary:
+                LifeModelService._invalid(
+                    "SEASON_OUTGOING_SUMMARY_CHANGED",
+                    "A frozen outgoing-season summary cannot change in a later revision.",
+                )
+            LifeModelService._validate_retrospective_transition(
+                previous_document.retrospective,
+                season.retrospective,
+            )
             if season.status not in _SEASON_TRANSITIONS[previous_status]:
                 LifeModelService._invalid(
                     "SEASON_TRANSITION_INVALID",
@@ -574,6 +590,45 @@ class LifeModelService:
             LifeModelService._invalid(
                 "SEASON_SUCCESSOR_STATUS_INVALID",
                 "A successor season must begin as draft, calibration, or active.",
+            )
+        previous_document = Season.model_validate(current.document)
+        summary = season.outgoing_summary
+        if summary is None:
+            LifeModelService._invalid(
+                "SEASON_OUTGOING_SUMMARY_REQUIRED",
+                "A successor season requires a frozen summary of the outgoing season.",
+            )
+        if (
+            summary.outgoing_season_version_id != current.id
+            or summary.outgoing_season_id != current.logical_id
+            or summary.outgoing_content_hash != current.content_hash
+            or summary.title != previous_document.title
+            or summary.status != previous_document.status
+            or summary.effective_interval != previous_document.effective_interval
+            or _aware(summary.frozen_at) < _aware(current.accepted_at)
+            or _aware(summary.frozen_at) > _aware(season.metadata.last_revised_at)
+        ):
+            LifeModelService._invalid(
+                "SEASON_OUTGOING_SUMMARY_MISMATCH",
+                "The frozen outgoing-season summary does not match accepted history.",
+            )
+
+    @staticmethod
+    def _validate_retrospective_transition(
+        previous: SeasonRetrospective | None,
+        current: SeasonRetrospective | None,
+    ) -> None:
+        if previous is None:
+            return
+        if current is None:
+            LifeModelService._invalid(
+                "SEASON_RETROSPECTIVE_REMOVED",
+                "A transition retrospective cannot be removed in a later revision.",
+            )
+        if previous.status is not SeasonRetrospectiveStatus.DRAFT and current != previous:
+            LifeModelService._invalid(
+                "SEASON_RETROSPECTIVE_IMMUTABLE",
+                "An accepted or skipped transition retrospective is immutable.",
             )
 
     @staticmethod
@@ -698,7 +753,7 @@ class LifeModelService:
         )
 
     @staticmethod
-    def _invalid(code: str, message: str) -> None:
+    def _invalid(code: str, message: str) -> Never:
         raise LifeModelServiceError(code, message, status_code=400)
 
 

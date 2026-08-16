@@ -121,6 +121,23 @@ The iPhone Workshop exposes only typed plain-language fields:
   protected experiences, trade-offs, good-week description, review cadence,
   and transition conditions.
 
+Starting a successor creates a frozen outgoing-season summary inside the new
+versioned Season document. The summary names the outgoing version and logical
+season, retains its canonical server content hash, terminal status, title and
+effective interval, and uses explicit non-grading copy. Both the portable
+Workshop service and server acceptance boundary compare those fields with
+immutable accepted history; a missing, changed or mismatched summary fails
+closed. Same-season revisions preserve the frozen summary exactly.
+
+The successor also carries an optional retrospective prepared from the accepted
+Season Charter without inventing achievements or disappointments. It exposes
+the specification prompts for changed decisions, carry-forward practices,
+beliefs, people and experiences, data/model quality, and unfinished commitment
+decisions. The owner may edit it, explicitly accept it, or skip it; successor
+acceptance never requires retrospective writing. Accepted and skipped
+retrospectives become immutable, while a draft may be completed in a reviewed
+forward Season revision.
+
 Saving appends a local draft event. Review persists the exact document digest
 and presents metadata-free semantic changes plus attention warnings. Acceptance
 requires a separate explicit acknowledgement that this exact version is
@@ -220,7 +237,6 @@ source control.
 
 - Xcode/UI automation and a two-device Workshop refresh proof against the
   server history cache.
-- Frozen outgoing-season summary and optional retrospective draft.
 - Recommendation and UI citations that expose which accepted versions were
   used.
 - macOS Workshop parity and Xcode/accessibility/device validation.

@@ -50,6 +50,11 @@ The iPhone Workshop builds on that service with typed Charter-value and policy
 list fields, descriptive life-stage contexts, and season portfolio, status,
 constraint, opportunity-budget, signal, guardrail, and transition editors. It
 ships an editable synthetic commission-derived seed, not accepted defaults.
+Starting a successor freezes a non-judgmental summary bound to the outgoing
+accepted version ID, logical ID, content hash, status, title, and interval. An
+optional retrospective draft covers achievements, disappointments, changed
+decisions, carry-forward practices, beliefs, people/experiences, data quality,
+and unfinished commitments; it may remain a draft, be accepted, or be skipped.
 Every acceptance opens a complete semantic review, shows composition warnings,
 and requires an explicit immutable-history confirmation. Accepted versions are
 decoded into read-only plain-language history. A `409` remains a visible

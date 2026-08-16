@@ -278,7 +278,7 @@
     },
     {
       "path": "schemas/jsonschema/v1/season.schema.json",
-      "sha256": "1f83f2c0744380d1720b36ae38da3cf91bd13f8202ba2eed2dd861cdd78976f2"
+      "sha256": "8fc7fdd4f41d0e27580249a2601b8ccda6966b1417c1e832963ee2e204f33d30"
     },
     {
       "path": "schemas/jsonschema/v1/standing-authorization.schema.json",
@@ -290,7 +290,7 @@
     },
     {
       "path": "schemas/openapi/odyssey-v1.openapi.json",
-      "sha256": "cbc0194501c187d01ae7f3df40500a82631f6f37d698ae78bf320d63cb30127a"
+      "sha256": "46909953d2dfb6b52a6ae641192b71629b6a4997cea701c72899ca8ea8252ce0"
     }
   ],
   "schema_version": 1

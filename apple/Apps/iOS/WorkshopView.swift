@@ -942,6 +942,85 @@ private struct SeasonDraftEditorView: View {
                     )
                 }
 
+                if let summary = editor.outgoingSummary {
+                    Section("Outgoing Season — Frozen") {
+                        LabeledContent("Title", value: summary.title)
+                        LabeledContent("Final status", value: summary.status.displayName)
+                        Text(summary.plainLanguageSummary)
+                        LabeledContent("Frozen") {
+                            Text(summary.frozenAt, style: .date)
+                        }
+                        Text(
+                            "This summary is bound to the immutable accepted outgoing version. "
+                                + "Editing the next season cannot rewrite it."
+                        )
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    }
+                }
+
+                if let retrospective = editor.retrospective {
+                    Section("Optional Retrospective") {
+                        Picker(
+                            "Review status",
+                            selection: retrospectiveBinding(\.status, fallback: .draft)
+                        ) {
+                            ForEach(retrospective.allowedStatuses, id: \.rawValue) { status in
+                                Text(status.displayName).tag(status)
+                            }
+                        }
+                        TextField(
+                            "Non-judgmental overview",
+                            text: retrospectiveBinding(\.overview, fallback: ""),
+                            axis: .vertical
+                        )
+                        Text(
+                            "Writing is optional. Accept, keep editing, or skip this draft; none "
+                                + "of these choices grades the person or blocks a successor."
+                        )
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    }
+                    if retrospective.status != .skipped {
+                        retrospectiveListSection(
+                            "Achievements",
+                            keyPath: \.achievements
+                        )
+                        retrospectiveListSection(
+                            "Disappointments",
+                            keyPath: \.disappointments
+                        )
+                        retrospectiveListSection(
+                            "Decisions That Changed Direction",
+                            keyPath: \.decisionsThatChangedDirection
+                        )
+                        retrospectiveListSection(
+                            "Practices to Carry Forward",
+                            keyPath: \.practicesToCarryForward
+                        )
+                        retrospectiveListSection(
+                            "Beliefs Strengthened",
+                            keyPath: \.beliefsStrengthened
+                        )
+                        retrospectiveListSection(
+                            "Beliefs Invalidated",
+                            keyPath: \.beliefsInvalidated
+                        )
+                        retrospectiveListSection(
+                            "People and Experiences That Mattered",
+                            keyPath: \.peopleAndExperiencesThatMattered
+                        )
+                        retrospectiveListSection(
+                            "Data and Model Quality Notes",
+                            keyPath: \.dataAndModelQualityNotes
+                        )
+                        retrospectiveListSection(
+                            "Carry, Renegotiate, or Release",
+                            keyPath: \.unfinishedCommitmentDecisions
+                        )
+                    }
+                }
+
                 Section("Portfolio") {
                     ForEach($editor.portfolioItems) { $item in
                         DisclosureGroup(item.role.displayName) {
@@ -1043,6 +1122,30 @@ private struct SeasonDraftEditorView: View {
         } catch {
             localFailure = error.localizedDescription
         }
+    }
+
+    private func retrospectiveListSection(
+        _ title: String,
+        keyPath: WritableKeyPath<SeasonRetrospectiveEditor, [String]>
+    ) -> some View {
+        stringListSection(
+            title,
+            items: retrospectiveBinding(keyPath, fallback: [])
+        )
+    }
+
+    private func retrospectiveBinding<Value>(
+        _ keyPath: WritableKeyPath<SeasonRetrospectiveEditor, Value>,
+        fallback: Value
+    ) -> Binding<Value> {
+        Binding(
+            get: { editor.retrospective?[keyPath: keyPath] ?? fallback },
+            set: { value in
+                guard var retrospective = editor.retrospective else { return }
+                retrospective[keyPath: keyPath] = value
+                editor.retrospective = retrospective
+            }
+        )
     }
 }
 
@@ -1278,6 +1381,52 @@ private struct SeasonAcceptedSections: View {
         if let notes = season.transitionNotes, !notes.isEmpty {
             Section("Transition Notes") { Text(notes) }
         }
+        if let summary = season.outgoingSummary {
+            Section("Frozen Outgoing Season") {
+                LabeledContent("Title", value: summary.title)
+                LabeledContent("Final status", value: summary.status.displayName)
+                Text(summary.plainLanguageSummary)
+                LabeledContent("Frozen") { Text(summary.frozenAt, style: .date) }
+            }
+        }
+        if let retrospective = season.retrospective {
+            Section("Transition Retrospective") {
+                LabeledContent("Status", value: retrospective.status.displayName)
+                Text(retrospective.overview)
+            }
+            if retrospective.status != .skipped {
+                readOnlyListSection("Achievements", values: retrospective.achievements)
+                readOnlyListSection("Disappointments", values: retrospective.disappointments)
+                readOnlyListSection(
+                    "Decisions That Changed Direction",
+                    values: retrospective.decisionsThatChangedDirection
+                )
+                readOnlyListSection(
+                    "Practices to Carry Forward",
+                    values: retrospective.practicesToCarryForward
+                )
+                readOnlyListSection(
+                    "Beliefs Strengthened",
+                    values: retrospective.beliefsStrengthened
+                )
+                readOnlyListSection(
+                    "Beliefs Invalidated",
+                    values: retrospective.beliefsInvalidated
+                )
+                readOnlyListSection(
+                    "People and Experiences That Mattered",
+                    values: retrospective.peopleAndExperiencesThatMattered
+                )
+                readOnlyListSection(
+                    "Data and Model Quality Notes",
+                    values: retrospective.dataAndModelQualityNotes
+                )
+                readOnlyListSection(
+                    "Carry, Renegotiate, or Release",
+                    values: retrospective.unfinishedCommitmentDecisions
+                )
+            }
+        }
     }
 }
 
@@ -1475,6 +1624,19 @@ private extension SeasonStatus {
             "Complete"
         case .abandoned:
             "Abandoned"
+        }
+    }
+}
+
+private extension SeasonRetrospectiveStatus {
+    var displayName: String {
+        switch self {
+        case .draft:
+            "Draft — optional"
+        case .accepted:
+            "Accepted"
+        case .skipped:
+            "Skipped"
         }
     }
 }

@@ -683,7 +683,11 @@ public actor LifeModelWorkshopService {
         baseVersionID: UUIDv7?
     ) throws {
         guard let baseVersionID else {
-            guard versionNumber == 1, season.supersedesSeasonID == nil else {
+            guard versionNumber == 1,
+                  season.supersedesSeasonID == nil,
+                  season.outgoingSummary == nil,
+                  season.retrospective == nil
+            else {
                 throw LifeModelWorkshopError.invalidDraft(
                     "A first season must begin at version one without a predecessor."
                 )
@@ -697,20 +701,56 @@ public actor LifeModelWorkshopService {
         )
         if base.logicalID == logicalID {
             guard versionNumber == base.versionNumber + 1,
-                  season.supersedesSeasonID == previous.supersedesSeasonID
+                  season.supersedesSeasonID == previous.supersedesSeasonID,
+                  season.outgoingSummary == previous.outgoingSummary
             else {
                 throw LifeModelWorkshopError.invalidDraft(
-                    "A season revision must preserve its transition lineage and advance once."
+                    "A season revision must preserve its frozen transition lineage and "
+                        + "advance once."
                 )
             }
+            try validateRetrospectiveTransition(
+                from: previous.retrospective,
+                to: season.retrospective
+            )
             return
+        }
+        guard let summary = season.outgoingSummary else {
+            throw LifeModelWorkshopError.invalidDraft(
+                "A successor requires a frozen summary of the outgoing season."
+            )
         }
         guard versionNumber == 1,
               previous.status == .complete || previous.status == .abandoned,
-              season.supersedesSeasonID == base.logicalID
+              season.supersedesSeasonID == base.logicalID,
+              summary.outgoingSeasonVersionID == base.versionID,
+              summary.outgoingSeasonID == base.logicalID,
+              summary.outgoingContentHash == base.contentHash,
+              summary.title == previous.title,
+              summary.status == previous.status,
+              summary.effectiveInterval == previous.effectiveInterval,
+              summary.frozenAt >= base.acceptedAt,
+              summary.frozenAt <= season.metadata.lastRevisedAt
         else {
             throw LifeModelWorkshopError.invalidDraft(
-                "A successor must start at version one and name a terminal outgoing season."
+                "A successor must start at version one with an exact terminal-season summary."
+            )
+        }
+    }
+
+    private func validateRetrospectiveTransition(
+        from previous: SeasonRetrospective?,
+        to current: SeasonRetrospective?
+    ) throws {
+        guard let previous else { return }
+        guard let current else {
+            throw LifeModelWorkshopError.invalidDraft(
+                "A season revision cannot remove its transition retrospective."
+            )
+        }
+        if previous.status != .draft, current != previous {
+            throw LifeModelWorkshopError.invalidDraft(
+                "An accepted or skipped retrospective is immutable."
             )
         }
     }
@@ -801,6 +841,33 @@ public actor LifeModelWorkshopService {
             reviewCadence: value.reviewCadence,
             transitionNotes: value.transitionNotes,
             supersedesSeasonID: value.supersedesSeasonID,
+            outgoingSummary: try value.outgoingSummary.map {
+                try FrozenOutgoingSeasonSummary(
+                    outgoingSeasonVersionID: $0.outgoingSeasonVersionID,
+                    outgoingSeasonID: $0.outgoingSeasonID,
+                    outgoingContentHash: $0.outgoingContentHash,
+                    frozenAt: $0.frozenAt,
+                    title: $0.title,
+                    status: $0.status,
+                    effectiveInterval: validatedInterval($0.effectiveInterval),
+                    plainLanguageSummary: $0.plainLanguageSummary
+                )
+            },
+            retrospective: try value.retrospective.map {
+                try SeasonRetrospective(
+                    status: $0.status,
+                    overview: $0.overview,
+                    achievements: $0.achievements,
+                    disappointments: $0.disappointments,
+                    decisionsThatChangedDirection: $0.decisionsThatChangedDirection,
+                    practicesToCarryForward: $0.practicesToCarryForward,
+                    beliefsStrengthened: $0.beliefsStrengthened,
+                    beliefsInvalidated: $0.beliefsInvalidated,
+                    peopleAndExperiencesThatMattered: $0.peopleAndExperiencesThatMattered,
+                    dataAndModelQualityNotes: $0.dataAndModelQualityNotes,
+                    unfinishedCommitmentDecisions: $0.unfinishedCommitmentDecisions
+                )
+            },
             primaryOverrideExplanation: value.primaryOverrideExplanation
         )
     }

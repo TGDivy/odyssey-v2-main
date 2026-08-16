@@ -97,6 +97,13 @@ func workshopDraftFactoryCreatesSuccessorOnlyAfterTerminalSeason() throws {
     #expect(successorSeason.status == .calibration)
     #expect(successorSeason.charterRevisionID == charterVersionID)
     #expect(successorSeason.supersedesSeasonID == active.logicalID)
+    #expect(successorSeason.outgoingSummary?.outgoingSeasonVersionID == active.versionID)
+    #expect(successorSeason.outgoingSummary?.outgoingSeasonID == active.logicalID)
+    #expect(successorSeason.outgoingSummary?.status == .complete)
+    #expect(successorSeason.outgoingSummary?.plainLanguageSummary.contains("not a grade") == true)
+    #expect(successorSeason.retrospective?.status == .draft)
+    #expect(successorSeason.retrospective?.achievements.isEmpty == true)
+    #expect(successorSeason.retrospective?.dataAndModelQualityNotes.count == 1)
 }
 
 @Test
@@ -116,6 +123,21 @@ func workshopServiceRejectsVersionIdentifiersUsedAsSeasonLineage() async throws 
     )
     try fixture.store.cacheLifeModelVersion(terminal)
     let successor = try factory.successorSeason(after: terminal)
+    var mismatchedSummaryDocument = successor.document
+    guard case var .object(summaryObject) = mismatchedSummaryDocument["outgoing_summary"] else {
+        throw LifeModelWorkshopError.invalidDraft("Missing transition-summary test fixture.")
+    }
+    summaryObject["outgoing_content_hash"] = .string(String(repeating: "b", count: 64))
+    mismatchedSummaryDocument["outgoing_summary"] = .object(summaryObject)
+    let mismatchedSummary = try LifeModelDraftProposal(
+        kind: successor.kind,
+        versionID: successor.versionID,
+        logicalID: successor.logicalID,
+        versionNumber: successor.versionNumber,
+        baseVersionID: successor.baseVersionID,
+        acceptanceMethod: successor.acceptanceMethod,
+        document: mismatchedSummaryDocument
+    )
     var malformedDocument = successor.document
     malformedDocument["supersedes_season_id"] = .string(terminal.versionID.description)
     let malformed = try LifeModelDraftProposal(
@@ -129,11 +151,29 @@ func workshopServiceRejectsVersionIdentifiersUsedAsSeasonLineage() async throws 
     )
 
     await #expect(throws: LifeModelWorkshopError.self) {
+        try await fixture.service.createDraft(mismatchedSummary)
+    }
+    await #expect(throws: LifeModelWorkshopError.self) {
         try await fixture.service.createDraft(malformed)
     }
     let created = try await fixture.service.createDraft(successor)
     #expect(created.baseVersionID == terminal.versionID)
     #expect(try decodedSeason(successor).supersedesSeasonID == terminal.logicalID)
+    #expect(try await fixture.service.draft(id: created.draftID).document == successor.document)
+    var editor = try SeasonDraftEditor(draft: created)
+    #expect(try editor.document() == successor.document)
+    editor.retrospective?.achievements.append("Protected a foundation during transition")
+    editor.retrospective?.status = .accepted
+    let saved = try await fixture.service.saveDraft(
+        draftID: created.draftID,
+        expectedStateRevision: created.stateRevision,
+        document: editor.document()
+    )
+    let savedSeason: Season = try decoded(saved.document)
+    let proposedSeason = try decodedSeason(successor)
+    #expect(savedSeason.outgoingSummary == proposedSeason.outgoingSummary)
+    #expect(savedSeason.retrospective?.status == .accepted)
+    #expect(savedSeason.retrospective?.achievements.count == 1)
 }
 
 @Test
@@ -222,6 +262,15 @@ private func decodedSeason(
     try SyncJSONCoding.makeDecoder().decode(
         Season.self,
         from: SyncJSONCoding.makeEncoder().encode(proposal.document)
+    )
+}
+
+private func decoded<Value: Decodable>(
+    _ document: [String: JSONValue]
+) throws -> Value {
+    try SyncJSONCoding.makeDecoder().decode(
+        Value.self,
+        from: SyncJSONCoding.makeEncoder().encode(document)
     )
 }
 
