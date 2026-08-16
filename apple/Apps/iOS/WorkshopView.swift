@@ -5,6 +5,7 @@ import OdysseyData
 import OdysseyDomain
 import OdysseyHealth
 import OdysseyIntegrations
+import OdysseyLocation
 import OdysseySync
 import OdysseyWeather
 import SwiftUI
@@ -34,6 +35,7 @@ struct WorkshopView: View {
     @State private var confirmsProjectionRebuild = false
     @State private var confirmsHealthContextRemoval = false
     @State private var confirmsCalendarContextRemoval = false
+    @State private var confirmsLocationContextRemoval = false
     @State private var confirmsWeatherContextRemoval = false
     @State private var draftToAbandon: LifeModelDraftRecord?
 
@@ -47,6 +49,7 @@ struct WorkshopView: View {
             acceptedHistorySection
             healthContextSection
             calendarContextSection
+            locationContextSection
             weatherContextSection
             enrollmentSection
             synchronizationSection
@@ -57,6 +60,7 @@ struct WorkshopView: View {
             await model.refreshWorkshop()
             await model.refreshHealthContextStatus()
             await model.refreshCalendarContextStatus()
+            await model.refreshLocationContextStatus()
             await model.refreshWeatherContextStatus()
         }
         .toolbar {
@@ -152,6 +156,21 @@ struct WorkshopView: View {
             Text(
                 "This deletes Odyssey's local event mirror and refresh marker. It does "
                     + "not move or delete source events or change system permission."
+            )
+        }
+        .confirmationDialog(
+            "Remove local broad-place context?",
+            isPresented: $confirmsLocationContextRemoval,
+            titleVisibility: .visible
+        ) {
+            Button("Remove Local Context", role: .destructive) {
+                Task { await model.removeLocalLocationContext() }
+            }
+            Button("Keep Local Context", role: .cancel) {}
+        } message: {
+            Text(
+                "This deletes Odyssey's one local broad-place record and refresh marker. "
+                    + "It does not change system location permission."
             )
         }
         .confirmationDialog(
@@ -604,6 +623,152 @@ struct WorkshopView: View {
         }
     }
 
+    private var locationContextSection: some View {
+        Section("Broad Location Context") {
+            locationContextStatus
+            if let overview = model.locationContextState.overview {
+                LabeledContent(
+                    "Availability",
+                    value: overview.capability.availability.ownerDisplayName
+                )
+                LabeledContent(
+                    "When-in-use permission",
+                    value: overview.permission.ownerDisplayName
+                )
+                LabeledContent(
+                    "Foreground one-shot lookup",
+                    value: overview.capability.supportsForegroundBroadPlace
+                        ? "Supported"
+                        : "Unavailable"
+                )
+                LabeledContent("Continuous/background lookup", value: "Not used")
+                LabeledContent(
+                    "Local broad-place records",
+                    value: overview.cachedPlace == nil ? "None" : "One"
+                )
+                if let place = overview.cachedPlace {
+                    LabeledContent(
+                        "Broad place",
+                        value: place.displayName ?? "Resolved broad place"
+                    )
+                    LabeledContent("Precision", value: place.precision.ownerDisplayName)
+                    LabeledContent("Time zone", value: place.timeZoneID)
+                    LabeledContent(
+                        "Captured",
+                        value: place.capturedAt.formatted(
+                            date: .abbreviated,
+                            time: .shortened
+                        )
+                    )
+                    LabeledContent(
+                        "Expires",
+                        value: place.expiresAt.formatted(
+                            date: .abbreviated,
+                            time: .shortened
+                        )
+                    )
+                    LabeledContent(
+                        "Cache freshness",
+                        value: overview.cacheIsFresh ? "Fresh" : "Expired"
+                    )
+                }
+                if let outcome = overview.lastOutcome {
+                    LabeledContent("Last outcome", value: outcome.ownerDisplayName)
+                }
+                if let attemptedAt = overview.lastAttemptAt {
+                    LabeledContent(
+                        "Last attempt",
+                        value: attemptedAt.formatted(
+                            date: .abbreviated,
+                            time: .shortened
+                        )
+                    )
+                }
+            }
+            if let health = model.locationContextState.integrationHealth {
+                LabeledContent(
+                    "Integration state",
+                    value: health.operationalState.ownerDisplayName
+                )
+                if let refreshedAt = health.lastSuccessfulSync {
+                    LabeledContent(
+                        "Last successful refresh",
+                        value: refreshedAt.formatted(
+                            date: .abbreviated,
+                            time: .shortened
+                        )
+                    )
+                }
+                if let capturedAt = health.newestSourceTimestamp {
+                    LabeledContent(
+                        "Newest broad-place context",
+                        value: capturedAt.formatted(
+                            date: .abbreviated,
+                            time: .shortened
+                        )
+                    )
+                }
+                if let lag = health.lag {
+                    LabeledContent("Source lag", value: lagDescription(lag))
+                }
+                LabeledContent(
+                    "Rejected or quarantined",
+                    value: String(health.rejectedRecordCount)
+                )
+                LabeledContent(
+                    "Schema mismatch",
+                    value: health.schemaVersionMismatch ? "Detected" : "None"
+                )
+                LabeledContent("Rate limit", value: "Not applicable")
+            }
+            Text(
+                "Odyssey requests one foreground fix only after an owner action, reduces "
+                    + "it to a broad locality, administrative area, or time zone, and "
+                    + "discards coordinates. It never starts continuous, significant-change, "
+                    + "or background location monitoring."
+            )
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+
+            if let message = model.locationContextState.message {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(message)
+                        .font(.footnote)
+                    Button("Dismiss status") {
+                        model.dismissLocationContextMessage()
+                    }
+                    .font(.footnote)
+                }
+            }
+
+            if model.locationContextState.canRequestWhenInUse {
+                Button {
+                    Task { await model.requestLocationContextAuthorization() }
+                } label: {
+                    Label("Request When-in-Use Access", systemImage: "location.circle")
+                }
+            }
+            Button {
+                Task { await model.refreshLocationContext() }
+            } label: {
+                Label("Refresh Current Broad Place", systemImage: "location.magnifyingglass")
+            }
+            .disabled(!model.locationContextState.canRefresh)
+
+            Button {
+                Task { await model.refreshLocationContextStatus() }
+            } label: {
+                Label("Refresh Location Status", systemImage: "arrow.clockwise")
+            }
+            .disabled(model.locationContextState.activity.isBusy)
+
+            Button("Remove Local Broad-Place Context", role: .destructive) {
+                confirmsLocationContextRemoval = true
+            }
+            .disabled(model.locationContextState.activity.isBusy)
+        }
+    }
+
     private var weatherContextSection: some View {
         Section("Weather Context") {
             weatherContextStatus
@@ -927,6 +1092,25 @@ struct WorkshopView: View {
             activityLabel("Refreshing local calendar constraints")
         case .revoking:
             activityLabel("Removing the local calendar mirror")
+        case let .failed(message):
+            Label(message, systemImage: "exclamationmark.triangle")
+                .foregroundStyle(.red)
+        }
+    }
+
+    @ViewBuilder
+    private var locationContextStatus: some View {
+        switch model.locationContextState.activity {
+        case .idle:
+            EmptyView()
+        case .refreshing:
+            activityLabel("Inspecting local broad-place integration")
+        case .authorizing:
+            activityLabel("Waiting for when-in-use location access")
+        case .acquiring:
+            activityLabel("Resolving one current broad place")
+        case .revoking:
+            activityLabel("Removing local broad-place context")
         case let .failed(message):
             Label(message, systemImage: "exclamationmark.triangle")
                 .foregroundStyle(.red)

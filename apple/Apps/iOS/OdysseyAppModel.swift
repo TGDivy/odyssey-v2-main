@@ -11,6 +11,7 @@ import OdysseyDomain
 import OdysseyExtensionBridge
 import OdysseyHealth
 import OdysseyIntegrations
+import OdysseyLocation
 import OdysseySync
 import OdysseyTelemetry
 import OdysseyWatchConnectivity
@@ -41,6 +42,7 @@ final class OdysseyAppModel: ObservableObject {
     @Published private(set) var extensionPresentationRequest: ExtensionCommandPresentation?
     @Published private(set) var healthContextState = HealthContextIntegrationState()
     @Published private(set) var calendarContextState = CalendarContextIntegrationState()
+    @Published private(set) var locationContextState = LocationContextIntegrationState()
     @Published private(set) var weatherContextState = WeatherContextIntegrationState()
 
     private var localServices: NativeLocalServices?
@@ -109,6 +111,7 @@ final class OdysseyAppModel: ObservableObject {
         extensionPresentationRequest = nil
         healthContextState = HealthContextIntegrationState()
         calendarContextState = CalendarContextIntegrationState()
+        locationContextState = LocationContextIntegrationState()
         weatherContextState = WeatherContextIntegrationState()
 
         let local: NativeLocalServices
@@ -148,6 +151,7 @@ final class OdysseyAppModel: ObservableObject {
             await refreshFoodQuickLog()
             await refreshHealthContextStatus()
             await refreshCalendarContextStatus()
+            await refreshLocationContextStatus()
             await refreshWeatherContextStatus()
             await drainExtensionCommands()
             if foodHealthAuthorization == .authorized {
@@ -680,6 +684,139 @@ final class OdysseyAppModel: ObservableObject {
 
     func dismissCalendarContextMessage() {
         calendarContextState.message = nil
+    }
+
+    func refreshLocationContextStatus() async {
+        guard let coordinator = localServices?.locationContextCoordinator else {
+            locationContextState = LocationContextIntegrationState()
+            return
+        }
+        guard !locationContextState.activity.isBusy else { return }
+        locationContextState.activity = .refreshing
+        do {
+            locationContextState.overview = try await coordinator.overview()
+            locationContextState.activity = .idle
+        } catch {
+            locationContextState.activity = .failed(
+                "The local broad-place context could not be inspected safely."
+            )
+        }
+    }
+
+    func requestLocationContextAuthorization() async {
+        guard let coordinator = localServices?.locationContextCoordinator else { return }
+        if locationContextState.overview == nil {
+            await refreshLocationContextStatus()
+        }
+        guard let overview = locationContextState.overview,
+              overview.capability.availability == .available,
+              overview.capability.supportsForegroundBroadPlace
+        else {
+            locationContextState.message =
+                "Broad foreground location is unavailable on this device. Odyssey continues without it."
+            return
+        }
+        guard !locationContextState.activity.isBusy else { return }
+        locationContextState.message = nil
+        locationContextState.activity = .authorizing
+        let permission = await coordinator.requestWhenInUseAuthorization()
+        do {
+            locationContextState.overview = try await coordinator.overview()
+            locationContextState.activity = .idle
+            switch permission {
+            case .authorized:
+                locationContextState.message =
+                    "When-in-use access is available. Refresh only when you want current broad-place context."
+            case .denied:
+                locationContextState.message =
+                    "When-in-use access was denied. Existing local broad-place context remains until you remove it."
+            case .restricted:
+                locationContextState.message =
+                    "Location access is restricted on this device. Odyssey continues without it."
+            case .notDetermined:
+                locationContextState.message =
+                    "Location access was not completed. No broad place was acquired."
+            case .unavailable:
+                locationContextState.message =
+                    "Broad foreground location is unavailable on this device. Odyssey continues without it."
+            case .partial:
+                locationContextState.message =
+                    "Location access is incomplete. No broad place was acquired."
+            case .notRequired:
+                locationContextState.message =
+                    "No location capability is currently requested."
+            }
+        } catch {
+            locationContextState.activity = .failed(
+                "Location access changed, but its local status could not be inspected safely."
+            )
+        }
+    }
+
+    func refreshLocationContext() async {
+        guard let coordinator = localServices?.locationContextCoordinator else { return }
+        if locationContextState.overview == nil {
+            await refreshLocationContextStatus()
+        }
+        guard locationContextState.canRefresh else { return }
+        locationContextState.message = nil
+        locationContextState.activity = .acquiring
+        do {
+            let result = try await coordinator.refresh()
+            locationContextState.overview = try await coordinator.overview()
+            locationContextState.activity = .idle
+            switch result.outcome {
+            case .acquired:
+                locationContextState.localMirrorRevoked = false
+                locationContextState.message =
+                    "Current broad-place context refreshed locally. Coordinates were discarded after resolution."
+            case .permissionDenied:
+                locationContextState.message =
+                    "When-in-use access is not granted. Prior local broad-place context was preserved."
+            case .restricted:
+                locationContextState.message =
+                    "Location access is restricted. Prior local broad-place context was preserved."
+            case .unavailable:
+                locationContextState.message =
+                    "Broad foreground location is unavailable. Prior local context was preserved."
+            case .insufficientAccuracy:
+                locationContextState.message =
+                    "The current fix was too imprecise even for broad context. Prior local context was preserved."
+            case .noFix:
+                locationContextState.message =
+                    "No current location fix was available. Prior local broad-place context was preserved."
+            }
+        } catch {
+            locationContextState.activity = .failed(
+                "Broad-place context could not be refreshed. Prior local context remains intact."
+            )
+        }
+    }
+
+    func removeLocalLocationContext() async {
+        guard let coordinator = localServices?.locationContextCoordinator,
+              !locationContextState.activity.isBusy
+        else {
+            return
+        }
+        locationContextState.activity = .revoking
+        do {
+            let removedCount = try await coordinator.revokeLocalLocationData()
+            locationContextState.overview = try await coordinator.overview()
+            locationContextState.localMirrorRevoked = true
+            locationContextState.activity = .idle
+            locationContextState.message =
+                "Removed \(removedCount) local broad-place context record"
+                + "\(removedCount == 1 ? "" : "s"). System location permission was not changed."
+        } catch {
+            locationContextState.activity = .failed(
+                "The local broad-place context could not be removed safely."
+            )
+        }
+    }
+
+    func dismissLocationContextMessage() {
+        locationContextState.message = nil
     }
 
     func refreshWeatherContextStatus() async {
