@@ -50,6 +50,9 @@ final class OdysseyAppModel: ObservableObject {
     @Published private(set) var reentrySurface: ReentrySurface?
     @Published private(set) var nowExperienceMessage: String?
     @Published private(set) var productTelemetryMessage: String?
+    @Published private(set) var weeklyProductReview: WeeklyProductReviewArtifact?
+    @Published private(set) var weeklyProductReviewMessage: String?
+    @Published private(set) var isLoadingWeeklyProductReview = false
 
     private var localServices: NativeLocalServices?
     private var remoteServices: NativeRemoteServices?
@@ -162,6 +165,9 @@ final class OdysseyAppModel: ObservableObject {
         reentrySurface = nil
         nowExperienceMessage = nil
         productTelemetryMessage = nil
+        weeklyProductReview = nil
+        weeklyProductReviewMessage = nil
+        isLoadingWeeklyProductReview = false
         healthContextState = HealthContextIntegrationState()
         calendarContextState = CalendarContextIntegrationState()
         locationContextState = LocationContextIntegrationState()
@@ -1120,8 +1126,36 @@ final class OdysseyAppModel: ObservableObject {
 
     func refreshCaptureArchive() async {
         refreshRecentCaptures()
+        await refreshWeeklyProductReview()
         await refreshDiagnostics()
         await refreshNowExperience(markSeen: true)
+    }
+
+    func refreshWeeklyProductReview() async {
+        guard let service = localServices?.weeklyProductReviewService,
+              !isLoadingWeeklyProductReview
+        else {
+            return
+        }
+        isLoadingWeeklyProductReview = true
+        defer { isLoadingWeeklyProductReview = false }
+        do {
+            let availability = try await Task.detached(priority: .utility) {
+                try service.generate()
+            }.value
+            switch availability {
+            case let .available(artifact):
+                weeklyProductReview = artifact
+                weeklyProductReviewMessage = nil
+            case .disabledByFeatureFlag:
+                weeklyProductReview = nil
+                weeklyProductReviewMessage =
+                    "Weekly product review is disabled by its reversible feature flag."
+            }
+        } catch {
+            weeklyProductReviewMessage =
+                "The weekly product review could not be derived from local telemetry."
+        }
     }
 
     func reviewCapture(

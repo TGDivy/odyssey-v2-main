@@ -10,7 +10,7 @@ public enum WeeklyProductReviewError: Error, Equatable, Sendable {
     case nonLocalEvent
 }
 
-public enum WeeklyProductReviewObservationKind: String, Codable, CaseIterable, Sendable {
+public enum WeeklyProductReviewObservationKind: String, Codable, CaseIterable, Hashable, Sendable {
     case insufficientCaptureSample = "insufficient_capture_sample"
     case captureAbandonmentNeedsReview = "capture_abandonment_needs_review"
     case captureFrictionNeedsReview = "capture_friction_needs_review"

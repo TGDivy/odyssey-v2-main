@@ -181,17 +181,46 @@ private struct ArchiveView: View {
     @EnvironmentObject private var model: OdysseyAppModel
 
     var body: some View {
-        Group {
-            if model.state.recentCaptures.isEmpty {
-                ContentUnavailableView(
-                    "No captures yet",
-                    systemImage: "books.vertical",
-                    description: Text("New captures appear here from the local ledger.")
-                )
-            } else {
-                List(model.state.recentCaptures, id: \.metadata.id) { capture in
-                    NavigationLink(value: capture.metadata.id) {
-                        CaptureArchiveRow(capture: capture)
+        List {
+            Section("Product Review") {
+                if let artifact = model.weeklyProductReview {
+                    NavigationLink {
+                        WeeklyProductReviewView()
+                    } label: {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Label("Weekly Product Review", systemImage: "chart.bar.doc.horizontal")
+                            Text(
+                                "\(artifact.sourceQuality.retainedEventCount) local events · "
+                                    + "\(artifact.observations.count) review observations"
+                            )
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        }
+                    }
+                } else if model.isLoadingWeeklyProductReview {
+                    ProgressView("Deriving seven-day local evidence…")
+                } else {
+                    Label(
+                        model.weeklyProductReviewMessage
+                            ?? "No weekly product review has been generated yet.",
+                        systemImage: "chart.bar.doc.horizontal"
+                    )
+                    .foregroundStyle(.secondary)
+                }
+            }
+
+            Section("Captures") {
+                if model.state.recentCaptures.isEmpty {
+                    Label(
+                        "No captures yet. New captures appear here from the local ledger.",
+                        systemImage: "books.vertical"
+                    )
+                    .foregroundStyle(.secondary)
+                } else {
+                    ForEach(model.state.recentCaptures, id: \.metadata.id) { capture in
+                        NavigationLink(value: capture.metadata.id) {
+                            CaptureArchiveRow(capture: capture)
+                        }
                     }
                 }
             }
@@ -201,6 +230,184 @@ private struct ArchiveView: View {
             CaptureDetailView(captureID: captureID)
         }
         .refreshable { await model.refreshCaptureArchive() }
+        .task {
+            if model.weeklyProductReview == nil,
+               model.weeklyProductReviewMessage == nil
+            {
+                await model.refreshWeeklyProductReview()
+            }
+        }
+    }
+}
+
+private struct WeeklyProductReviewView: View {
+    @EnvironmentObject private var model: OdysseyAppModel
+
+    var body: some View {
+        Group {
+            if let artifact = model.weeklyProductReview {
+                reviewList(artifact)
+            } else if model.isLoadingWeeklyProductReview {
+                ProgressView("Deriving weekly product review…")
+            } else {
+                ContentUnavailableView {
+                    Label("Review unavailable", systemImage: "chart.bar.doc.horizontal")
+                } description: {
+                    Text(
+                        model.weeklyProductReviewMessage
+                            ?? "No local weekly review artifact is available."
+                    )
+                } actions: {
+                    Button("Retry") {
+                        Task { await model.refreshWeeklyProductReview() }
+                    }
+                }
+            }
+        }
+        .navigationTitle("Product Review")
+        .navigationBarTitleDisplayMode(.inline)
+        .refreshable { await model.refreshWeeklyProductReview() }
+    }
+
+    private func reviewList(_ artifact: WeeklyProductReviewArtifact) -> some View {
+        List {
+            Section("Governance") {
+                Label(
+                    "This artifact uses only governed local product events.",
+                    systemImage: "lock.shield"
+                )
+                Label(
+                    "Observations never change UI, scoring, notifications, or preferences.",
+                    systemImage: "hand.raised"
+                )
+                Text(
+                    "Any product change requires explicit owner review, counterexamples, "
+                        + "an evaluation plan, and a rollback path."
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+
+            Section("Evidence Window") {
+                LabeledContent(
+                    "Period",
+                    value: weeklyReviewPeriod(artifact)
+                )
+                LabeledContent(
+                    "Retained events",
+                    value: String(artifact.sourceQuality.retainedEventCount)
+                )
+                LabeledContent(
+                    "Owner retention",
+                    value: "\(artifact.preferences.retentionDays) days"
+                )
+                LabeledContent(
+                    "Collection",
+                    value: artifact.preferences.collectionMode.ownerTitle
+                )
+                Label(
+                    artifact.sourceQuality.coversFullReviewInterval
+                        ? "The retained source covers the full seven-day interval."
+                        : "Evidence is incomplete because retention is shorter than seven days "
+                            + "or the bounded query reached its limit.",
+                    systemImage: artifact.sourceQuality.coversFullReviewInterval
+                        ? "checkmark.circle"
+                        : "exclamationmark.triangle"
+                )
+                .foregroundStyle(
+                    artifact.sourceQuality.coversFullReviewInterval
+                        ? Color.secondary
+                        : Color.orange
+                )
+            }
+
+            Section("Capture Friction") {
+                LabeledContent("Started", value: String(artifact.capture.workflowStartedCount))
+                LabeledContent("Committed", value: String(artifact.capture.committedCount))
+                LabeledContent("Failed", value: String(artifact.capture.failedCount))
+                LabeledContent("Abandoned", value: String(artifact.capture.abandonedCount))
+                LabeledContent(
+                    "Open or unmatched",
+                    value: String(
+                        artifact.capture.openWorkflowCount
+                            + artifact.capture.orphanedFinishCount
+                    )
+                )
+                LabeledContent(
+                    "Feedback",
+                    value: "\(artifact.capture.feedback.usefulCount) useful · "
+                        + "\(artifact.capture.feedback.neutralCount) neutral · "
+                        + "\(artifact.capture.feedback.addedFrictionCount) friction"
+                )
+                LabeledContent(
+                    "10 seconds or longer",
+                    value: String(
+                        artifact.capture.durationDistribution.tenToThirtySeconds
+                            + artifact.capture.durationDistribution.thirtySecondsOrMore
+                    )
+                )
+            }
+
+            Section("Tomorrow Map Value") {
+                LabeledContent(
+                    "Availability checks",
+                    value: String(artifact.tomorrowMap.availabilityEvaluationCount)
+                )
+                LabeledContent("Viewed", value: String(artifact.tomorrowMap.viewedCount))
+                LabeledContent(
+                    "Intentionally open",
+                    value: String(artifact.tomorrowMap.intentionallyAbsentCount)
+                )
+                LabeledContent(
+                    "Feedback",
+                    value: "\(artifact.tomorrowMap.feedback.usefulCount) useful · "
+                        + "\(artifact.tomorrowMap.feedback.notUsefulCount) not useful · "
+                        + "\(artifact.tomorrowMap.feedback.addedFrictionCount) friction"
+                )
+                LabeledContent(
+                    "Plan deviations",
+                    value: String(artifact.tomorrowMap.deviation.responseCount)
+                )
+                LabeledContent(
+                    "Open or unmatched sessions",
+                    value: String(
+                        artifact.tomorrowMap.openSessionCount
+                            + artifact.tomorrowMap.orphanedFinishCount
+                    )
+                )
+            }
+
+            Section("Review Observations") {
+                if artifact.observations.isEmpty {
+                    Text("No bounded observation crossed its review threshold.")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(artifact.observations, id: \.kind) { observation in
+                        VStack(alignment: .leading, spacing: 6) {
+                            Label(
+                                observation.kind.ownerTitle,
+                                systemImage: observation.kind.systemImage
+                            )
+                            Text(observation.kind.ownerExplanation)
+                                .font(.subheadline)
+                            Text(
+                                "Sample \(observation.sampleSize) · supporting "
+                                    + "\(observation.supportingEventCount) · counterexamples "
+                                    + "\(observation.counterexampleCount)"
+                            )
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func weeklyReviewPeriod(_ artifact: WeeklyProductReviewArtifact) -> String {
+        artifact.periodStart.formatted(date: .abbreviated, time: .omitted)
+            + " – "
+            + artifact.periodEnd.formatted(date: .abbreviated, time: .omitted)
     }
 }
 
@@ -1829,6 +2036,75 @@ private extension CaptureProductTelemetryFeedbackReason {
         case .badTiming: "Bad timing"
         case .unclear: "Unclear"
         case .other: "Other"
+        }
+    }
+}
+
+private extension ProductTelemetryCollectionMode {
+    var ownerTitle: String {
+        switch self {
+        case .off: "Off"
+        case .localOnly: "Local only"
+        }
+    }
+}
+
+private extension WeeklyProductReviewObservationKind {
+    var ownerTitle: String {
+        switch self {
+        case .insufficientCaptureSample: "Capture sample is still small"
+        case .captureAbandonmentNeedsReview: "Capture abandonment needs review"
+        case .captureFrictionNeedsReview: "Capture friction needs review"
+        case .incompleteCaptureLifecycle: "Capture lifecycle data is incomplete"
+        case .insufficientTomorrowMapSample: "Tomorrow Map sample is still small"
+        case .intentionalTomorrowSilenceObserved: "Intentional open days were preserved"
+        case .tomorrowMapValueSignal: "Tomorrow Map has an early value signal"
+        case .tomorrowMapFrictionNeedsReview: "Tomorrow Map friction needs review"
+        case .incompleteTomorrowMapLifecycle: "Tomorrow Map lifecycle data is incomplete"
+        }
+    }
+
+    var ownerExplanation: String {
+        switch self {
+        case .insufficientCaptureSample:
+            "Do not infer capture quality until more completed workflows exist."
+        case .captureAbandonmentNeedsReview:
+            "Repeated abandonment crossed the conservative review threshold; inspect context "
+                + "before proposing a workflow change."
+        case .captureFrictionNeedsReview:
+            "Multiple situated responses reported added friction."
+        case .incompleteCaptureLifecycle:
+            "Some started and finished capture sessions could not be paired."
+        case .insufficientTomorrowMapSample:
+            "Do not infer map value from fewer than three availability evaluations."
+        case .intentionalTomorrowSilenceObserved:
+            "Known open days remained open rather than being filled automatically."
+        case .tomorrowMapValueSignal:
+            "Useful responses outnumbered not-useful or friction responses, but this is not a "
+                + "causal result."
+        case .tomorrowMapFrictionNeedsReview:
+            "Multiple situated responses reported that the map was not useful or added friction."
+        case .incompleteTomorrowMapLifecycle:
+            "Some map views and finished sessions could not be paired."
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .captureAbandonmentNeedsReview,
+             .captureFrictionNeedsReview,
+             .tomorrowMapFrictionNeedsReview:
+            "exclamationmark.bubble"
+        case .intentionalTomorrowSilenceObserved:
+            "wind"
+        case .tomorrowMapValueSignal:
+            "checkmark.circle"
+        case .insufficientCaptureSample,
+             .insufficientTomorrowMapSample:
+            "hourglass"
+        case .incompleteCaptureLifecycle,
+             .incompleteTomorrowMapLifecycle:
+            "link.badge.plus"
         }
     }
 }
