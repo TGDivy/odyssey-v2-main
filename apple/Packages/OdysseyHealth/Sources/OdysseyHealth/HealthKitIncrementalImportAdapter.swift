@@ -1,11 +1,14 @@
 #if canImport(HealthKit)
 import Foundation
-import HealthKit
+@preconcurrency import HealthKit
 import OdysseyIntegrations
 
-public actor HealthKitIncrementalImportAdapter: IncrementalHealthImporting {
+public actor HealthKitIncrementalImportAdapter: IncrementalHealthImporting,
+    HealthChangeObserving
+{
     private let store: HKHealthStore
     private let clock: @Sendable () -> Date
+    private var observerQueries = [HealthSampleKind: HKObserverQuery]()
 
     public init(
         store: HKHealthStore = HKHealthStore(),
@@ -128,6 +131,63 @@ public actor HealthKitIncrementalImportAdapter: IncrementalHealthImporting {
         }
     }
 
+    public func changeObservationState() async -> HealthChangeObservationState {
+        observerQueries.isEmpty ? .inactive : .active
+    }
+
+    public func startObservingChanges(
+        for kinds: Set<HealthSampleKind>,
+        handler: @escaping HealthChangeHandler
+    ) async throws -> HealthChangeObservationState {
+        guard !kinds.isEmpty, HKHealthStore.isHealthDataAvailable() else {
+            throw HealthImportError.invalidObservation
+        }
+        let registrations = kinds.compactMap { kind -> (HealthSampleKind, HKSampleType)? in
+            guard let type = Self.sampleType(for: kind) else { return nil }
+            return (kind, type)
+        }
+        guard registrations.count == kinds.count else {
+            throw HealthImportError.invalidObservation
+        }
+        await stopObservingChanges()
+        do {
+            for (kind, type) in registrations {
+                try await enableBackgroundDelivery(for: type)
+                let query = HKObserverQuery(
+                    sampleType: type,
+                    predicate: nil
+                ) { _, completion, _ in
+                    let completionBox = HealthObserverCompletion(completion)
+                    Task {
+                        await handler(kind)
+                        completionBox.call()
+                    }
+                }
+                observerQueries[kind] = query
+                store.execute(query)
+            }
+        } catch is CancellationError {
+            await stopObservingChanges()
+            throw CancellationError()
+        } catch {
+            await stopObservingChanges()
+            throw HealthImportError.invalidObservation
+        }
+        return .active
+    }
+
+    public func stopObservingChanges() async {
+        let registrations = observerQueries
+        observerQueries.removeAll()
+        for query in registrations.values {
+            store.stop(query)
+        }
+        for kind in registrations.keys {
+            guard let type = Self.sampleType(for: kind) else { continue }
+            try? await disableBackgroundDelivery(for: type)
+        }
+    }
+
     private func authorizationRequestStatus(
         for readTypes: Set<HKObjectType>
     ) async throws -> HKAuthorizationRequestStatus {
@@ -140,6 +200,43 @@ public actor HealthKitIncrementalImportAdapter: IncrementalHealthImporting {
                     continuation.resume(throwing: error)
                 } else {
                     continuation.resume(returning: status)
+                }
+            }
+        }
+    }
+
+    private func enableBackgroundDelivery(
+        for type: HKObjectType
+    ) async throws {
+        try await withCheckedThrowingContinuation {
+            (continuation: CheckedContinuation<Void, Error>) in
+            store.enableBackgroundDelivery(
+                for: type,
+                frequency: .immediate
+            ) { success, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else if success {
+                    continuation.resume(returning: ())
+                } else {
+                    continuation.resume(throwing: HealthImportError.invalidObservation)
+                }
+            }
+        }
+    }
+
+    private func disableBackgroundDelivery(
+        for type: HKObjectType
+    ) async throws {
+        try await withCheckedThrowingContinuation {
+            (continuation: CheckedContinuation<Void, Error>) in
+            store.disableBackgroundDelivery(for: type) { success, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else if success {
+                    continuation.resume(returning: ())
+                } else {
+                    continuation.resume(throwing: HealthImportError.invalidObservation)
                 }
             }
         }
@@ -332,5 +429,17 @@ private struct AnchoredQueryResult: @unchecked Sendable {
     let samples: [HKSample]
     let deletedObjects: [HKDeletedObject]
     let anchor: HKQueryAnchor?
+}
+
+private final class HealthObserverCompletion: @unchecked Sendable {
+    private let completion: () -> Void
+
+    init(_ completion: @escaping () -> Void) {
+        self.completion = completion
+    }
+
+    func call() {
+        completion()
+    }
 }
 #endif
