@@ -6,6 +6,7 @@ public enum CaptureContractError: Error, Equatable, Sendable {
     case payloadTooLarge(maximumBytes: Int)
     case invalidContext(String)
     case invalidAttachment(String)
+    case invalidInterpretation(String)
 }
 
 extension CaptureContractError: LocalizedError {
@@ -19,6 +20,8 @@ extension CaptureContractError: LocalizedError {
             "The capture has invalid \(field)."
         case let .invalidAttachment(field):
             "A capture attachment has invalid \(field)."
+        case let .invalidInterpretation(field):
+            "A capture interpretation has invalid \(field)."
         }
     }
 }
@@ -172,7 +175,7 @@ public struct CaptureRecord: Codable, Hashable, Sendable {
     public let initialContext: CaptureInitialContext
     public let attachments: [CaptureAttachmentReference]
     public let interpretationStatus: CaptureInterpretationStatus
-    public let interpretationVersions: [UUIDv7]
+    public let interpretationVersions: [CaptureInterpretationVersion]
 
     public init(
         metadata: EntityMetadata,
@@ -181,7 +184,7 @@ public struct CaptureRecord: Codable, Hashable, Sendable {
         initialContext: CaptureInitialContext,
         attachments: [CaptureAttachmentReference],
         interpretationStatus: CaptureInterpretationStatus,
-        interpretationVersions: [UUIDv7]
+        interpretationVersions: [CaptureInterpretationVersion]
     ) {
         self.metadata = metadata
         self.capturedAt = capturedAt
