@@ -92,7 +92,7 @@ let package = Package(
         ),
         .target(
             name: "OdysseyHealth",
-            dependencies: ["OdysseyDomain"],
+            dependencies: ["OdysseyDomain", "OdysseyIntegrations"],
             path: "Packages/OdysseyHealth/Sources/OdysseyHealth"
         ),
         .target(
@@ -166,7 +166,7 @@ let package = Package(
         ),
         .testTarget(
             name: "OdysseyHealthTests",
-            dependencies: ["OdysseyHealth", "OdysseyDomain"],
+            dependencies: ["OdysseyHealth", "OdysseyDomain", "OdysseyIntegrations"],
             path: "Tests/Unit/OdysseyHealthTests"
         ),
         .testTarget(
