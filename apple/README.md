@@ -134,6 +134,10 @@ Generated event contracts now register create/revise payloads. A backend
 native-document test normalizes mechanical metadata during disjoint merges, and
 a portable pull-persistence test decodes the resulting canonical revision;
 overlapping owner fields remain explicit conflicts.
+`OdysseyDomain` also defines a validated `FoodOccurrence` snapshot with the
+selected preset revision, serving quantity, source-labeled nutrient totals,
+occurrence time, IANA zone, and original UTC offset. That value has no durable
+service, correction path, UI, or HealthKit side effect in this contract slice.
 
 `LocalCaptureAttachmentStore` now supplies the protected local object boundary
 needed by voice/photo/file capture. It copies files through a bounded stream,
@@ -195,7 +199,7 @@ swift test --package-path apple
 ../tools/apple/generate-project.sh
 ```
 
-The portable package currently reports 111 tests passing under the official
+The portable package currently reports 113 tests passing under the official
 Swift 6.1 release toolchain on Linux. That result does not type-check SwiftUI or
 replace the required Xcode, simulator, accessibility, signing, and device runs.
 

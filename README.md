@@ -135,6 +135,10 @@ The matching created/revised domain events are registered in generated schemas,
 and backend/native regressions preserve disjoint edits while surfacing
 overlapping owner fields for review; physical two-device convergence is not yet
 claimed.
+An immutable `FoodOccurrence` value now defines the next boundary: exact preset
+revision/name/serving snapshots, serving quantity, total kcal/protein/caffeine/
+alcohol values, occurrence time, IANA zone, and original UTC offset. It is not
+durably logged or written to HealthKit yet.
 
 ## Accepted orientation state
 

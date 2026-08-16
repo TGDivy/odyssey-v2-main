@@ -97,6 +97,23 @@ active pages or ranking. Current active reads are bounded to 500 presets.
 Malformed projection identity, revision, tombstone, dates, actor metadata, or
 domain content fails closed before it reaches ranking.
 
+## Occurrence contract
+
+`FoodOccurrence` is the immutable semantic record planned for each durable food
+or drink log. It snapshots the selected preset ID and exact preset revision,
+name, and serving description so later preset edits cannot rewrite history. It
+also carries a finite serving quantity, optional total nutrient values in the
+same explicit units/source contract, occurrence time, named IANA time zone, and
+the exact UTC offset that zone had at that instant. The offset is validated
+against daylight-saving rules rather than accepted as display metadata.
+
+Occurrence time may precede recording time but cannot follow the current record
+revision. Quantity is greater than zero and at most 100 servings. Malformed
+decoded nutrient values, operational-secret metadata, invalid actor/date
+metadata, unsupported zones, and mismatched offsets fail closed. Preset
+nutrition corrections require an explicit future occurrence revision; changing
+a preset alone never mutates an existing occurrence snapshot.
+
 ## Current boundary
 
 This slice does **not** provide meal occurrence storage, a quick-log UI,
@@ -111,11 +128,12 @@ permission, and integration slices remain. In particular, the presence of
 optional nutrient values does not authorize HealthKit access or write anything
 to Apple Health.
 
-Eleven focused tests cover value validation, time-zone-aware context derivation,
+Thirteen focused tests cover value validation, time-zone-aware context derivation,
 both ranking strategies, threshold behavior, deterministic ordering, excluded
 history, idempotent deduplication, fail-closed identity handling, atomic preset
 lifecycle commits, partial/null sync payloads, optimistic revision, and
-tombstones, including server-normalized pull materialization. The full portable
-Swift package reports 111 tests passing under the official Swift 6.1 Linux
-toolchain. This does not type-check SwiftUI or prove Xcode, HealthKit, signing,
-simulator, accessibility, or physical-device behavior.
+tombstones, including server-normalized pull materialization, immutable
+occurrence snapshots, DST-aware offsets, and malformed nutrient rejection. The
+full portable Swift package reports 113 tests passing under the official Swift
+6.1 Linux toolchain. This does not type-check SwiftUI or prove Xcode, HealthKit,
+signing, simulator, accessibility, or physical-device behavior.
