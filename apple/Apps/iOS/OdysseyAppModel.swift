@@ -123,26 +123,36 @@ final class OdysseyAppModel: ObservableObject {
                 invokingSurface: .iPhoneNow
             )
             let receipt = try await localServices.captureService.record(draft)
-            apply(.captureSucceeded(
-                captureID: receipt.capture.metadata.id,
-                at: receipt.capture.capturedAt
-            ))
-            await refreshDiagnostics()
-            refreshRecentCaptures()
-            scheduleBackgroundRefresh()
-            Task { [weak self] in
-                await self?.interpretCapture(receipt.capture.metadata.id)
-            }
-            if state.canSynchronize {
-                Task { [weak self] in
-                    await self?.synchronize()
-                }
-            }
+            await completeCapture(receipt)
             return true
         } catch let error as LocalizedError {
             apply(.captureFailed(error.errorDescription ?? "The capture was not saved."))
         } catch {
             apply(.captureFailed("The capture was not saved."))
+        }
+        return false
+    }
+
+    func captureVoiceRecording(at sourceURL: URL) async -> Bool {
+        guard let localServices, state.canCapture else { return false }
+        apply(.captureStarted)
+        do {
+            let receipt = try await localServices.mediaCaptureService.record(
+                LocalMediaCaptureDraft(
+                    source: .file(sourceURL),
+                    kind: .audio,
+                    mediaType: "audio/mp4",
+                    timeZoneID: TimeZone.current.identifier,
+                    locationPermissionState: currentLocationPermissionState(),
+                    invokingSurface: .iPhoneGlobalCapture
+                )
+            )
+            await completeCapture(receipt.captureReceipt)
+            return true
+        } catch let error as LocalizedError {
+            apply(.captureFailed(error.errorDescription ?? "The voice capture was not saved."))
+        } catch {
+            apply(.captureFailed("The voice capture was not saved."))
         }
         return false
     }
@@ -476,15 +486,27 @@ final class OdysseyAppModel: ObservableObject {
     private func refreshDiagnostics() async {
         guard let localServices else { return }
         do {
-            let diagnostics: NativeSyncDiagnostics
-            if let remoteServices {
-                diagnostics = try await remoteServices.syncCoordinator.localDiagnostics()
-            } else {
-                diagnostics = try await localServices.localDiagnostics()
-            }
-            apply(.diagnosticsUpdated(diagnostics))
+            apply(.diagnosticsUpdated(try await localServices.localDiagnostics()))
         } catch {
             return
+        }
+    }
+
+    private func completeCapture(_ receipt: ManualCaptureReceipt) async {
+        apply(.captureSucceeded(
+            captureID: receipt.capture.metadata.id,
+            at: receipt.capture.capturedAt
+        ))
+        await refreshDiagnostics()
+        refreshRecentCaptures()
+        scheduleBackgroundRefresh()
+        Task { [weak self] in
+            await self?.interpretCapture(receipt.capture.metadata.id)
+        }
+        if state.canSynchronize {
+            Task { [weak self] in
+                await self?.synchronize()
+            }
         }
     }
 

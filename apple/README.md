@@ -130,8 +130,14 @@ restore. `LocalMediaCaptureService` now composes that store with the immutable
 capture ledger: bytes publish first, one capture/projection/outbox transaction
 commits second, and manifest promotion follows with explicit recovery state.
 Known failed ledger handoffs discard only their own staging; bootstrap promotes
-referenced staging and preserves uncertain data for repair. Recorder and picker
-UI are not wired yet. See
+referenced staging and preserves uncertain data for repair. The iPhone Capture
+sheet now offers explicit Text and Voice modes. Voice recording uses the stable
+microphone-permission API, a five-minute `AVAudioRecorder` ceiling, protected
+temporary storage, foreground lifecycle stopping, and stale permission/delegate
+callback guards before routing Save through `LocalMediaCaptureService`.
+Permission denial offers Settings without disabling text capture, and the sheet
+discloses that this audio is not transcribed, uploaded, or remotely restorable.
+Photo/file pickers and playback are not wired yet. See
 [`docs/architecture/local-capture-attachments.md`](../docs/architecture/local-capture-attachments.md).
 
 `NativeLocalServices` opens the stable Keychain device identity, protected
@@ -145,15 +151,15 @@ disable remote work without disabling offline capture or acceptance queueing.
 
 The iPhone shell now uses the tested application reducer for bootstrap,
 capture, Workshop loading/edit/review/queue/delivery, enrollment, sync,
-diagnostics, and repair state. Its global text
-capture returns only after the ledger/projection/outbox transaction, triggers
-sync afterward without awaiting it, and schedules an opportunistic app-refresh
-request. Workshop shows both dedicated normative-command and generic-sync
-queue/conflict state, offers Apple device enrollment and local credential
-removal without claiming server revocation, and exposes integrity verification
-and projection rebuild. These SwiftUI, BackgroundTasks, Security,
-AuthenticationServices, and UIKit paths have not been Xcode-built or run on
-Apple hardware in this environment.
+diagnostics, and repair state. Global text and saved voice capture return only
+after the ledger/projection/outbox transaction, trigger sync afterward without
+awaiting it, and schedule an opportunistic app-refresh request. Workshop shows
+both dedicated normative-command and generic-sync queue/conflict state, offers
+Apple device enrollment and local credential removal without claiming server
+revocation, and exposes integrity verification and projection rebuild. These
+SwiftUI, AVFoundation, BackgroundTasks, Security, AuthenticationServices, and
+UIKit paths have not been Xcode-built or run on Apple hardware in this
+environment.
 
 On a Mac with Swift 6.1 or newer and Xcode installed:
 

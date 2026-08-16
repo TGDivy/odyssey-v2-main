@@ -65,7 +65,6 @@ targets:
         NSLocationWhenInUseUsageDescription: Odyssey uses broad location context while you use the app and avoids continuous precise history.
         NSPhotoLibraryUsageDescription: Odyssey links only the photos you choose to source-linked archive episodes.
         NSMicrophoneUsageDescription: Odyssey records audio only when you start a voice capture.
-        NSSpeechRecognitionUsageDescription: Odyssey transcribes voice captures when you request transcription.
         ODYSSEY_API_BASE_URL: $(ODYSSEY_API_BASE_URL)
         ODYSSEY_APPLE_CLIENT_ID: $(ODYSSEY_APPLE_CLIENT_ID)
         ODYSSEY_ENVIRONMENT: $(ODYSSEY_ENVIRONMENT)

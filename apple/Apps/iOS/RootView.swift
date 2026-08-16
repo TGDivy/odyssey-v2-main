@@ -841,28 +841,67 @@ private struct NowView: View {
     }
 }
 
+private enum CaptureInputMode: String, CaseIterable, Identifiable {
+    case text
+    case voice
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .text:
+            "Text"
+        case .voice:
+            "Voice"
+        }
+    }
+}
+
 private struct CaptureSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var scenePhase
     @EnvironmentObject private var model: OdysseyAppModel
     @FocusState private var isFocused: Bool
+    @StateObject private var voiceRecorder = VoiceCaptureRecorder()
+    @State private var mode = CaptureInputMode.text
     @State private var text = ""
+    @State private var isSubmitting = false
 
     private var isSaving: Bool {
-        model.state.capturePhase == .saving
+        isSubmitting || model.state.capturePhase == .saving
+    }
+
+    private var canSave: Bool {
+        switch mode {
+        case .text:
+            !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        case .voice:
+            voiceRecorder.preparedRecordingURL != nil
+        }
     }
 
     var body: some View {
         NavigationStack {
             Form {
                 Section {
-                    TextEditor(text: $text)
-                        .focused($isFocused)
-                        .frame(minHeight: 180)
-                        .accessibilityLabel("Capture text")
-                } header: {
-                    Text("What should Odyssey remember?")
-                } footer: {
-                    Text("Save commits the original text locally before sync or interpretation.")
+                    Picker("Capture format", selection: $mode) {
+                        ForEach(CaptureInputMode.allCases) { inputMode in
+                            Text(inputMode.title).tag(inputMode)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .disabled(
+                        isSaving
+                            || voiceRecorder.isRecording
+                            || voiceRecorder.state == .requestingPermission
+                    )
+                }
+
+                switch mode {
+                case .text:
+                    textSection
+                case .voice:
+                    voiceSection
                 }
 
                 if case let .failed(message) = model.state.capturePhase {
@@ -874,27 +913,167 @@ private struct CaptureSheet: View {
             }
             .navigationTitle("Capture")
             .navigationBarTitleDisplayMode(.inline)
-            .interactiveDismissDisabled(isSaving)
+            .interactiveDismissDisabled(isSaving || voiceRecorder.isRecording)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button("Cancel", action: cancel)
                         .disabled(isSaving)
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(isSaving ? "Saving…" : "Save") {
-                        Task {
-                            if await model.captureText(text) {
-                                UINotificationFeedbackGenerator().notificationOccurred(.success)
-                                dismiss()
-                            }
-                        }
-                    }
-                    .disabled(
-                        isSaving || text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                    )
+                    Button(saveButtonTitle, action: save)
+                        .disabled(isSaving || !canSave)
                 }
             }
             .onAppear { isFocused = true }
+            .onChange(of: mode) { _, newMode in
+                isFocused = newMode == .text
+            }
+            .onChange(of: scenePhase) { _, newPhase in
+                if newPhase == .active {
+                    voiceRecorder.refreshPermissionState()
+                } else {
+                    voiceRecorder.stopForBackgrounding()
+                }
+            }
+            .onDisappear {
+                if !isSaving {
+                    voiceRecorder.cancel()
+                }
+            }
         }
+    }
+
+    private var textSection: some View {
+        Section {
+            TextEditor(text: $text)
+                .focused($isFocused)
+                .frame(minHeight: 180)
+                .accessibilityLabel("Capture text")
+                .disabled(isSaving)
+        } header: {
+            Text("What should Odyssey remember?")
+        } footer: {
+            Text("Save commits the original text locally before sync or interpretation.")
+        }
+    }
+
+    private var voiceSection: some View {
+        Section {
+            switch voiceRecorder.state {
+            case .idle:
+                Label("No recording yet", systemImage: "waveform")
+                    .foregroundStyle(.secondary)
+                Button {
+                    Task { await voiceRecorder.start() }
+                } label: {
+                    Label("Start Recording", systemImage: "mic.fill")
+                }
+                .disabled(isSaving)
+            case .requestingPermission:
+                ProgressView("Requesting microphone access…")
+            case .recording:
+                Label(
+                    "Recording \(voiceDuration(voiceRecorder.elapsed))",
+                    systemImage: "record.circle"
+                )
+                .foregroundStyle(.red)
+                ProgressView(
+                    value: voiceRecorder.elapsed,
+                    total: VoiceCaptureRecorder.maximumDuration
+                )
+                Button(role: .destructive) {
+                    voiceRecorder.stop()
+                } label: {
+                    Label("Stop Recording", systemImage: "stop.fill")
+                }
+            case .ready:
+                Label(
+                    "Recording ready · \(voiceDuration(voiceRecorder.elapsed))",
+                    systemImage: "checkmark.circle"
+                )
+                Button {
+                    Task { await voiceRecorder.start() }
+                } label: {
+                    Label("Record Again", systemImage: "arrow.counterclockwise")
+                }
+                .disabled(isSaving)
+            case .permissionDenied:
+                Label(
+                    "Microphone access is off. Odyssey records only after you grant access.",
+                    systemImage: "mic.slash"
+                )
+                .foregroundStyle(.secondary)
+                Button("Open Settings", action: openSettings)
+            case let .failed(message):
+                Label(message, systemImage: "exclamationmark.triangle")
+                    .foregroundStyle(.red)
+                Button {
+                    Task { await voiceRecorder.start() }
+                } label: {
+                    Label("Try Again", systemImage: "arrow.counterclockwise")
+                }
+                .disabled(isSaving)
+            }
+        } header: {
+            Text("Speak a note")
+        } footer: {
+            Text(
+                "Recording stops after five minutes or when the app leaves the foreground. "
+                    + "Save copies it into protected local storage and commits its immutable "
+                    + "reference. Audio remains on this device only; it is not transcribed, "
+                    + "uploaded, or remotely restorable."
+            )
+        }
+    }
+
+    private var saveButtonTitle: String {
+        if isSaving {
+            return "Saving…"
+        }
+        return mode == .voice ? "Save Voice" : "Save"
+    }
+
+    private func save() {
+        guard !isSaving, canSave else { return }
+        isSubmitting = true
+        isFocused = false
+        let selectedMode = mode
+        let selectedText = text
+        let selectedVoiceURL = voiceRecorder.preparedRecordingURL
+        Task {
+            let saved: Bool
+            switch selectedMode {
+            case .text:
+                saved = await model.captureText(selectedText)
+            case .voice:
+                guard let selectedVoiceURL else {
+                    isSubmitting = false
+                    return
+                }
+                saved = await model.captureVoiceRecording(at: selectedVoiceURL)
+            }
+            guard saved else {
+                isSubmitting = false
+                return
+            }
+            voiceRecorder.completeSave()
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            dismiss()
+        }
+    }
+
+    private func cancel() {
+        voiceRecorder.cancel()
+        dismiss()
+    }
+
+    private func openSettings() {
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        UIApplication.shared.open(url)
+    }
+
+    private func voiceDuration(_ duration: TimeInterval) -> String {
+        let totalSeconds = max(0, Int(duration.rounded(.down)))
+        return String(format: "%d:%02d", totalSeconds / 60, totalSeconds % 60)
     }
 }

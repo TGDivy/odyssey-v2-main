@@ -74,6 +74,43 @@ recent capture projections, promotes referenced staging, retains uncertain
 staging for repair, and exposes a typed recovery report. Corruption in this
 attachment recovery pass does not disable text capture or the primary ledger.
 
+## Voice recording surface
+
+The iPhone Capture sheet makes Text and Voice separate, explicit modes. Voice
+recording begins only after the owner selects Start Recording. The recorder
+reads `AVAudioApplication.shared.recordPermission` and uses
+`AVAudioApplication.requestRecordPermission()` only when the state is
+undetermined. Denial keeps the sheet usable, leaves text capture available, and
+offers an explicit route to the app's system Settings page. Returning active
+refreshes the displayed permission state but never starts recording without a
+new owner action.
+
+`VoiceCaptureRecorder` records mono MPEG-4 AAC into a temporary `.m4a` file. It
+applies complete Data Protection to that file before recording and calls
+`record(forDuration:)` with a hard five-minute ceiling. A scene transition away
+from the active foreground stops the recorder. Cancelling or recording again
+removes the temporary file; a successful Save copies it through
+`LocalMediaCaptureService` before the source is discarded.
+
+Permission requests carry an invocation identifier, so cancellation while the
+system prompt is outstanding prevents a delayed result from starting audio.
+Delegate completion and encoding-error callbacks must match both the active
+recording state and exact temporary URL, which prevents stale callbacks from
+mutating a replacement recording. The recording state disables mode changes,
+interactive dismissal, and duplicate starts where those actions could abandon
+an active recorder. Save sets a synchronous sheet-local submission guard before
+starting the asynchronous durable handoff, preventing duplicate captures or a
+dismissal race before the application reducer publishes its saving state.
+
+This surface never invokes speech recognition, and the iOS target does not
+declare Speech Recognition usage. It also never invokes provider
+interpretation, attachment upload, or remote restore. Its disclosure says that
+the audio stays on this device and can be lost with the app or device. Swift
+parser validation and the portable media-service tests do not type-check
+AVFoundation/SwiftUI or prove microphone prompts, audio encoding, background
+transitions, Data Protection while locked, accessibility, or physical-device
+behavior; those remain owner-only Xcode and device checks.
+
 ## Protection boundary
 
 Directories use owner-only `0700` permissions and content/manifests use `0600`.
@@ -95,5 +132,6 @@ enabled.
 The default object limit is 128 MiB. The SHA-256 utility supports incremental
 updates and bounded file reads, with NIST known-answer and chunk-boundary tests.
 The protected object and durable media-capture coordinator are implemented.
-The AVFoundation recorder, picker imports, playback, repair UI, and attachment
-lifecycle/tombstone flow follow in separate Milestone 1.2 slices.
+The guarded iPhone AVFoundation recorder is source-implemented. Picker imports,
+playback, repair UI, and the attachment lifecycle/tombstone flow follow in
+separate Milestone 1.2 slices.

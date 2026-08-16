@@ -104,7 +104,13 @@ version is intentionally local-only and does not claim encrypted upload or
 remote restore. A tested coordinator now copies bytes first, commits exactly one
 capture/ledger/outbox transaction, promotes the manifest afterward, cleans up a
 known failed handoff, and reports post-commit finalization for startup recovery.
-Recorder/picker surfaces follow separately. See
+The iPhone Capture sheet now makes Text and Voice an explicit choice. Its voice
+path requests microphone access only after an owner action, records protected
+AAC audio for at most five minutes, stops when the app leaves the foreground,
+and hands a saved recording to that durable coordinator. Permission denial
+leaves text capture available and offers a route to Settings. The UI explicitly
+states that audio is not transcribed, uploaded, or remotely restorable. Picker,
+playback, Xcode, accessibility, and physical-device validation follow. See
 [`docs/architecture/local-capture-attachments.md`](docs/architecture/local-capture-attachments.md).
 
 ## Accepted orientation state
