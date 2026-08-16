@@ -23,6 +23,7 @@ let package = Package(
         ),
         .library(name: "OdysseyHealth", targets: ["OdysseyHealth"]),
         .library(name: "OdysseyCalendar", targets: ["OdysseyCalendar"]),
+        .library(name: "OdysseyWeather", targets: ["OdysseyWeather"]),
         .library(name: "OdysseyLocation", targets: ["OdysseyLocation"]),
         .library(name: "OdysseyIntegrations", targets: ["OdysseyIntegrations"]),
         .library(name: "OdysseyIntelligence", targets: ["OdysseyIntelligence"]),
@@ -109,6 +110,11 @@ let package = Package(
             path: "Packages/OdysseyLocation/Sources/OdysseyLocation"
         ),
         .target(
+            name: "OdysseyWeather",
+            dependencies: ["OdysseyDomain", "OdysseyIntegrations"],
+            path: "Packages/OdysseyWeather/Sources/OdysseyWeather"
+        ),
+        .target(
             name: "OdysseyIntegrations",
             path: "Packages/OdysseyIntegrations/Sources/OdysseyIntegrations"
         ),
@@ -180,6 +186,11 @@ let package = Package(
             name: "OdysseyCalendarTests",
             dependencies: ["OdysseyCalendar", "OdysseyDomain", "OdysseyIntegrations"],
             path: "Tests/Unit/OdysseyCalendarTests"
+        ),
+        .testTarget(
+            name: "OdysseyWeatherTests",
+            dependencies: ["OdysseyWeather", "OdysseyDomain", "OdysseyIntegrations"],
+            path: "Tests/Unit/OdysseyWeatherTests"
         ),
         .testTarget(
             name: "OdysseyIntegrationsTests",
