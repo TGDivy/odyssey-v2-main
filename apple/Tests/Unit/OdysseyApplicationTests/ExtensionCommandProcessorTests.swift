@@ -121,8 +121,16 @@ func extensionProcessorRoutesPresentationWithoutLedgerMutation() async throws {
         captureLocationPermissionState: .unavailable
     )
 
-    #expect(captureResult == .presentationRequested(.capture))
-    #expect(foodResult == .presentationRequested(.food))
+    #expect(captureResult == .presentationRequested(ExtensionCommandPresentation(
+        kind: .capture,
+        commandID: capture.commandID,
+        invokingSurface: .widget
+    )))
+    #expect(foodResult == .presentationRequested(ExtensionCommandPresentation(
+        kind: .food,
+        commandID: food.commandID,
+        invokingSurface: .control
+    )))
     #expect(try fixture.store.storedEntries().isEmpty)
     #expect(try await fixture.store.pendingSyncOperations().isEmpty)
 }

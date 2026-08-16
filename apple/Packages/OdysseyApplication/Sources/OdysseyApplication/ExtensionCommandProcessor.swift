@@ -19,9 +19,25 @@ public enum ExtensionCommandProcessingError: Error, Equatable, Sendable {
     case expiredPresentation
 }
 
-public enum ExtensionCommandPresentation: Hashable, Sendable {
-    case capture
-    case food
+public struct ExtensionCommandPresentation: Hashable, Sendable {
+    public enum Kind: Hashable, Sendable {
+        case capture
+        case food
+    }
+
+    public let kind: Kind
+    public let commandID: UUIDv7
+    public let invokingSurface: ExtensionInvokingSurface
+
+    public init(
+        kind: Kind,
+        commandID: UUIDv7,
+        invokingSurface: ExtensionInvokingSurface
+    ) {
+        self.kind = kind
+        self.commandID = commandID
+        self.invokingSurface = invokingSurface
+    }
 }
 
 public enum ExtensionCommandProcessingResult: Hashable, Sendable {
@@ -77,15 +93,15 @@ public actor ExtensionCommandProcessor {
         case .logFood:
             try await processFood(command)
         case .presentCapture:
-            try presentationResult(for: command, presentation: .capture)
+            try presentationResult(for: command, kind: .capture)
         case .presentFood:
-            try presentationResult(for: command, presentation: .food)
+            try presentationResult(for: command, kind: .food)
         }
     }
 
     private func presentationResult(
         for command: ExtensionCommand,
-        presentation: ExtensionCommandPresentation
+        kind: ExtensionCommandPresentation.Kind
     ) throws -> ExtensionCommandProcessingResult {
         let now = clock()
         guard now.timeIntervalSinceReferenceDate.isFinite,
@@ -94,7 +110,11 @@ public actor ExtensionCommandProcessor {
         else {
             throw ExtensionCommandProcessingError.expiredPresentation
         }
-        return .presentationRequested(presentation)
+        return .presentationRequested(ExtensionCommandPresentation(
+            kind: kind,
+            commandID: command.commandID,
+            invokingSurface: command.invokingSurface
+        ))
     }
 
     private func processText(
