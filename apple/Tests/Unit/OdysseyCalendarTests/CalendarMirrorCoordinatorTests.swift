@@ -62,6 +62,9 @@ func calendarCoordinatorReconcilesMutableUpdatesCancellationsAndWindowDeletes() 
     let changed = try await coordinator.refresh(window: window)
     let unchanged = try await coordinator.refresh(window: window)
     let snapshot = try await coordinator.localSnapshot()
+    let overview = try await coordinator.overview(
+        observedAt: calendarCoordinatorDate.addingTimeInterval(3)
+    )
 
     #expect(initial.insertedCount == 2)
     #expect(changed.insertedCount == 1)
@@ -71,6 +74,10 @@ func calendarCoordinatorReconcilesMutableUpdatesCancellationsAndWindowDeletes() 
     #expect(snapshot.items == [canceled, inserted])
     #expect(snapshot.lastWindow == window)
     #expect(snapshot.lastQueriedAt == calendarCoordinatorDate.addingTimeInterval(2))
+    #expect(overview.permission == .authorized)
+    #expect(overview.localItemCount == 2)
+    #expect(overview.lastSuccessfulRefreshAt == snapshot.lastQueriedAt)
+    #expect(overview.newestSourceVersion == canceled.sourceVersion)
 }
 
 @Test

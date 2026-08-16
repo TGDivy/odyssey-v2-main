@@ -1,6 +1,7 @@
 import Foundation
 import OdysseyApplication
 import OdysseyAuth
+import OdysseyCalendar
 import OdysseyDomain
 import OdysseyHealth
 import OdysseyIntegrations
@@ -30,6 +31,14 @@ func localServicesUseStableCredentialIdentityAndApplicationSupportLayout() async
             ),
             initialPermission: .notDetermined,
             authorizationAfterRequest: .partial
+        ),
+        calendarAdapter: SyntheticCalendarAdapter(
+            capability: CalendarMirrorCapability(
+                availability: .available,
+                supportsFullAccessRead: true
+            ),
+            initialPermission: .notDetermined,
+            authorizationAfterRequest: .authorized
         )
     )
     let receipt = try await services.captureService.record(
@@ -47,6 +56,7 @@ func localServicesUseStableCredentialIdentityAndApplicationSupportLayout() async
 
     #expect(services.deviceID == deviceID)
     #expect(await services.healthImportCoordinator.capability().supportedKinds == [.workout])
+    #expect(await services.calendarMirrorCoordinator.capability().supportsFullAccessRead)
     #expect(configuration.databaseURL.lastPathComponent == "odyssey.sqlite")
     #expect(configuration.databaseURL.path.contains("/Data/"))
     #expect(configuration.preMigrationBackupDirectory.path.hasSuffix("/Backups/Migrations"))

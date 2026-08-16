@@ -55,6 +55,41 @@ public struct CalendarLocalSnapshot: Sendable {
     }
 }
 
+public struct CalendarMirrorOverview: Sendable {
+    public let observedAt: Date
+    public let capability: CalendarMirrorCapability
+    public let permission: IntegrationPermissionState
+    public let localItemCount: Int
+    public let lastSuccessfulRefreshAt: Date?
+    public let newestSourceVersion: Date?
+    public let lastWindow: CalendarQueryWindow?
+
+    public init(
+        observedAt: Date,
+        capability: CalendarMirrorCapability,
+        permission: IntegrationPermissionState,
+        localItemCount: Int,
+        lastSuccessfulRefreshAt: Date?,
+        newestSourceVersion: Date?,
+        lastWindow: CalendarQueryWindow?
+    ) throws {
+        guard observedAt.timeIntervalSinceReferenceDate.isFinite,
+              lastSuccessfulRefreshAt?.timeIntervalSinceReferenceDate.isFinite ?? true,
+              newestSourceVersion?.timeIntervalSinceReferenceDate.isFinite ?? true,
+              localItemCount >= 0
+        else {
+            throw CalendarMirrorError.invalidClock
+        }
+        self.observedAt = observedAt
+        self.capability = capability
+        self.permission = permission
+        self.localItemCount = localItemCount
+        self.lastSuccessfulRefreshAt = lastSuccessfulRefreshAt
+        self.newestSourceVersion = newestSourceVersion
+        self.lastWindow = lastWindow
+    }
+}
+
 public actor CalendarMirrorCoordinator {
     public static let stream = "events"
 
@@ -194,6 +229,30 @@ public actor CalendarMirrorCoordinator {
             items: items,
             lastWindow: cursor?.window,
             lastQueriedAt: cursor?.queriedAt
+        )
+    }
+
+    public func overview(
+        observedAt: Date = Date()
+    ) async throws -> CalendarMirrorOverview {
+        let capability = await adapter.capability()
+        let permission: IntegrationPermissionState
+        if capability.availability == .available,
+           capability.supportsFullAccessRead
+        {
+            permission = await adapter.authorizationState()
+        } else {
+            permission = .unavailable
+        }
+        let snapshot = try await localSnapshot()
+        return try CalendarMirrorOverview(
+            observedAt: observedAt,
+            capability: capability,
+            permission: permission,
+            localItemCount: snapshot.items.count,
+            lastSuccessfulRefreshAt: snapshot.lastQueriedAt,
+            newestSourceVersion: snapshot.items.compactMap(\.sourceVersion).max(),
+            lastWindow: snapshot.lastWindow
         )
     }
 

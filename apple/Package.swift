@@ -74,6 +74,7 @@ let package = Package(
             name: "OdysseyApplication",
             dependencies: [
                 "OdysseyAuth",
+                "OdysseyCalendar",
                 "OdysseyDomain",
                 "OdysseyData",
                 "OdysseyExtensionBridge",
@@ -160,6 +161,7 @@ let package = Package(
             name: "OdysseyApplicationTests",
             dependencies: [
                 "OdysseyApplication",
+                "OdysseyCalendar",
                 "OdysseyData",
                 "OdysseyDomain",
                 "OdysseyExtensionBridge",

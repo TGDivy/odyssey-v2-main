@@ -1,5 +1,6 @@
 import Foundation
 import OdysseyAuth
+import OdysseyCalendar
 import OdysseyData
 import OdysseyDomain
 import OdysseyHealth
@@ -190,6 +191,7 @@ public struct NativeLocalServices: Sendable {
     public let captureInterpretationService: CaptureInterpretationService
     public let foodPresetService: FoodPresetService
     public let foodOccurrenceService: FoodOccurrenceService
+    public let calendarMirrorCoordinator: CalendarMirrorCoordinator
     public let healthImportCoordinator: HealthImportCoordinator
     public let lifeModelWorkshopService: LifeModelWorkshopService
     public let attachmentRecoveryState: LocalCaptureAttachmentRecoveryState
@@ -206,7 +208,8 @@ public struct NativeLocalServices: Sendable {
     public static func bootstrap(
         configuration: NativeLocalConfiguration,
         vault: any CredentialVault,
-        healthImporter: (any IncrementalHealthImporting)? = nil
+        healthImporter: (any IncrementalHealthImporting)? = nil,
+        calendarAdapter: (any CalendarContextProviding)? = nil
     ) async throws -> Self {
         let deviceID = try await vault.loadOrCreateDeviceID()
         let ledgerStore = try SQLiteLedgerStore(
@@ -256,6 +259,16 @@ public struct NativeLocalServices: Sendable {
             importer: resolvedHealthImporter,
             store: ledgerStore
         )
+        let resolvedCalendarAdapter: any CalendarContextProviding
+        if let calendarAdapter {
+            resolvedCalendarAdapter = calendarAdapter
+        } else {
+            resolvedCalendarAdapter = SystemCalendarAdapter.make()
+        }
+        let calendarMirrorCoordinator = CalendarMirrorCoordinator(
+            adapter: resolvedCalendarAdapter,
+            store: ledgerStore
+        )
         let lifeModelWorkshopService = try LifeModelWorkshopService(
             store: ledgerStore,
             deviceID: deviceID,
@@ -272,6 +285,7 @@ public struct NativeLocalServices: Sendable {
             captureInterpretationService: captureInterpretationService,
             foodPresetService: foodPresetService,
             foodOccurrenceService: foodOccurrenceService,
+            calendarMirrorCoordinator: calendarMirrorCoordinator,
             healthImportCoordinator: healthImportCoordinator,
             lifeModelWorkshopService: lifeModelWorkshopService,
             attachmentRecoveryState: await attachmentRecoveryState(
