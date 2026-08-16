@@ -135,24 +135,29 @@ public struct CalendarEventIdentity: Codable, Hashable, Sendable {
 
 public struct CalendarSourceMetadata: Codable, Hashable, Sendable {
     public let calendarIdentifier: String
-    public let calendarTitle: String
+    public let calendarTitle: String?
     public let sourceIdentifier: String
-    public let sourceTitle: String
+    public let sourceTitle: String?
     public let sourceKind: CalendarSourceKind
     public let allowsContentModifications: Bool
 
     public init(
         calendarIdentifier: String,
-        calendarTitle: String,
+        calendarTitle: String?,
         sourceIdentifier: String,
-        sourceTitle: String,
+        sourceTitle: String?,
         sourceKind: CalendarSourceKind,
         allowsContentModifications: Bool
     ) throws {
         guard CalendarMirrorValidation.validText(calendarIdentifier, maximum: 512),
-              CalendarMirrorValidation.validText(calendarTitle, maximum: 500),
               CalendarMirrorValidation.validText(sourceIdentifier, maximum: 512),
-              CalendarMirrorValidation.validText(sourceTitle, maximum: 500)
+              CalendarMirrorValidation.validOptionalText(
+                  calendarTitle,
+                  maximum: 500
+              ), CalendarMirrorValidation.validOptionalText(
+                  sourceTitle,
+                  maximum: 500
+              )
         else {
             throw CalendarMirrorError.invalidSource
         }
@@ -177,9 +182,9 @@ public struct CalendarSourceMetadata: Codable, Hashable, Sendable {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         try self.init(
             calendarIdentifier: values.decode(String.self, forKey: .calendarIdentifier),
-            calendarTitle: values.decode(String.self, forKey: .calendarTitle),
+            calendarTitle: values.decodeIfPresent(String.self, forKey: .calendarTitle),
             sourceIdentifier: values.decode(String.self, forKey: .sourceIdentifier),
-            sourceTitle: values.decode(String.self, forKey: .sourceTitle),
+            sourceTitle: values.decodeIfPresent(String.self, forKey: .sourceTitle),
             sourceKind: values.decode(CalendarSourceKind.self, forKey: .sourceKind),
             allowsContentModifications: values.decode(
                 Bool.self,

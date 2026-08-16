@@ -26,7 +26,7 @@ public actor SyntheticCalendarAdapter: CalendarContextProviding {
         initialPermission: IntegrationPermissionState,
         authorizationAfterRequest: IntegrationPermissionState,
         pages: [SyntheticCalendarPage] = [],
-        clock: @escaping @Sendable () -> Date = Date.init
+        clock: @escaping @Sendable () -> Date = { Date() }
     ) {
         mirrorCapability = capability
         permission = initialPermission
@@ -98,7 +98,7 @@ public actor SyntheticCalendarAdapter: CalendarContextProviding {
 public struct UnavailableCalendarAdapter: CalendarContextProviding {
     private let clock: @Sendable () -> Date
 
-    public init(clock: @escaping @Sendable () -> Date = Date.init) {
+    public init(clock: @escaping @Sendable () -> Date = { Date() }) {
         self.clock = clock
     }
 
