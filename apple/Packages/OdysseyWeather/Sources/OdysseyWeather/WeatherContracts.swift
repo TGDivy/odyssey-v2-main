@@ -394,7 +394,7 @@ public struct WeatherMirrorResult: Hashable, Sendable {
                 throw WeatherContextError.invalidResult
             }
         case .unavailable:
-            guard snapshot == nil else {
+            guard snapshot == nil, rateLimitState != .limited else {
                 throw WeatherContextError.invalidResult
             }
         case .rateLimited:

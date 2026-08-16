@@ -69,6 +69,13 @@ func weatherSnapshotRejectsInvalidFreshnessAndForecastOrdering() throws {
             highTemperatureCelsius: 10
         )
     }
+    #expect(throws: WeatherContextError.invalidResult) {
+        try WeatherMirrorResult(
+            outcome: .unavailable,
+            snapshot: nil,
+            rateLimitState: .limited
+        )
+    }
 }
 
 @Test
