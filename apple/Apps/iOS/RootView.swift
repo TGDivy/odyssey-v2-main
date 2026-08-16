@@ -965,8 +965,24 @@ private struct NowView: View {
             ? "interaction"
             : "interactions"
         let target = measurement.meetsTarget ? "target met" : "target missed"
-        return "Food quick log: \(seconds) s, \(measurement.interactionCount) "
-            + "\(interactionLabel), \(target)"
+        return "Food quick log from \(foodWarmPathSurfaceName(measurement.surface)): "
+            + "\(seconds) s, \(measurement.interactionCount) \(interactionLabel), "
+            + target
+    }
+
+    private func foodWarmPathSurfaceName(_ surface: WarmPathSurface) -> String {
+        switch surface {
+        case .iPhone:
+            "iPhone"
+        case .appIntent:
+            "App Intent"
+        case .widget:
+            "Widget"
+        case .control:
+            "Control Center"
+        case .watch:
+            "Watch"
+        }
     }
 }
 
