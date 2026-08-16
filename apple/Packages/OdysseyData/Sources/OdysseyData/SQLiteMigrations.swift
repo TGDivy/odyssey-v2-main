@@ -56,6 +56,12 @@ extension SQLiteLedgerStore {
                 appliedAt: clock()
             )
         }
+        migrator.registerMigration("v5-local-application-state", foreignKeyChecks: .immediate) { database in
+            try applyVersionFive(
+                SQLiteSession(database: database),
+                appliedAt: clock()
+            )
+        }
         return migrator
     }
 
@@ -699,6 +705,32 @@ extension SQLiteLedgerStore {
         try migration.bind([.text(SQLiteValueCodec.dateString(appliedAt))])
         _ = try migration.step()
         try connection.execute("PRAGMA user_version = 4")
+    }
+
+    private static func applyVersionFive(
+        _ connection: SQLiteSession,
+        appliedAt: Date
+    ) throws {
+        try connection.execute(
+            """
+            CREATE TABLE local_application_state (
+                state_key TEXT PRIMARY KEY CHECK (length(state_key) BETWEEN 1 AND 100),
+                schema_version INTEGER NOT NULL CHECK (schema_version >= 1),
+                document BLOB NOT NULL CHECK (length(document) BETWEEN 1 AND 65536),
+                document_sha256 TEXT NOT NULL CHECK (length(document_sha256) = 64),
+                updated_at TEXT NOT NULL
+            ) STRICT, WITHOUT ROWID;
+            """
+        )
+        let migration = try connection.statement(
+            """
+            INSERT INTO schema_migrations (version, name, applied_at)
+            VALUES (5, 'hash-verified local application state', ?)
+            """
+        )
+        try migration.bind([.text(SQLiteValueCodec.dateString(appliedAt))])
+        _ = try migration.step()
+        try connection.execute("PRAGMA user_version = 5")
     }
 
     private static func backupTimestamp(_ date: Date) -> String {

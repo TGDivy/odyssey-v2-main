@@ -34,6 +34,7 @@ extension SQLiteLedgerStore {
         try verifySearchIndex()
         try verifySyncOperations()
         try verifyLifeModelStorage()
+        try verifyLocalApplicationState()
 
         return LedgerIntegrityReport(
             schemaVersion: Self.currentSchemaVersion,

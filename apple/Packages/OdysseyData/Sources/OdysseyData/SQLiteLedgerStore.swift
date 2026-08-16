@@ -33,7 +33,7 @@ public final class SQLiteLedgerStore:
     OwnerExporter,
     LocalBackupProvider
 {
-    public static let currentSchemaVersion = 4
+    public static let currentSchemaVersion = 5
     public static let maximumSyncPayloadBytes = 256 * 1_024
     public static let maximumProjectionPayloadBytes = 1_024 * 1_024
 
