@@ -176,6 +176,7 @@ public struct NowContextInput: Codable, Hashable, Sendable {
     public let currentThread: String?
     public let nextTransition: NowTransition?
     public let sources: [CurrentContextSourceSnapshot]
+    public let hasEnoughContextForSilence: Bool
 
     public init(
         generatedAt: Date,
@@ -184,7 +185,8 @@ public struct NowContextInput: Codable, Hashable, Sendable {
         signals: DeterministicContextInput,
         currentThread: String? = nil,
         nextTransition: NowTransition? = nil,
-        sources: [CurrentContextSourceSnapshot] = []
+        sources: [CurrentContextSourceSnapshot] = [],
+        hasEnoughContextForSilence: Bool = false
     ) throws {
         guard generatedAt.timeIntervalSinceReferenceDate.isFinite else {
             throw CurrentContextError.invalidClock
@@ -207,6 +209,7 @@ public struct NowContextInput: Codable, Hashable, Sendable {
         self.currentThread = currentThread
         self.nextTransition = nextTransition
         self.sources = sources.sorted { $0.source.rawValue < $1.source.rawValue }
+        self.hasEnoughContextForSilence = hasEnoughContextForSilence
     }
 
     private static func validOptionalText(_ value: String?, maximum: Int) -> Bool {
@@ -228,6 +231,7 @@ public struct NowContextProjection: Codable, Hashable, Sendable {
     public let sources: [CurrentContextSourceSnapshot]
     public let correction: NowStateCorrection?
     public let isIntentionallySilent: Bool
+    public let hasEnoughContextForSilence: Bool
 }
 
 public struct NowContextProjector: Sendable {
@@ -248,19 +252,29 @@ public struct NowContextProjector: Sendable {
             timeZoneID: input.timeZoneID,
             inferredState: inferredState,
             state: state,
-            summary: summary(for: state),
+            summary: summary(
+                for: state,
+                hasEnoughContextForSilence: input.hasEnoughContextForSilence
+            ),
             currentThread: input.currentThread,
             nextTransition: input.nextTransition,
             sources: input.sources,
             correction: activeCorrection,
             isIntentionallySilent: state == .clear
+                && input.hasEnoughContextForSilence,
+            hasEnoughContextForSilence: input.hasEnoughContextForSilence
         )
     }
 
-    private func summary(for state: NowState) -> String {
+    private func summary(
+        for state: NowState,
+        hasEnoughContextForSilence: Bool
+    ) -> String {
         switch state {
         case .clear:
-            "Nothing requires attention. The known shape of the day is coherent."
+            hasEnoughContextForSilence
+                ? "Nothing requires attention. The known shape of the day is coherent."
+                : "No current attention claim is available from the context Odyssey can inspect."
         case .choice:
             "One live trade-off needs attention; the rest can stay quiet."
         case .preparation:

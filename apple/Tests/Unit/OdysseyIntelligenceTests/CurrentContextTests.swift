@@ -98,11 +98,40 @@ func nowContextCorrectionIsExplicitBoundedAndExpires() throws {
         timeZoneID: input.timeZoneID,
         signals: input.signals,
         currentThread: input.currentThread,
-        sources: input.sources
+        sources: input.sources,
+        hasEnoughContextForSilence: input.hasEnoughContextForSilence
     )
     let expired = NowContextProjector().project(expiredInput, correction: correction)
     #expect(expired.state == .open)
     #expect(expired.correction == nil)
+}
+
+@Test
+func clearStateDistinguishesIntentionalSilenceFromMissingContext() throws {
+    let signals = DeterministicContextInput(
+        unresolvedDecisionCount: 0,
+        preparationDeadlineCount: 0,
+        materialHealthConstraintCount: 0,
+        disruptionCount: 0,
+        explicitlyOpen: false
+    )
+    let empty = NowContextProjector().project(try NowContextInput(
+        generatedAt: currentContextDate,
+        localDay: LocalDate(year: 2026, month: 8, day: 15),
+        timeZoneID: "UTC",
+        signals: signals
+    ))
+    let silent = NowContextProjector().project(try NowContextInput(
+        generatedAt: currentContextDate,
+        localDay: LocalDate(year: 2026, month: 8, day: 15),
+        timeZoneID: "UTC",
+        signals: signals,
+        hasEnoughContextForSilence: true
+    ))
+
+    #expect(!empty.isIntentionallySilent)
+    #expect(silent.isIntentionallySilent)
+    #expect(empty.summary != silent.summary)
 }
 
 @Test
