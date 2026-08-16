@@ -8,6 +8,12 @@
       "schema": "schemas/events/v1/capture.recorded.v1.schema.json"
     },
     {
+      "aggregate_type": "capture",
+      "event_type": "capture.interpreted.v1",
+      "purpose": "Versioned source-linked capture interpretation",
+      "schema": "schemas/events/v1/capture.interpreted.v1.schema.json"
+    },
+    {
       "aggregate_type": "observation",
       "event_type": "observation.normalized.v1",
       "purpose": "Normalized source-linked observation",

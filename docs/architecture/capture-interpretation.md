@@ -38,6 +38,29 @@ do not enter the capture contract.
   available;
 - never creates an observation, recommendation, score, or task.
 
-This contract slice does not yet claim durable asynchronous execution,
-automatic retry, media transcription, normalized observations, or correction
-UI. Those remain the next Milestone 1.2 layers.
+## Durable asynchronous execution
+
+`CaptureInterpretationService` loads the current local capture projection,
+invokes an adapter after the original write has returned, then re-reads the
+capture before committing. A successful result atomically appends
+`capture.interpreted.v1`, advances the capture projection by one revision, and
+queues the complete revised document for generic sync. The original payload,
+content hash, capture time, context, and attachments are copied unchanged.
+
+The service validates that every proposed source reference belongs to the same
+capture or one of its declared attachments. Foreign references fail before any
+ledger, projection, or outbox mutation. Identical capture/interpreter/version
+runs are idempotent, and concurrent callers share one in-flight adapter task so
+that a provider is not invoked twice accidentally.
+
+Deferral and adapter failure leave the capture pending without writing a false
+interpretation. Pending captures are discoverable oldest first. The iPhone
+schedules interpretation only after durable capture success, rescans pending
+captures at bootstrap and opportunistic background refresh, and schedules sync
+independently so neither networking nor interpretation delays the capture
+receipt. A crash before the atomic derivative commit therefore returns to the
+pending state on the next run; there is no durable half-interpreted state.
+
+This slice does not claim provider-backed interpretation, automatic provider
+retry policy, media transcription, normalized observations, or correction UI.
+Those remain later Milestone 1.2 layers.

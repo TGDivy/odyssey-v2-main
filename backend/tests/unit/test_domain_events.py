@@ -18,7 +18,7 @@ def provenance(now: datetime) -> Provenance:
 def test_initial_event_registry_is_unique_and_versioned() -> None:
     event_types = [definition.event_type for definition in EVENT_DEFINITIONS]
 
-    assert len(event_types) == 26
+    assert len(event_types) == 27
     assert len(set(event_types)) == len(event_types)
     assert all(event_type.endswith(".v1") for event_type in event_types)
 

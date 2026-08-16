@@ -30,6 +30,10 @@ func localServicesUseStableCredentialIdentityAndApplicationSupportLayout() async
             invokingSurface: .iPhoneNow
         )
     )
+    _ = try await services.captureInterpretationService.interpret(
+        captureID: receipt.capture.metadata.id,
+        using: DeterministicCaptureInterpreter()
+    )
 
     #expect(services.deviceID == deviceID)
     #expect(configuration.databaseURL.lastPathComponent == "odyssey.sqlite")
@@ -39,7 +43,7 @@ func localServicesUseStableCredentialIdentityAndApplicationSupportLayout() async
     #expect(receipt.deviceSequence == 1)
     let diagnostics = try await services.localDiagnostics()
     let workshop = try await services.lifeModelWorkshopService.snapshot()
-    #expect(diagnostics.operationsQueued == 1)
+    #expect(diagnostics.operationsQueued == 2)
     #expect(diagnostics.deviceCursor.value == 0)
     #expect(workshop.drafts.isEmpty)
     #expect(workshop.acceptanceCommands.isEmpty)
@@ -49,6 +53,8 @@ func localServicesUseStableCredentialIdentityAndApplicationSupportLayout() async
         captures[0].originalPayload.contentOrObjectRef
             == "available before remote configuration"
     )
+    #expect(captures[0].interpretationStatus == .interpreted)
+    #expect(captures[0].interpretationVersions.count == 1)
 }
 
 @Test

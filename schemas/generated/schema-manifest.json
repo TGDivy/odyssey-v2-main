@@ -2,7 +2,7 @@
   "artifacts": [
     {
       "path": "schemas/events/registry.v1.json",
-      "sha256": "bc1441d01ba3c855e68c88d12b2c62dbd8032ee91e787c329dc67dd38a3ee1c3"
+      "sha256": "af0de4d07ba2e7567be922b8215f667e61ba39220a07d43a9c8cb720bb822271"
     },
     {
       "path": "schemas/events/v1/action.status_changed.v1.schema.json",
@@ -15,6 +15,10 @@
     {
       "path": "schemas/events/v1/assertion.superseded.v1.schema.json",
       "sha256": "7c62089e3d9e22d56f3a2e262702c77e0b25458c4ef6e125379126b3180d3700"
+    },
+    {
+      "path": "schemas/events/v1/capture.interpreted.v1.schema.json",
+      "sha256": "e8a039cbbd729c0893c149edf0931b5a6e5d02bb8982bd878c988242a7a61099"
     },
     {
       "path": "schemas/events/v1/capture.recorded.v1.schema.json",

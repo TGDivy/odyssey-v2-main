@@ -1,5 +1,6 @@
 import Foundation
 @testable import OdysseyApplication
+import OdysseyData
 import OdysseyDomain
 import OdysseySync
 import Testing
@@ -95,6 +96,148 @@ func captureInterpretationVersionRejectsTransientOrUnlinkedResults() throws {
     }
 }
 
+@Test
+func captureInterpretationCommitsDerivativeProjectionAndOutboxAtomically() async throws {
+    let fixture = try CaptureInterpretationFixture()
+    defer { fixture.remove() }
+    let original = try await fixture.captureService.record(.text(
+        "Food: oatmeal and berries",
+        timeZoneID: "UTC",
+        locationPermissionState: .denied,
+        invokingSurface: .iPhoneGlobalCapture
+    ))
+
+    let execution = try await fixture.interpretationService.interpret(
+        captureID: original.capture.metadata.id,
+        using: DeterministicCaptureInterpreter()
+    )
+
+    guard case let .recorded(receipt) = execution else {
+        Issue.record("Expected a durable interpretation")
+        return
+    }
+    #expect(receipt.capture.metadata.revision == 2)
+    #expect(receipt.capture.originalPayload == original.capture.originalPayload)
+    #expect(receipt.capture.interpretationStatus == .interpreted)
+    #expect(receipt.capture.interpretationVersions == [receipt.interpretation])
+    #expect(receipt.deviceSequence == 2)
+
+    let storedProjection = try fixture.store.projectedEntity(
+        entityType: ManualCaptureService.entityType,
+        entityID: original.capture.metadata.id
+    )
+    let projection = try #require(storedProjection)
+    let projectedCapture = try SyncJSONCoding.makeDecoder().decode(
+        CaptureRecord.self,
+        from: projection.document
+    )
+    let entries = try fixture.store.storedEntries()
+    let pending = try await fixture.store.pendingSyncOperations()
+    #expect(projectedCapture == receipt.capture)
+    #expect(entries.map(\.entry.eventType) == [
+        ManualCaptureService.eventType,
+        CaptureInterpretationService.eventType,
+    ])
+    #expect(pending.count == 2)
+    #expect(pending[1].mutationType == .update)
+    #expect(pending[1].baseRevision == 1)
+    #expect(pending[1].payload == projection.document)
+    #expect(try await fixture.interpretationService.pendingCaptureIDs().isEmpty)
+
+    let repeated = try await fixture.interpretationService.interpret(
+        captureID: original.capture.metadata.id,
+        using: DeterministicCaptureInterpreter()
+    )
+    #expect(repeated == .alreadyRecorded(receipt.interpretation))
+    #expect(try fixture.store.storedEntries().count == 2)
+}
+
+@Test
+func captureInterpretationDeferralRemainsPendingForRestartRecovery() async throws {
+    let fixture = try CaptureInterpretationFixture()
+    defer { fixture.remove() }
+    let original = try await fixture.captureService.record(ManualCaptureDraft(
+        kind: .audio,
+        contentOrObjectReference: "attachments/local-audio.m4a",
+        timeZoneID: "UTC",
+        locationPermissionState: .denied,
+        invokingSurface: .iPhoneGlobalCapture
+    ))
+
+    let before = try await fixture.interpretationService.pendingCaptureIDs()
+    let execution = try await fixture.interpretationService.interpret(
+        captureID: original.capture.metadata.id,
+        using: DeterministicCaptureInterpreter()
+    )
+    let after = try await fixture.interpretationService.pendingCaptureIDs()
+
+    #expect(before == [original.capture.metadata.id])
+    #expect(execution == .deferred(.mediaContentUnavailable))
+    #expect(after == before)
+    #expect(try fixture.store.storedEntries().count == 1)
+    #expect(try await fixture.store.pendingSyncOperations().count == 1)
+}
+
+@Test
+func captureInterpretationRejectsForeignSourcesWithoutPartialMutation() async throws {
+    let fixture = try CaptureInterpretationFixture()
+    defer { fixture.remove() }
+    let original = try await fixture.captureService.record(.text(
+        "Food: synthetic meal",
+        timeZoneID: "UTC",
+        locationPermissionState: .denied,
+        invokingSurface: .iPhoneGlobalCapture
+    ))
+    let foreignReference = "capture:018f0000-0000-7000-8000-000000000999#original_payload"
+
+    await #expect(
+        throws: CaptureInterpretationServiceError.foreignSourceReference(foreignReference)
+    ) {
+        try await fixture.interpretationService.interpret(
+            captureID: original.capture.metadata.id,
+            using: ForeignSourceCaptureInterpreter(sourceReference: foreignReference)
+        )
+    }
+
+    let storedProjection = try fixture.store.projectedEntity(
+        entityType: ManualCaptureService.entityType,
+        entityID: original.capture.metadata.id
+    )
+    let projection = try #require(storedProjection)
+    #expect(projection.revision == 1)
+    #expect(try fixture.store.storedEntries().count == 1)
+    #expect(try await fixture.store.pendingSyncOperations().count == 1)
+}
+
+@Test
+func captureInterpretationCoalescesConcurrentAdapterExecution() async throws {
+    let fixture = try CaptureInterpretationFixture()
+    defer { fixture.remove() }
+    let original = try await fixture.captureService.record(.text(
+        "Decision: choose a bounded next step",
+        timeZoneID: "UTC",
+        locationPermissionState: .denied,
+        invokingSurface: .iPhoneGlobalCapture
+    ))
+    let counter = CaptureInterpretationCallCounter()
+    let interpreter = CountingCaptureInterpreter(counter: counter)
+
+    async let first = fixture.interpretationService.interpret(
+        captureID: original.capture.metadata.id,
+        using: interpreter
+    )
+    async let second = fixture.interpretationService.interpret(
+        captureID: original.capture.metadata.id,
+        using: interpreter
+    )
+    let results = try await (first, second)
+
+    #expect(results.0 == results.1)
+    #expect(await counter.value() == 1)
+    #expect(try fixture.store.storedEntries().count == 2)
+    #expect(try await fixture.store.pendingSyncOperations().count == 2)
+}
+
 private func captureInterpretationInput(
     kind: CapturePayloadKind,
     content: String
@@ -123,4 +266,99 @@ private func captureInterpretationIdentifier(_ value: Int) throws -> UUIDv7 {
     return try UUIDv7(
         validating: UUID(uuidString: "018f0000-0000-7000-8000-\(suffix)")!
     )
+}
+
+private struct ForeignSourceCaptureInterpreter: CaptureInterpreting {
+    let interpreterID = "odyssey.foreign-source-test"
+    let interpreterVersion = "1"
+    let sourceReference: String
+
+    func interpret(_ input: CaptureInterpretationInput) async throws
+        -> CaptureInterpretationAttempt
+    {
+        try .proposed(CaptureInterpretationProposal(
+            status: .interpreted,
+            proposedFields: [
+                "capture_type": CaptureInterpretedField(
+                    value: .string("food"),
+                    sourceSpanRefs: [sourceReference]
+                ),
+            ]
+        ))
+    }
+}
+
+private struct CountingCaptureInterpreter: CaptureInterpreting {
+    let interpreterID = "odyssey.counting-test"
+    let interpreterVersion = "1"
+    let counter: CaptureInterpretationCallCounter
+
+    func interpret(_ input: CaptureInterpretationInput) async throws
+        -> CaptureInterpretationAttempt
+    {
+        await counter.increment()
+        try await Task.sleep(for: .milliseconds(25))
+        return try await DeterministicCaptureInterpreter().interpret(input)
+    }
+}
+
+private actor CaptureInterpretationCallCounter {
+    private var count = 0
+
+    func increment() {
+        count += 1
+    }
+
+    func value() -> Int {
+        count
+    }
+}
+
+private final class CaptureInterpretationFixture: @unchecked Sendable {
+    let directory: URL
+    let store: SQLiteLedgerStore
+    let captureService: ManualCaptureService
+    let interpretationService: CaptureInterpretationService
+
+    init() throws {
+        directory = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "odyssey-capture-interpretation-\(UUID().uuidString)",
+            isDirectory: true
+        )
+        let deviceID = try captureInterpretationIdentifier(100)
+        store = try SQLiteLedgerStore(configuration: SQLiteLedgerConfiguration(
+            databaseURL: directory.appendingPathComponent("ledger.sqlite"),
+            deviceID: deviceID,
+            preMigrationBackupDirectory: directory.appendingPathComponent("backups"),
+            clock: { captureInterpretationDate }
+        ))
+        let identifiers = CaptureInterpretationIdentifiers()
+        captureService = try ManualCaptureService(
+            store: store,
+            deviceID: deviceID,
+            clock: { captureInterpretationDate },
+            identifier: identifiers.next
+        )
+        interpretationService = CaptureInterpretationService(
+            store: store,
+            clock: { captureInterpretationDate.addingTimeInterval(60) },
+            identifier: identifiers.next
+        )
+    }
+
+    func remove() {
+        try? FileManager.default.removeItem(at: directory)
+    }
+}
+
+private final class CaptureInterpretationIdentifiers: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value = 200
+
+    func next() -> UUIDv7 {
+        lock.lock()
+        defer { lock.unlock() }
+        value += 1
+        return try! captureInterpretationIdentifier(value)
+    }
 }

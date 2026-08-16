@@ -170,6 +170,7 @@ public struct NativeLocalServices: Sendable {
     public let deviceID: UUIDv7
     public let ledgerStore: SQLiteLedgerStore
     public let captureService: ManualCaptureService
+    public let captureInterpretationService: CaptureInterpretationService
     public let lifeModelWorkshopService: LifeModelWorkshopService
 
     public static func bootstrap(
@@ -198,6 +199,9 @@ public struct NativeLocalServices: Sendable {
             deviceID: deviceID,
             ownerActorID: configuration.ownerActorID
         )
+        let captureInterpretationService = CaptureInterpretationService(
+            store: ledgerStore
+        )
         let lifeModelWorkshopService = try LifeModelWorkshopService(
             store: ledgerStore,
             deviceID: deviceID,
@@ -208,6 +212,7 @@ public struct NativeLocalServices: Sendable {
             deviceID: deviceID,
             ledgerStore: ledgerStore,
             captureService: captureService,
+            captureInterpretationService: captureInterpretationService,
             lifeModelWorkshopService: lifeModelWorkshopService
         )
     }

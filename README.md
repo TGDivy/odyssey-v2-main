@@ -80,6 +80,18 @@ longitudinal evaluation. The scoring workflow, privacy rules, model-change
 gate, and current evidence boundaries are documented in
 [`docs/evaluation-protocols.md`](docs/evaluation-protocols.md).
 
+## Local capture and interpretation
+
+Text capture commits its immutable source, projection, and ordered sync
+operation locally before returning; authentication, networking, and
+interpretation are never on that path. Afterward, a provider-neutral service
+creates versioned proposed fields that each link back to the exact capture
+source. The current deterministic fallback recognizes only explicit prefixes,
+does not infer tasks or facts from ordinary notes, and safely leaves media
+pending. Successful derivatives append a registered event and projection/outbox
+update atomically; startup and background refresh recover pending work. See
+[`docs/architecture/capture-interpretation.md`](docs/architecture/capture-interpretation.md).
+
 ## Accepted orientation state
 
 Owner-authenticated commands under `/v1/seasons/*` now append immutable

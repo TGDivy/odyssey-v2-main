@@ -58,6 +58,9 @@ final class OdysseyAppModel: ObservableObject {
             await refreshDiagnostics()
             refreshRecentCaptures()
             await refreshWorkshop()
+            Task { [weak self] in
+                await self?.resumePendingCaptureInterpretations()
+            }
         } catch {
             apply(.localUnavailable(
                 "Local storage could not be opened safely. No capture was attempted."
@@ -113,6 +116,9 @@ final class OdysseyAppModel: ObservableObject {
             await refreshDiagnostics()
             refreshRecentCaptures()
             scheduleBackgroundRefresh()
+            Task { [weak self] in
+                await self?.interpretCapture(receipt.capture.metadata.id)
+            }
             if state.canSynchronize {
                 Task { [weak self] in
                     await self?.synchronize()
@@ -203,6 +209,7 @@ final class OdysseyAppModel: ObservableObject {
     }
 
     func performBackgroundRefresh() async {
+        await resumePendingCaptureInterpretations()
         guard let remoteServices, state.canSynchronize else { return }
         await withTaskCancellationHandler {
             await synchronize()
@@ -451,6 +458,41 @@ final class OdysseyAppModel: ObservableObject {
             apply(.recentCapturesUpdated(try localServices.recentCaptures()))
         } catch {
             return
+        }
+    }
+
+    private func interpretCapture(_ captureID: UUIDv7) async {
+        guard let localServices else { return }
+        do {
+            let result = try await localServices.captureInterpretationService.interpret(
+                captureID: captureID,
+                using: DeterministicCaptureInterpreter()
+            )
+            guard case .recorded = result else { return }
+            refreshRecentCaptures()
+            await refreshDiagnostics()
+            scheduleBackgroundRefresh()
+            if state.canSynchronize {
+                Task { [weak self] in
+                    await self?.synchronize()
+                }
+            }
+        } catch {
+            return
+        }
+    }
+
+    private func resumePendingCaptureInterpretations() async {
+        guard let localServices else { return }
+        let captureIDs: [UUIDv7]
+        do {
+            captureIDs = try await localServices.captureInterpretationService
+                .pendingCaptureIDs()
+        } catch {
+            return
+        }
+        for captureID in captureIDs {
+            await interpretCapture(captureID)
         }
     }
 

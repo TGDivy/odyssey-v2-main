@@ -98,12 +98,15 @@ transactionally until the durable device cursor catches up. Offline diagnostics
 report exact queue age/count, conflicts, cursors, schema compatibility, and the
 attachment backlog without requiring a server call.
 
-Capture interpretation now has a full versioned native contract and an
-asynchronous provider-neutral adapter boundary. Every proposed field carries a
-reference to its immutable source capture. The first deterministic fallback
-recognizes only explicit owner-written prefixes, treats other text as an
-unstructured note, and safely defers media rather than inventing content. It is
-not yet wired to durable background execution or correction UI. See
+Capture interpretation now has a full versioned native contract, provider-neutral
+adapter boundary, and durable local execution service. Every proposed field
+carries a validated reference to its immutable source capture. After the
+original write returns, the service coalesces identical work, invokes the first
+deterministic fallback, and atomically appends `capture.interpreted.v1`, advances
+the projection, and queues sync. It recognizes only explicit owner-written
+prefixes, treats other text as an unstructured note, and leaves media pending
+rather than inventing content. Bootstrap and opportunistic app refresh rescan
+pending captures. Provider-backed interpretation and correction UI remain. See
 [`docs/architecture/capture-interpretation.md`](../docs/architecture/capture-interpretation.md).
 
 `NativeLocalServices` opens the stable Keychain device identity, protected
@@ -134,7 +137,7 @@ swift test --package-path apple
 ../tools/apple/generate-project.sh
 ```
 
-The portable package currently reports 82 tests passing under the official
+The portable package currently reports 86 tests passing under the official
 Swift 6.1 release toolchain on Linux. That result does not type-check SwiftUI or
 replace the required Xcode, simulator, accessibility, signing, and device runs.
 

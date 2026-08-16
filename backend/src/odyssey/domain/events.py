@@ -38,6 +38,18 @@ EVENT_DEFINITIONS: tuple[EventDefinition, ...] = (
         "capture.recorded.v1", "capture", ("capture_id",), purpose="Durable raw capture"
     ),
     EventDefinition(
+        "capture.interpreted.v1",
+        "capture",
+        (
+            "capture_id",
+            "interpretation_version_id",
+            "interpreter",
+            "interpreter_version",
+            "status",
+        ),
+        purpose="Versioned source-linked capture interpretation",
+    ),
+    EventDefinition(
         "observation.normalized.v1",
         "observation",
         ("observation_id", "source_record_id"),
