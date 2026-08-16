@@ -137,6 +137,32 @@ public struct LocalDate: Codable, Hashable, Comparable, Sendable {
         self.day = day
     }
 
+    public init(
+        containing instant: Date,
+        in timeZoneID: String
+    ) throws {
+        guard instant.timeIntervalSinceReferenceDate.isFinite else {
+            throw DomainValidationError.invalidTemporalInterval
+        }
+        guard let timeZone = TimeZone(identifier: timeZoneID) else {
+            throw DomainValidationError.invalidTimeZone
+        }
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.locale = Locale(identifier: "en_US_POSIX")
+        calendar.timeZone = timeZone
+        let components = calendar.dateComponents(
+            [.year, .month, .day],
+            from: instant
+        )
+        guard let year = components.year,
+              let month = components.month,
+              let day = components.day
+        else {
+            throw DomainValidationError.invalidTemporalInterval
+        }
+        self.init(year: year, month: month, day: day)
+    }
+
     public static func < (left: LocalDate, right: LocalDate) -> Bool {
         if left.year != right.year { return left.year < right.year }
         if left.month != right.month { return left.month < right.month }
