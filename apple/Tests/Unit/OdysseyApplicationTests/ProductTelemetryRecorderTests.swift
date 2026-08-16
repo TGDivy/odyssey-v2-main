@@ -2,6 +2,7 @@ import Foundation
 import OdysseyApplication
 import OdysseyData
 import OdysseyDomain
+import OdysseyIntelligence
 import OdysseyTelemetry
 import Testing
 
@@ -67,6 +68,35 @@ func productTelemetryRecorderCapturesLifecycleWithoutCapturePayload() async thro
     #expect(diagnostics.attemptedEventCount == 2)
     #expect(diagnostics.recordedEventCount == 2)
     #expect(diagnostics.failedEventCount == 0)
+}
+
+@Test
+func productTelemetryRecorderCapturesPayloadFreeAbandonmentStage() async throws {
+    let fixture = try ProductTelemetryRecorderFixture()
+    defer { fixture.remove() }
+    try fixture.enable(questions: [.captureFriction])
+    let recorder = try fixture.recorder()
+
+    await recorder.recordCaptureAbandonment(
+        kind: .fileReference,
+        invokingSurface: .iPhoneGlobalCapture,
+        exitStage: .selection,
+        startedAt: productTelemetryRecorderDate.addingTimeInterval(-4),
+        finishedAt: productTelemetryRecorderDate
+    )
+
+    let events = try fixture.events(from: productTelemetryRecorderDate.addingTimeInterval(-5))
+    #expect(events.map(\.eventName) == [
+        .captureWorkflowStarted,
+        .captureWorkflowFinished,
+    ])
+    #expect(events[1].properties == [
+        "capture_kind": .string("file_reference"),
+        "invoking_surface": .string("iphone_global_capture"),
+        "outcome": .string("abandoned"),
+        "exit_stage": .string("selection"),
+        "duration_bucket": .string("3_to_5s"),
+    ])
 }
 
 @Test
@@ -142,6 +172,73 @@ func productTelemetryFailureNeverBlocksDurableCapture() async throws {
     #expect(diagnostics.lastFailure == .featureConfiguration)
 }
 
+@Test
+func productTelemetryRecorderCapturesBoundedTomorrowMapLifecycle() async throws {
+    let fixture = try ProductTelemetryRecorderFixture()
+    defer { fixture.remove() }
+    try fixture.enable(questions: [.tomorrowMapValue])
+    let recorder = try fixture.recorder()
+    let projection = try TomorrowMapProjector().project(TomorrowMapInput(
+        generatedAt: productTelemetryRecorderDate.addingTimeInterval(-10),
+        localDay: try LocalDate(
+            containing: productTelemetryRecorderDate.addingTimeInterval(86_400),
+            in: "UTC"
+        ),
+        timeZoneID: "UTC",
+        calendarState: .fresh,
+        commitments: []
+    ))
+
+    #expect(await recorder.recordTomorrowMapAvailability(projection) == .recorded)
+    let session = try #require(await recorder.beginTomorrowMapSession(
+        calendarState: projection.calendarState,
+        entryPoint: .automaticNow,
+        at: productTelemetryRecorderDate.addingTimeInterval(-5)
+    ))
+    #expect(await recorder.recordTomorrowMapFeedback(
+        rating: .notUseful,
+        reason: .wrongContext,
+        session: session
+    ) == .recorded)
+    #expect(await recorder.finishTomorrowMapSession(
+        session,
+        outcome: .feedback
+    ) == .recorded)
+
+    let events = try fixture.events(from: productTelemetryRecorderDate.addingTimeInterval(-20))
+    #expect(events.count == 4)
+    let availability = try #require(events.first {
+        $0.eventName == .tomorrowMapAvailabilityEvaluated
+    })
+    #expect(availability.properties == [
+        "calendar_state": .string("fresh"),
+        "intentionally_absent": .boolean(true),
+        "transition_count": .integer(0),
+        "pressure_present": .boolean(false),
+        "protected_open_present": .boolean(true),
+    ])
+    let viewed = try #require(events.first { $0.eventName == .tomorrowMapViewed })
+    let feedback = try #require(events.first {
+        $0.eventName == .tomorrowMapFeedbackRecorded
+    })
+    let finished = try #require(events.first {
+        $0.eventName == .tomorrowMapSessionFinished
+    })
+    #expect(viewed.properties["entry_point"] == .string("automatic_now"))
+    #expect(feedback.properties == [
+        "rating": .string("not_useful"),
+        "reason": .string("wrong_context"),
+    ])
+    #expect(finished.properties == [
+        "duration_bucket": .string("5_to_10s"),
+        "outcome": .string("feedback"),
+    ])
+    #expect(feedback.sessionID == viewed.sessionID)
+    #expect(finished.sessionID == viewed.sessionID)
+    #expect(feedback.causalParentEventID == viewed.eventID)
+    #expect(finished.causalParentEventID == viewed.eventID)
+}
+
 private enum ProductTelemetryRecorderFixtureError: Error {
     case unavailable
 }
@@ -189,9 +286,11 @@ private struct ProductTelemetryRecorderFixture {
         )
     }
 
-    func events() throws -> [ProductTelemetryEvent] {
+    func events(
+        from: Date = productTelemetryRecorderDate.addingTimeInterval(-1)
+    ) throws -> [ProductTelemetryEvent] {
         try store.productTelemetryEvents(
-            from: productTelemetryRecorderDate.addingTimeInterval(-1),
+            from: from,
             to: productTelemetryRecorderDate.addingTimeInterval(1),
             limit: 20
         )

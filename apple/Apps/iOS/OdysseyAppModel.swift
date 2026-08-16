@@ -49,6 +49,7 @@ final class OdysseyAppModel: ObservableObject {
     @Published private(set) var nowContextProjection: NativeNowContextProjection?
     @Published private(set) var reentrySurface: ReentrySurface?
     @Published private(set) var nowExperienceMessage: String?
+    @Published private(set) var productTelemetryMessage: String?
 
     private var localServices: NativeLocalServices?
     private var remoteServices: NativeRemoteServices?
@@ -60,6 +61,9 @@ final class OdysseyAppModel: ObservableObject {
     private var extensionCommandProcessor: ExtensionCommandProcessor?
     private var nowWidgetSnapshotStore: NowWidgetSnapshotStore?
     private var watchCommandReceiver: PhoneWatchCommandReceiver?
+    private var tomorrowMapTelemetrySession: TomorrowMapProductTelemetrySession?
+    private var isStartingTomorrowMapTelemetrySession = false
+    private var tomorrowMapTelemetryGeneration: UInt64 = 0
     private let telemetryRecorder: any TelemetryRecording
 
     #if canImport(HealthKit)
@@ -139,6 +143,7 @@ final class OdysseyAppModel: ObservableObject {
         guard !isBootstrapping else { return }
         isBootstrapping = true
         defer { isBootstrapping = false }
+        await finishTomorrowMapTelemetrySession(outcome: .dismissed)
         apply(.bootstrapStarted)
         localServices = nil
         remoteServices = nil
@@ -147,6 +152,8 @@ final class OdysseyAppModel: ObservableObject {
         extensionCommandProcessor = nil
         nowWidgetSnapshotStore = nil
         watchCommandReceiver = nil
+        tomorrowMapTelemetrySession = nil
+        isStartingTomorrowMapTelemetrySession = false
         foodWarmPathMeasurement = nil
         extensionCommandMessage = nil
         extensionPresentationRequest = nil
@@ -154,6 +161,7 @@ final class OdysseyAppModel: ObservableObject {
         nowContextProjection = nil
         reentrySurface = nil
         nowExperienceMessage = nil
+        productTelemetryMessage = nil
         healthContextState = HealthContextIntegrationState()
         calendarContextState = CalendarContextIntegrationState()
         locationContextState = LocationContextIntegrationState()
@@ -958,6 +966,95 @@ final class OdysseyAppModel: ObservableObject {
         await refreshNowExperience(markSeen: true)
     }
 
+    func beginTomorrowMapTelemetrySession(
+        for projection: TomorrowMapProjection,
+        entryPoint: TomorrowMapProductTelemetryEntryPoint = .automaticNow
+    ) async {
+        guard let recorder = localServices?.productTelemetryRecorder,
+              tomorrowMapTelemetrySession == nil,
+              !isStartingTomorrowMapTelemetrySession
+        else {
+            return
+        }
+        isStartingTomorrowMapTelemetrySession = true
+        defer { isStartingTomorrowMapTelemetrySession = false }
+        tomorrowMapTelemetryGeneration &+= 1
+        let generation = tomorrowMapTelemetryGeneration
+        let session = await recorder.beginTomorrowMapSession(
+            calendarState: projection.calendarState,
+            entryPoint: entryPoint
+        )
+        guard generation == tomorrowMapTelemetryGeneration else {
+            if let session {
+                _ = await recorder.finishTomorrowMapSession(session, outcome: .dismissed)
+            }
+            return
+        }
+        tomorrowMapTelemetrySession = session
+    }
+
+    func finishTomorrowMapTelemetrySession(
+        outcome: TomorrowMapProductTelemetrySessionOutcome
+    ) async {
+        tomorrowMapTelemetryGeneration &+= 1
+        guard let recorder = localServices?.productTelemetryRecorder,
+              let session = tomorrowMapTelemetrySession
+        else {
+            return
+        }
+        tomorrowMapTelemetrySession = nil
+        _ = await recorder.finishTomorrowMapSession(session, outcome: outcome)
+    }
+
+    func recordTomorrowMapFeedback(
+        rating: TomorrowMapProductTelemetryFeedbackRating,
+        reason: TomorrowMapProductTelemetryFeedbackReason? = nil
+    ) async {
+        guard let recorder = localServices?.productTelemetryRecorder else { return }
+        tomorrowMapTelemetryGeneration &+= 1
+        let session = tomorrowMapTelemetrySession
+        tomorrowMapTelemetrySession = nil
+        let disposition = await recorder.recordTomorrowMapFeedback(
+            rating: rating,
+            reason: reason,
+            session: session
+        )
+        if let session {
+            _ = await recorder.finishTomorrowMapSession(session, outcome: .feedback)
+        }
+        productTelemetryMessage = telemetryFeedbackMessage(for: disposition)
+    }
+
+    func recordCaptureFeedback(
+        rating: CaptureProductTelemetryFeedbackRating,
+        reason: CaptureProductTelemetryFeedbackReason? = nil
+    ) async {
+        guard let recorder = localServices?.productTelemetryRecorder else { return }
+        let disposition = await recorder.recordCaptureFeedback(
+            rating: rating,
+            reason: reason
+        )
+        productTelemetryMessage = telemetryFeedbackMessage(for: disposition)
+    }
+
+    func recordCaptureAbandonment(
+        kind: CapturePayloadKind,
+        exitStage: CaptureProductTelemetryExitStage,
+        startedAt: Date
+    ) async {
+        guard let recorder = localServices?.productTelemetryRecorder else { return }
+        await recorder.recordCaptureAbandonment(
+            kind: kind,
+            invokingSurface: .iPhoneGlobalCapture,
+            exitStage: exitStage,
+            startedAt: startedAt
+        )
+    }
+
+    func dismissProductTelemetryMessage() {
+        productTelemetryMessage = nil
+    }
+
     func setNowStateCorrection(
         state: NowState,
         reason: NowStateCorrectionReason
@@ -1410,6 +1507,12 @@ final class OdysseyAppModel: ObservableObject {
             nowContextProjection = projection
             reentrySurface = reentry
             publishNowWidgetSnapshot(projection)
+            let productTelemetryRecorder = localServices.productTelemetryRecorder
+            Task {
+                _ = await productTelemetryRecorder.recordTomorrowMapAvailability(
+                    projection.tomorrow
+                )
+            }
         } catch {
             guard generation == nowRefreshGeneration else { return }
             nowExperienceMessage = nowContextProjection == nil
@@ -2207,6 +2310,23 @@ final class OdysseyAppModel: ObservableObject {
             .authorizedAlways
         @unknown default:
             .unavailable
+        }
+    }
+
+    private func telemetryFeedbackMessage(
+        for disposition: ProductTelemetryRecordingDisposition
+    ) -> String {
+        switch disposition {
+        case .recorded:
+            "Feedback saved only in this device's governed product telemetry."
+        case .skippedByPreference:
+            "Feedback was not stored because local product telemetry is off for this question."
+        case .skippedByFeatureFlag:
+            "Feedback was not stored because this product question is disabled."
+        case .skippedByStorage:
+            "Feedback was not stored because the local telemetry preference changed."
+        case .unsupportedContext, .failed:
+            "Feedback could not be stored; the product experience is otherwise unchanged."
         }
     }
 

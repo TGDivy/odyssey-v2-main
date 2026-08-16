@@ -255,6 +255,28 @@ public actor ProductTelemetryRecorder {
         )
     }
 
+    public func recordCaptureAbandonment(
+        kind: CapturePayloadKind,
+        invokingSurface: CaptureInvokingSurface,
+        exitStage: CaptureProductTelemetryExitStage,
+        startedAt: Date,
+        finishedAt: Date? = nil
+    ) {
+        guard let workflow = beginCaptureWorkflow(
+            kind: kind,
+            invokingSurface: invokingSurface,
+            at: startedAt
+        ) else {
+            return
+        }
+        _ = finishCaptureWorkflow(
+            workflow,
+            outcome: .abandoned,
+            exitStage: exitStage,
+            at: finishedAt
+        )
+    }
+
     @discardableResult
     public func recordCaptureFeedback(
         rating: CaptureProductTelemetryFeedbackRating,

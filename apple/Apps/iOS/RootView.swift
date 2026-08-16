@@ -140,6 +140,7 @@ struct RootView: View {
 
     private func presentCapture() {
         model.dismissCaptureStatus()
+        model.dismissProductTelemetryMessage()
         activeSheet = .capture
     }
 
@@ -1013,6 +1014,7 @@ private func captureJSONDescription(_ value: JSONValue) -> String {
 }
 
 private struct NowView: View {
+    @Environment(\.scenePhase) private var scenePhase
     @EnvironmentObject private var model: OdysseyAppModel
     @State private var isPresentingCorrection = false
     @State private var isRespondingToReentry = false
@@ -1059,6 +1061,19 @@ private struct NowView: View {
                 initialState: model.nowContextProjection?.now.state ?? .clear
             ) { state, reason in
                 await model.setNowStateCorrection(state: state, reason: reason)
+            }
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .background {
+                Task {
+                    await model.finishTomorrowMapTelemetrySession(outcome: .backgrounded)
+                }
+            } else if newPhase == .active,
+                      let projection = model.nowContextProjection?.tomorrow
+            {
+                Task {
+                    await model.beginTomorrowMapTelemetrySession(for: projection)
+                }
             }
         }
     }
@@ -1347,6 +1362,9 @@ private struct NowView: View {
                             systemImage: "point.topleft.down.to.point.bottomright.curvepath"
                         )
                     }
+
+                    Divider()
+                    tomorrowMapFeedbackControls
                 }
             }
         } label: {
@@ -1358,6 +1376,64 @@ private struct NowView: View {
                     .foregroundStyle(.secondary)
             }
             .font(.headline)
+        }
+        .onAppear {
+            Task {
+                await model.beginTomorrowMapTelemetrySession(for: projection)
+            }
+        }
+        .onDisappear {
+            Task {
+                await model.finishTomorrowMapTelemetrySession(outcome: .dismissed)
+            }
+        }
+    }
+
+    private var tomorrowMapFeedbackControls: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Did this map reduce uncertainty?")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            HStack {
+                Button("Useful") {
+                    Task {
+                        await model.recordTomorrowMapFeedback(rating: .useful)
+                    }
+                }
+                .buttonStyle(.bordered)
+
+                Menu("Not useful") {
+                    tomorrowMapFeedbackReasonButtons(rating: .notUseful)
+                }
+                .buttonStyle(.bordered)
+
+                Menu("Added friction") {
+                    tomorrowMapFeedbackReasonButtons(rating: .addedFriction)
+                }
+                .buttonStyle(.bordered)
+            }
+            .controlSize(.small)
+        }
+    }
+
+    @ViewBuilder
+    private func tomorrowMapFeedbackReasonButtons(
+        rating: TomorrowMapProductTelemetryFeedbackRating
+    ) -> some View {
+        Button("No specific reason") {
+            Task {
+                await model.recordTomorrowMapFeedback(rating: rating)
+            }
+        }
+        ForEach(TomorrowMapProductTelemetryFeedbackReason.allCases, id: \.rawValue) { reason in
+            Button(reason.ownerTitle) {
+                Task {
+                    await model.recordTomorrowMapFeedback(
+                        rating: rating,
+                        reason: reason
+                    )
+                }
+            }
         }
     }
 
@@ -1418,6 +1494,19 @@ private struct NowView: View {
                 )
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
+                captureFeedbackControls
+            }
+
+            if let message = model.productTelemetryMessage {
+                Button {
+                    model.dismissProductTelemetryMessage()
+                } label: {
+                    Label(message, systemImage: "lock.shield")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint("Dismisses this local product feedback status.")
             }
 
             if let measurement = model.foodWarmPathMeasurement {
@@ -1451,6 +1540,48 @@ private struct NowView: View {
                 .accessibilityHint("Dismisses this extension command status.")
             }
         }
+    }
+
+    private var captureFeedbackControls: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("How did capture feel?")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            HStack {
+                Button("Fast") {
+                    Task {
+                        await model.recordCaptureFeedback(rating: .useful, reason: .fast)
+                    }
+                }
+                .buttonStyle(.bordered)
+
+                Button("Neutral") {
+                    Task {
+                        await model.recordCaptureFeedback(rating: .neutral)
+                    }
+                }
+                .buttonStyle(.bordered)
+
+                Menu("Added friction") {
+                    ForEach(captureFrictionReasons, id: \.rawValue) { reason in
+                        Button(reason.ownerTitle) {
+                            Task {
+                                await model.recordCaptureFeedback(
+                                    rating: .addedFriction,
+                                    reason: reason
+                                )
+                            }
+                        }
+                    }
+                }
+                .buttonStyle(.bordered)
+            }
+            .controlSize(.small)
+        }
+    }
+
+    private var captureFrictionReasons: [CaptureProductTelemetryFeedbackReason] {
+        [.tooManySteps, .wrongContext, .badTiming, .unclear, .other]
     }
 
     private func respondToReentry(_ option: ReentryOption) {
@@ -1672,6 +1803,36 @@ private extension TomorrowCalendarState {
         }
     }
 }
+
+private extension TomorrowMapProductTelemetryFeedbackReason {
+    var ownerTitle: String {
+        switch self {
+        case .wrongContext: "Wrong context"
+        case .badTiming: "Bad timing"
+        case .alreadyHandled: "Already handled"
+        case .tooIntrusive: "Too intrusive"
+        case .reasoningWrong: "Reasoning wrong"
+        case .factWrong: "Fact wrong"
+        case .preferenceChanged: "Preference changed"
+        case .showLess: "Show me less like this"
+        case .other: "Other"
+        }
+    }
+}
+
+private extension CaptureProductTelemetryFeedbackReason {
+    var ownerTitle: String {
+        switch self {
+        case .fast: "Fast"
+        case .tooManySteps: "Too many steps"
+        case .wrongContext: "Wrong context"
+        case .badTiming: "Bad timing"
+        case .unclear: "Unclear"
+        case .other: "Other"
+        }
+    }
+}
+
 private enum CaptureInputMode: String, CaseIterable, Identifiable {
     case text
     case voice
@@ -1708,6 +1869,9 @@ private struct CaptureSheet: View {
     @State private var isPhotoPickerPresented = false
     @State private var isFileImporterPresented = false
     @State private var importError: String?
+    @State private var workflowStartedAt = Date()
+    @State private var didAttemptSave = false
+    @State private var didCompleteWorkflow = false
 
     private var isSaving: Bool {
         isSubmitting || model.state.capturePhase == .saving
@@ -1793,6 +1957,7 @@ private struct CaptureSheet: View {
             }
             .onDisappear {
                 if !isSaving {
+                    recordAbandonmentIfNeeded()
                     discardAllDraftMedia()
                 }
             }
@@ -2001,6 +2166,7 @@ private struct CaptureSheet: View {
     private func save() {
         guard !isSaving, canSave else { return }
         isSubmitting = true
+        didAttemptSave = true
         isFocused = false
         let selectedMode = mode
         let selectedText = text
@@ -2048,14 +2214,54 @@ private struct CaptureSheet: View {
             }
             voiceRecorder.completeSave()
             discardPreparedMedia(selectedMedia)
+            didCompleteWorkflow = true
             UINotificationFeedbackGenerator().notificationOccurred(.success)
             dismiss()
         }
     }
 
     private func cancel() {
+        recordAbandonmentIfNeeded()
         discardAllDraftMedia()
         dismiss()
+    }
+
+    private func recordAbandonmentIfNeeded() {
+        guard !didCompleteWorkflow else { return }
+        didCompleteWorkflow = true
+        let captureKind: CapturePayloadKind = switch mode {
+        case .text: .text
+        case .voice: .audio
+        case .photo: .imageReference
+        case .file: .fileReference
+        }
+        let exitStage: CaptureProductTelemetryExitStage
+        if didAttemptSave {
+            exitStage = .saving
+        } else if hasCaptureSelection {
+            exitStage = .selection
+        } else {
+            exitStage = .entry
+        }
+        let startedAt = workflowStartedAt
+        Task {
+            await model.recordCaptureAbandonment(
+                kind: captureKind,
+                exitStage: exitStage,
+                startedAt: startedAt
+            )
+        }
+    }
+
+    private var hasCaptureSelection: Bool {
+        switch mode {
+        case .text:
+            !text.isEmpty
+        case .voice:
+            voiceRecorder.preparedRecordingURL != nil
+        case .photo, .file:
+            preparedMedia != nil
+        }
     }
 
     private func startPhotoImport() {
