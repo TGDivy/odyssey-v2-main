@@ -164,6 +164,28 @@ correction, and delete them on void. Alcohol grams remain local because the
 adapter does not substitute an inexact HealthKit type. The Apple-framework path
 still requires Xcode and physical-device proof.
 
+## Local Apple Health context
+
+Milestone 1.3 now has a durable Health import vertical slice. A guarded
+`HKAnchoredObjectQuery` adapter reads workouts, heart rate, resting heart rate,
+sleep, body mass, and active energy with per-type anchors and app/device source
+metadata. `HealthImportCoordinator` converts each page to sorted-key canonical
+documents and applies samples, deletions, and the next anchor in one local SQLite
+transaction. Health samples are immutable by HealthKit UUID: exact replay is a
+duplicate, conflicting replay is rejected, and the anchor still advances so one
+poison record cannot block later changes. Imported context remains in the
+hash-verified local integration mirror and never enters the sync outbox.
+
+The Workshop Health panel reports capability, Apple's privacy-preserving read
+permission state, supported types, local record count, last successful import,
+newest source time, lag, and rejected count. Authorization is owner-initiated;
+denial preserves existing local context and every non-Health workflow. Explicit
+local revocation removes Health mirror records and anchors without deleting
+Apple Health data or changing system permission. Foreground and opportunistic
+app-refresh imports are composed; HealthKit observer/background-delivery setup,
+Xcode type-checking, and physical-device proof remain open. See
+[`docs/architecture/apple-capabilities.md`](docs/architecture/apple-capabilities.md).
+
 The portable `OdysseyExtensionBridge` now supplies the protected atomic handoff
 needed by App Intents, controls, widgets, and same-device extensions. It queues
 bounded text or opaque-ID food commands as one Data-Protected, backup-excluded

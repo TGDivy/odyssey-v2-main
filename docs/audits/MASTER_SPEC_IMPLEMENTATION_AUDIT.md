@@ -43,7 +43,7 @@ deployment, external account configuration, or physical-device behavior.
 | §17 trust and agency | `partial` | deterministic authority policy, B.7 append-only recommendation correction, and source-inspectable stable/idempotent Archive accept/correct/dismiss review | Trust Center, future correction retrieval, revocation UI and autonomous-action audit UI. |
 | §18 experience architecture | `partial` | iPhone quiet Now, explicit text/voice/photo/file capture, local-first ranked food quick-log/create/correct/void source with payload-free monotonic warm-path instrumentation and ephemeral owner result, forensic capture-detail Archive, typed reviewed life-model Workshop, accepted Season landscape/plain-language Map, sync/repair surfaces, and deterministic guilt-free re-entry contract | Tomorrow Map, rendered re-entry, decision/evidence flows, physical warm-path proof, Xcode accessibility and complete platform depth. |
 | §19 visual and art direction | `partial` | calm SwiftUI/Canvas regional prototype, deterministic qualitative paths/terrain/landmarks, complete plain-language alternative, native shells and shared assets | Theme tokens, richer prototype, atlas/world states, snapshots, Xcode accessibility and dogfood proof. |
-| §20 Apple ecosystem | `partial` | iOS/Watch/macOS shells, widgets/intents/share targets, portable data/auth/sync packages, guarded local AVFoundation voice capture, selected-only PhotosUI capture, system file import, permission-gated Odyssey-owned food HealthKit writes, protected extension commands, App Intents, widget/Control Center routing, crash-idempotent iPhone drains, and a protected receipt-bound WatchConnectivity text/food outbox with expiring ranked presets | Prove App Intents/WidgetKit/controls/WatchConnectivity/HealthKit on devices; add incremental health reads, EventKit/location and validation. |
+| §20 Apple ecosystem | `partial` | iOS/Watch/macOS shells, widgets/intents/share targets, portable data/auth/sync packages, guarded local AVFoundation voice capture, selected-only PhotosUI capture, system file import, permission-gated Odyssey-owned food HealthKit writes, anchored local-only HealthKit reads with source metadata/revocation/Workshop diagnostics, protected extension commands, App Intents, widget/Control Center routing, crash-idempotent iPhone drains, and a protected receipt-bound WatchConnectivity text/food outbox with expiring ranked presets | Prove App Intents/WidgetKit/controls/WatchConnectivity/HealthKit on devices; add Health observer delivery, EventKit/weather/location and validation. |
 | §21 integrations | `deferred` | entitlements and adapter seams only | Implement consented adapters incrementally; keep OAuth/webhooks/provider credentials disabled. |
 | §22 data architecture | `partial` | append-only ledger, projections, provenance contracts, streaming SHA-256, bounded protected provider-import buffering, protected opaque local attachment manifests plus tested filesystem/ledger handoff and reconciliation, encrypted owner export/import foundations, accepted life-model history and 17 migrations | Attachment tombstone/retention lifecycle, complete semantic services, selective memory, redaction and scale budgets. |
 | §23 backend architecture | `partial` | FastAPI modular monolith, Postgres/SQLite support, worker/outbox, auth/sync/attachments, accepted `/v1/seasons/*` commands/history and deterministic context assembly | Remaining domain modules and Appendix B routes, queues/workflows and operational SLO evidence. |
@@ -58,7 +58,7 @@ deployment, external account configuration, or physical-device behavior.
 | §32 failure modes/pre-mortem | `partial` | kill switches, retry/conflict diagnostics, incident/recovery runbooks | Regression scenarios for each severe failure and owner drills. |
 | §33 technology choices | `documented` | master specification, ADR 0001, lockfiles, OpenTofu and XcodeGen manifests | Add ADRs whenever implementation departs from selected architecture. |
 | §34 repository architecture | `verified` | monorepo layout, portable paths, package/infra/docs/tool boundaries | Keep directory contract synchronized as editions are added. |
-| §35 testing strategy | `partial` | 215 backend tests pass at 86.67% coverage, 135 portable Swift 6.1 tests pass, and deterministic policy golden replay plus schema/fixture/IaC checks pass in this Linux snapshot | Clear repository-wide formatter drift; historical/model, UI, physical performance, broader fault, Apple integration and live recovery suites remain. |
+| §35 testing strategy | `partial` | 215 backend tests pass at 86.67% coverage, 149 portable Swift 6.1 tests pass, and deterministic policy golden replay plus schema/fixture/IaC checks pass in this Linux snapshot | Clear repository-wide formatter drift; historical/model, UI, physical performance, broader fault, Apple integration and live recovery suites remain. |
 | §36 deployment architecture | `implemented` | GCP OpenTofu, deployment workflow examples, migration/canary/rollback and handoff docs | Owner provisions accounts, imports secrets, deploys, validates alerts/backups/restore and signs apps. |
 | §37 development environments | `verified` | lockfiles, Compose, environment diagnostics, `make verify`, Mac-only skip reporting | Fresh personal Mac proof is owner-only. |
 | §38 roadmap | `partial` | Edition 0 substrate and iPhone capture/auth/sync slice | Edition 1–4 product loops and milestone acceptance artifacts remain. |
@@ -87,7 +87,7 @@ deployment, external account configuration, or physical-device behavior.
 | 0.4 durability/observability | `implemented` | Tools/runbooks/IaC exist; isolated live restore and external alert evidence are owner-only. |
 | 1.1 Charter/Season Workshop | `implemented` | Server acceptance/history/context loop, typed local draft ledger/editors, editable seed, semantic review ceremony, immutable native history, frozen outgoing summaries, optional retrospectives, explicit successor flow, offline queue, authenticated delivery, terminal conflict guidance and accepted-history-only plain/Canvas map exist; Xcode/accessibility and two-device proof remain owner-only. |
 | 1.2 capture/personal library | `implemented` | Offline durable text/media capture and review, verified local voice playback, interpretation stub/adapter, atomic food-preset lifecycle/ranking and occurrence record/correct/void, ranked iPhone quick log with source-preserving payload-free timing, permission-gated HealthKit reconciliation, protected shortcuts/widget/control handoff, crash-idempotent iPhone drains, and protected offline Watch text/food source exist | Owner must prove App Intents/WidgetKit/WatchConnectivity/HealthKit/accessibility, audio behavior and the warm-path target on physical devices; broader media interpretation/event consumption remain later architecture work. |
-| 1.3 Apple context adapters | `missing` | Targets/seams exist without real incremental HealthKit/calendar/location adapters. |
+| 1.3 Apple context adapters | `partial` | HealthKit anchored import, six source-aware sample kinds, deterministic duplicate/conflict/deletion handling, durable local-only per-kind anchors, explicit denial/revocation, synthetic adapters, and a parser-validated Workshop Health panel exist; EventKit, Weather, location, observer delivery, cross-connector capability UI, timezone fixture, Xcode and device proof remain. |
 | 1.4 Now/Tomorrow Map v1 | `partial` | Quiet Now, C.7 re-entry policy and immutable deterministic model-free server context assembly exist; Tomorrow Map and rendered re-entry do not. |
 | 1.5 telemetry/review | `partial` | Schemas plus payload-free ranked-food warm-path instrumentation, source/correlation dimensions, duration buckets and an ephemeral owner result exist | Declared product questions, durable consented recorder/export, broader review metrics and review loop do not. |
 | 2.1 decision journal | `partial` | B.5 persistently prepares context-bound structured options/consequences and asks for missing information; choice/outcome/replay/UI loops remain. |
@@ -123,8 +123,8 @@ personal state or complete the longitudinal protocol.
 | Cloud backup/PITR enabled | `owner` | `implemented` | IaC exists; no deployment evidence. |
 | Clean-room restore succeeded | `owner` | `implemented` | Tool/runbook exists; no owner execution evidence. |
 | No wipe-based release step | `repo` | `verified` | Migration and rollback docs explicitly forbid routine data wipes. |
-| Incremental/revocable health/calendar permissions | `owner` | `partial` | Food writes request only present energy/protein/caffeine types from an explicit action and remain local-first; HealthKit device proof plus incremental reads/calendar remain. |
-| Permission denial degrades gracefully | `owner` | `partial` | Microphone and food-Health denial paths preserve local capture/logging and offer Settings; Xcode/device proof and calendar/location flows remain. |
+| Incremental/revocable health/calendar permissions | `owner` | `partial` | Health reads now use per-kind anchors, immutable UUID deduplication, source deletions, explicit owner authorization, local mirror/anchor revocation, and no sync outbox; food writes remain separately gated. EventKit and HealthKit device proof remain. |
+| Permission denial degrades gracefully | `owner` | `partial` | Microphone, Health read, and food-Health write denial paths preserve local capture/logging and existing context; Xcode/device proof and calendar/location flows remain. |
 | Cached freshness-aware widget | `owner` | `missing` | Widget target is skeletal. |
 | Physical-device background proof | `owner` | `missing` | Explicitly not performed. |
 | Production avoids beta-only APIs | `owner` | `partial` | Configuration targets stable SDKs; Xcode archive not performed. |
@@ -176,7 +176,7 @@ At this snapshot:
   mocked plans, including encrypted-export secret, storage, IAM and worker
   wiring across seventeen migrations. OpenTofu is unavailable for a current
   rerun in this environment.
-- The complete portable Swift package reports 135 tests passing under the
+- The complete portable Swift package reports 149 tests passing under the
   official Swift 6.1 release toolchain in a local Ubuntu container. This includes
   typed Workshop/editor/reducer coverage, deterministic Season map, durable
   source-linked capture interpretation, protected local attachment storage and
@@ -184,12 +184,14 @@ At this snapshot:
   its durable handoff, atomic food-preset lifecycle, deterministic ranking and
   canonical merge materialization, durable food occurrence record/correct/void,
   immutable temporal/nutrient snapshots, permission-gated idempotent food-health
-  reconciliation, extension crash idempotency, bounded Watch command/snapshot
+  reconciliation, anchored Health import/source metadata, immutable duplicate
+  and deletion handling, durable local integration mirrors and revocation,
+  extension crash idempotency, bounded Watch command/snapshot
   codecs and outbox recovery, monotonic payload-free food warm-path timing,
   streaming SHA-256 known answers, and
   temporal/acronym codec regressions.
 - iOS, widget/control, App Intent and Watch sources, including guarded voice,
-  selected-only photo/file capture, ranked food flows, HealthKit writes and
+  selected-only photo/file capture, ranked food flows, HealthKit reads/writes and
   WatchConnectivity adapters, passed Swift parser/structure validation;
   `apple/project.yml` passed YAML structure checks. SwiftUI, WidgetKit,
   AppIntents, WatchConnectivity, PhotosUI, AVFoundation and HealthKit still

@@ -24,7 +24,7 @@ it does not prove an owner deployment:
   environment.
 - No Apple-platform package build, Xcode archive, signing operation, TestFlight
   upload, or physical-device test has been performed. The portable Swift
-  package has been compiled and its 135 deterministic tests have run under the
+  package has been compiled and its 149 deterministic tests have run under the
   official Linux Swift 6.1 toolchain; that is not Apple-platform validation.
 - The cloud model remains `deterministic`. Adding a model-provider key alone
   enables nothing; no evaluated cloud-model adapter is implemented.
@@ -61,6 +61,14 @@ it does not prove an owner deployment:
   correction/void reconciliation. Xcode/accessibility, physical warm-path and
   HealthKit proof, event consumers, authenticated physical two-device food
   convergence, and live ranking experiments do not.
+  A separate portable-tested incremental Health reader now supports workouts,
+  heart rate/resting heart rate, sleep, body mass, and active energy using
+  per-kind anchors, source metadata, immutable UUID deduplication, source
+  deletions, a hash-verified local-only SQLite mirror, and explicit local
+  revocation. Workshop sources expose permission/capability, freshness, lag,
+  rejection, contribution, import, and local-removal controls. The guarded
+  HealthKit and SwiftUI sources are parser-validated only; no Apple SDK build,
+  authorization, observer delivery, or physical sample behavior is claimed.
   A portable protected App Group command queue also exists for bounded text and
   opaque-preset food handoff with idempotency and crash recovery. The text App
   Intent queues without opening Odyssey, the food intent opens only the private
@@ -1206,9 +1214,28 @@ Do not enter real owner data. Then execute this staged flow:
    confirm only Odyssey-tagged samples disappear. Relaunch and reconcile to
    exercise durable tombstone cleanup. Retain counts and metadata identifiers,
    never screenshots or real health values.
-16. Background the app and retain the app-refresh scheduling/debug evidence. Do
+16. In **Workshop → Apple Health Context**, confirm the panel initially reports
+   capability and permission without displaying sample values. Choose **Request
+   Health Context Access** only from this explicit action. On a disposable
+   install, deny access first: status must degrade without blocking Capture,
+   Food, Workshop, or any previously mirrored context. Do not infer granted read
+   types from the authorization sheet; Apple intentionally keeps that private.
+17. Using only purpose-made synthetic Health samples, grant selected read types
+   and choose **Import Permitted Health Context**. Confirm supported type names,
+   local record count, last successful import, newest source timestamp, lag, and
+   rejected count update without exposing values. Import the unchanged set
+   again and confirm UUID duplicates do not increase local count. Add and delete
+   one synthetic sample, import after each action, and confirm only that source
+   identity changes. Force-quit/relaunch and confirm the per-kind anchor resumes
+   rather than replaying a full overwrite.
+18. Choose **Remove Local Health Mirror** and accept the explicit warning.
+   Confirm local Health records and anchors are removed while the synthetic
+   Apple Health samples and system permission remain unchanged. Re-import only
+   if the test protocol requires it. This is local mirror revocation, not a
+   HealthKit permission reset.
+19. Background the app and retain the app-refresh scheduling/debug evidence. Do
    not claim timing guarantees; the OS may defer or cancel the task.
-17. On a paired disposable Watch, open Food on iPhone to publish synthetic ranked
+20. On a paired disposable Watch, open Food on iPhone to publish synthetic ranked
    presets. Disconnect phone reachability, save one synthetic Watch note and one
    synthetic food command, and confirm both report pending without waiting.
    Force-quit/relaunch Watch and confirm pending commands survive. Reconnect;
@@ -1272,7 +1299,9 @@ the backend owner runbook until a device-registry UI is implemented.
   scope succeeds; cancel/replacement/oversize paths create no capture or
   temporary residue; food logging remains local-first before/after Health denial;
   authorized exact energy/protein/caffeine samples replace idempotently while
-  alcohol and foreign samples remain untouched; authenticated push/pull clears
+  alcohol and foreign samples remain untouched; permitted Health context uses
+  anchored UUID deduplication/deletion, reports privacy-safe health, and local
+  mirror removal leaves Apple Health unchanged; authenticated push/pull clears
   the queue; cursors advance; integrity/rebuild succeed; app refresh is observed
   as opportunistic rather than exact; all forty predeclared ranked-food trials
   meet the strict warm-path rule and all four negative controls stay unmeasured.
@@ -1299,6 +1328,11 @@ the backend owner runbook until a device-registry UI is implemented.
 - If food create/log requests Health permission implicitly, denial blocks the
   local ledger, correction duplicates samples, alcohol is approximated, or a
   void touches another source, stop and retain only synthetic metadata evidence.
+- If Health context access is requested before the explicit Workshop action,
+  denial deletes prior local context, a duplicate changes local count, a source
+  deletion is ignored, imported records enter the sync queue, or local mirror
+  removal changes Apple Health/system permission, stop and retain only
+  payload-free counts and timestamps.
 - A timing miss, missing result, wrong source, duplicate occurrence, or result
   after a negative control is a failed warm-path protocol. Preserve the full
   predeclared table, investigate on the same build, and rerun a newly declared
