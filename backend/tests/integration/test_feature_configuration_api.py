@@ -149,3 +149,27 @@ def test_publication_rejects_reuse_stale_version_and_missing_signer(tmp_path: Pa
 
     assert unsigned.status_code == 503
     assert unsigned.json()["error"]["code"] == "FEATURE_CONFIGURATION_SIGNING_UNAVAILABLE"
+
+
+def test_publication_rejects_unsupported_feature_variant(tmp_path: Path) -> None:
+    signer = FeatureConfigurationSigner(
+        key_id="synthetic-key-1",
+        private_key_base64=PRIVATE_KEY_BASE64,
+    )
+    database = prepare_database(tmp_path / "feature-invalid-variant.sqlite")
+    app = create_app(
+        Settings(env=Environment.TEST),
+        database=database,
+        feature_configuration_signer=signer,
+    )
+    body = configuration_body(new_uuid7())
+    flags = body["flags"]
+    assert isinstance(flags, list)
+    flags[0]["variant"] = "unsupported"
+
+    with TestClient(app) as client:
+        response = client.post("/v1/product/feature-configurations", json=body)
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "REQUEST_VALIDATION_FAILED"
+    assert response.json()["error"]["details"]["fields"] == ["body"]

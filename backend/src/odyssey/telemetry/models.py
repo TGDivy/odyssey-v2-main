@@ -169,6 +169,12 @@ class FeatureConfigurationCreateRequest(StrictModel):
         keys = [rule.key for rule in self.flags]
         if len(set(keys)) != len(keys):
             raise ValueError("feature flag rules must be unique by key")
+        from odyssey.telemetry.feature_flags import FEATURE_FLAG_REGISTRY
+
+        definitions = {definition.key: definition for definition in FEATURE_FLAG_REGISTRY}
+        for rule in self.flags:
+            if rule.variant not in definitions[rule.key].allowed_variants:
+                raise ValueError(f"unsupported variant for {rule.key.value}")
         return self
 
 
