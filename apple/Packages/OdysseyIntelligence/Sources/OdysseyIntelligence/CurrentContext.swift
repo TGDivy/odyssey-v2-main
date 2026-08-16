@@ -1,7 +1,15 @@
 import Foundation
 import OdysseyDomain
 
-public enum NowState: String, Codable, Sendable {
+public enum CurrentContextError: Error, Equatable, Sendable {
+    case invalidClock
+    case invalidTimeZone
+    case invalidText
+    case invalidSources
+    case invalidCorrection
+}
+
+public enum NowState: String, Codable, CaseIterable, Hashable, Sendable {
     case clear
     case choice
     case preparation
@@ -45,10 +53,221 @@ public struct DeterministicContextProjector: Sendable {
     }
 }
 
+public enum CurrentContextSource: String, Codable, CaseIterable, Hashable, Sendable {
+    case season
+    case calendar
+    case health
+    case weather
+    case location
+}
+
+public enum CurrentContextSourceState: String, Codable, Hashable, Sendable {
+    case fresh
+    case stale
+    case missing
+    case denied
+    case unavailable
+}
+
+public struct CurrentContextSourceSnapshot: Codable, Hashable, Sendable {
+    public let source: CurrentContextSource
+    public let state: CurrentContextSourceState
+    public let observedAt: Date?
+
+    public init(
+        source: CurrentContextSource,
+        state: CurrentContextSourceState,
+        observedAt: Date? = nil
+    ) throws {
+        guard observedAt?.timeIntervalSinceReferenceDate.isFinite ?? true else {
+            throw CurrentContextError.invalidClock
+        }
+        self.source = source
+        self.state = state
+        self.observedAt = observedAt
+    }
+}
+
+public struct NowTransition: Codable, Hashable, Sendable {
+    public let startsAt: Date
+    public let label: String?
+    public let isTentative: Bool
+
+    public init(
+        startsAt: Date,
+        label: String? = nil,
+        isTentative: Bool = false
+    ) throws {
+        guard startsAt.timeIntervalSinceReferenceDate.isFinite else {
+            throw CurrentContextError.invalidClock
+        }
+        guard Self.validOptionalText(label, maximum: 500) else {
+            throw CurrentContextError.invalidText
+        }
+        self.startsAt = startsAt
+        self.label = label
+        self.isTentative = isTentative
+    }
+
+    private static func validOptionalText(_ value: String?, maximum: Int) -> Bool {
+        guard let value else { return true }
+        return (1 ... maximum).contains(value.count)
+            && value == value.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}
+
+public enum NowStateCorrectionReason: String, Codable, CaseIterable, Hashable, Sendable {
+    case situationChanged = "situation_changed"
+    case capacityChanged = "capacity_changed"
+    case planChanged = "plan_changed"
+    case ownerRequestedQuiet = "owner_requested_quiet"
+    case other
+}
+
+public struct NowStateCorrection: Codable, Hashable, Sendable {
+    public static let maximumLifetime: TimeInterval = 48 * 60 * 60
+
+    public let state: NowState
+    public let reason: NowStateCorrectionReason
+    public let createdAt: Date
+    public let expiresAt: Date
+
+    public init(
+        state: NowState,
+        reason: NowStateCorrectionReason,
+        createdAt: Date,
+        expiresAt: Date
+    ) throws {
+        guard createdAt.timeIntervalSinceReferenceDate.isFinite,
+              expiresAt.timeIntervalSinceReferenceDate.isFinite,
+              expiresAt > createdAt,
+              expiresAt.timeIntervalSince(createdAt) <= Self.maximumLifetime
+        else {
+            throw CurrentContextError.invalidCorrection
+        }
+        self.state = state
+        self.reason = reason
+        self.createdAt = createdAt
+        self.expiresAt = expiresAt
+    }
+
+    public func isActive(at date: Date) -> Bool {
+        date.timeIntervalSinceReferenceDate.isFinite
+            && date >= createdAt.addingTimeInterval(-60)
+            && date < expiresAt
+    }
+}
+
+public struct NowContextInput: Codable, Hashable, Sendable {
+    public let generatedAt: Date
+    public let localDay: LocalDate
+    public let timeZoneID: String
+    public let signals: DeterministicContextInput
+    public let currentThread: String?
+    public let nextTransition: NowTransition?
+    public let sources: [CurrentContextSourceSnapshot]
+
+    public init(
+        generatedAt: Date,
+        localDay: LocalDate,
+        timeZoneID: String,
+        signals: DeterministicContextInput,
+        currentThread: String? = nil,
+        nextTransition: NowTransition? = nil,
+        sources: [CurrentContextSourceSnapshot] = []
+    ) throws {
+        guard generatedAt.timeIntervalSinceReferenceDate.isFinite else {
+            throw CurrentContextError.invalidClock
+        }
+        guard TimeZone(identifier: timeZoneID) != nil else {
+            throw CurrentContextError.invalidTimeZone
+        }
+        guard Self.validOptionalText(currentThread, maximum: 500) else {
+            throw CurrentContextError.invalidText
+        }
+        guard sources.count <= CurrentContextSource.allCases.count,
+              Set(sources.map(\.source)).count == sources.count
+        else {
+            throw CurrentContextError.invalidSources
+        }
+        self.generatedAt = generatedAt
+        self.localDay = localDay
+        self.timeZoneID = timeZoneID
+        self.signals = signals
+        self.currentThread = currentThread
+        self.nextTransition = nextTransition
+        self.sources = sources.sorted { $0.source.rawValue < $1.source.rawValue }
+    }
+
+    private static func validOptionalText(_ value: String?, maximum: Int) -> Bool {
+        guard let value else { return true }
+        return (1 ... maximum).contains(value.count)
+            && value == value.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}
+
+public struct NowContextProjection: Codable, Hashable, Sendable {
+    public let generatedAt: Date
+    public let localDay: LocalDate
+    public let timeZoneID: String
+    public let inferredState: NowState
+    public let state: NowState
+    public let summary: String
+    public let currentThread: String?
+    public let nextTransition: NowTransition?
+    public let sources: [CurrentContextSourceSnapshot]
+    public let correction: NowStateCorrection?
+    public let isIntentionallySilent: Bool
+}
+
+public struct NowContextProjector: Sendable {
+    public init() {}
+
+    public func project(
+        _ input: NowContextInput,
+        correction: NowStateCorrection? = nil
+    ) -> NowContextProjection {
+        let inferredState = DeterministicContextProjector().project(input.signals)
+        let activeCorrection = correction.flatMap {
+            $0.isActive(at: input.generatedAt) ? $0 : nil
+        }
+        let state = activeCorrection?.state ?? inferredState
+        return NowContextProjection(
+            generatedAt: input.generatedAt,
+            localDay: input.localDay,
+            timeZoneID: input.timeZoneID,
+            inferredState: inferredState,
+            state: state,
+            summary: summary(for: state),
+            currentThread: input.currentThread,
+            nextTransition: input.nextTransition,
+            sources: input.sources,
+            correction: activeCorrection,
+            isIntentionallySilent: state == .clear
+        )
+    }
+
+    private func summary(for state: NowState) -> String {
+        switch state {
+        case .clear:
+            "Nothing requires attention. The known shape of the day is coherent."
+        case .choice:
+            "One live trade-off needs attention; the rest can stay quiet."
+        case .preparation:
+            "A known future commitment makes a small preparation step valuable now."
+        case .recovery:
+            "Capacity is the binding constraint. Protect recovery before adding demand."
+        case .open:
+            "Unstructured time is available. It does not need to be filled."
+        case .disrupted:
+            "Normal expectations may not fit the current situation. Reorient first."
+        }
+    }
+}
+
 public protocol StructuredSynthesisProviding: Sendable {
     associatedtype Input: Sendable
     associatedtype Output: Sendable
 
     func synthesize(_ input: Input) async throws -> Output
 }
-

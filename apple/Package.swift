@@ -207,6 +207,11 @@ let package = Package(
             path: "Tests/Unit/OdysseyIntegrationsTests"
         ),
         .testTarget(
+            name: "OdysseyIntelligenceTests",
+            dependencies: ["OdysseyIntelligence", "OdysseyDomain"],
+            path: "Tests/Unit/OdysseyIntelligenceTests"
+        ),
+        .testTarget(
             name: "OdysseyTelemetryTests",
             dependencies: ["OdysseyTelemetry"],
             path: "Tests/Unit/OdysseyTelemetryTests"
