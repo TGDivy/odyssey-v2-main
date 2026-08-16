@@ -14,9 +14,16 @@ struct FoodQuickLogView: View {
     @State private var selectedOccurrence: FoodOccurrenceSelection?
     @State private var confirmsHealthAuthorization = false
     @State private var activeWarmPathToken: WarmPathTimingToken?
+    @State private var didStartWarmPath = false
+    private let warmPathSurface: WarmPathSurface
+    private let warmPathCorrelationID: UUID
 
-    init(warmPathToken: WarmPathTimingToken?) {
-        _activeWarmPathToken = State(initialValue: warmPathToken)
+    init(
+        warmPathSurface: WarmPathSurface,
+        warmPathCorrelationID: UUID
+    ) {
+        self.warmPathSurface = warmPathSurface
+        self.warmPathCorrelationID = warmPathCorrelationID
     }
 
     private var snapshot: FoodQuickLogSnapshot? {
@@ -87,6 +94,14 @@ struct FoodQuickLogView: View {
             }
             .task {
                 await model.refreshFoodQuickLog()
+            }
+            .onAppear {
+                guard !didStartWarmPath else { return }
+                didStartWarmPath = true
+                activeWarmPathToken = model.beginFoodWarmPath(
+                    surface: warmPathSurface,
+                    correlationID: warmPathCorrelationID
+                )
             }
             .onChange(of: searchText) { oldValue, newValue in
                 if oldValue != newValue {

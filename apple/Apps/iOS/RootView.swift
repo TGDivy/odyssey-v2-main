@@ -17,7 +17,7 @@ private enum PrimarySpace: Hashable {
 
 private enum RootSheet: Identifiable {
     case capture
-    case food(WarmPathTimingToken?)
+    case food(surface: WarmPathSurface, correlationID: UUID)
 
     var id: String {
         switch self {
@@ -62,8 +62,11 @@ struct RootView: View {
             case .capture:
                 CaptureSheet()
                     .environmentObject(model)
-            case let .food(warmPathToken):
-                FoodQuickLogView(warmPathToken: warmPathToken)
+            case let .food(surface, correlationID):
+                FoodQuickLogView(
+                    warmPathSurface: surface,
+                    warmPathCorrelationID: correlationID
+                )
                     .environmentObject(model)
             }
         }
@@ -144,10 +147,10 @@ struct RootView: View {
         correlationID: UUID = UUID()
     ) {
         model.dismissFoodStatus()
-        activeSheet = .food(model.beginFoodWarmPath(
+        activeSheet = .food(
             surface: surface,
             correlationID: correlationID
-        ))
+        )
     }
 
     private func resumeExtensionPresentations() {
