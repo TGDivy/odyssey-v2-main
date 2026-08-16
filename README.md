@@ -107,14 +107,17 @@ known failed handoff, and reports post-commit finalization for startup recovery.
 The iPhone Capture sheet now makes Text, Voice, Photo, and File explicit
 choices. Voice requests microphone access only after an owner action, records
 protected AAC audio for at most five minutes, and stops outside the foreground.
+Archive voice playback resolves the opaque attachment through the local store,
+re-verifies its manifest, size, and SHA-256 before opening it, and stops when
+the detail view or app leaves the foreground.
 Photo uses Apple's single-selection picker without declaring broad Photo Library
 access; File uses the system document picker. Both stream only the selected item
 into an opaque, owner-only, backup-excluded import buffer with the same 128 MiB
 limit. Save then hands the prepared bytes to the durable coordinator, while
 cancel, replacement, stale callbacks, and next bootstrap remove known temporary
 copies. The UI discloses unchanged embedded metadata and that local media is not
-uploaded, opened by interpretation, or remotely restorable. Playback, Xcode,
-accessibility, and physical-device validation follow. See
+uploaded, opened by interpretation, or remotely restorable. Xcode,
+accessibility, and physical-device playback validation follow. See
 [`docs/architecture/local-capture-attachments.md`](docs/architecture/local-capture-attachments.md).
 
 ## Durable food presets and ranking

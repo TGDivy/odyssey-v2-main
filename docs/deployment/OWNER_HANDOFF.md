@@ -1156,6 +1156,9 @@ Do not enter real owner data. Then execute this staged flow:
 6. In **Capture → Voice**, confirm no microphone prompt appears until **Start
    Recording**. Record only a synthetic phrase, stop, and save. Repeat once by
    starting a recording and backgrounding the app; confirm recording stops.
+   Open the saved Archive item, play, pause, resume, and stop the synthetic
+   recording. Confirm no path or filename appears and playback stops when the
+   app backgrounds or the detail closes.
    Deny microphone access in Settings, confirm the sheet explains the denial and
    links back to Settings, and confirm Text remains usable. Restore access. In a
    separate synthetic run, leave recording active for five minutes and confirm
@@ -1264,7 +1267,8 @@ the backend owner runbook until a device-registry UI is implemented.
 - Required evidence: signed app installs without entitlement crash; one active
   server enrollment exists; the local credential survives force-quit/relaunch;
   text/voice/photo/file capture commits offline; microphone denial and
-  backgrounding degrade safely; Photos remains selected-only; Files provider
+  backgrounding degrade safely; verified voice playback pauses/resumes and
+  stops outside the foreground; Photos remains selected-only; Files provider
   scope succeeds; cancel/replacement/oversize paths create no capture or
   temporary residue; food logging remains local-first before/after Health denial;
   authorized exact energy/protein/caffeine samples replace idempotently while
@@ -1289,6 +1293,9 @@ the backend owner runbook until a device-registry UI is implemented.
 - If a backgrounded voice recorder continues capturing, a delayed permission
   result starts recording after cancellation, or microphone denial disables
   Text, stop and retain only payload-free diagnostic evidence.
+- If playback opens tampered/uncommitted bytes, exposes a local path, continues
+  after background/detail dismissal, or triggers transcription/network access,
+  stop: the local-only forensic boundary has regressed.
 - If food create/log requests Health permission implicitly, denial blocks the
   local ledger, correction duplicates samples, alcohol is approximated, or a
   void touches another source, stop and retain only synthetic metadata evidence.
@@ -1305,10 +1312,11 @@ the backend owner runbook until a device-registry UI is implemented.
 
 - Device model/OS and hashed UDID reference, build/archive hash, install result,
   launch log, entitlement/privacy-key check, capture-kind/count results,
-  payload-free temporary/durable path checks, future device UUID/status,
-  refresh test status, and the complete payload-free warm-path/negative-control
-  table. No media, embedded metadata, filename, provider path, health data,
-  token, Keychain item, or screenshot with private data.
+  payload-free temporary/durable path and voice-playback checks, future device
+  UUID/status, refresh test status, and the complete payload-free
+  warm-path/negative-control table. No media, embedded metadata, filename,
+  provider path, health data, token, Keychain item, or screenshot with private
+  data.
 
 ## 15. Run integration smoke tests
 

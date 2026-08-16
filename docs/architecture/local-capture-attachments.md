@@ -111,6 +111,29 @@ AVFoundation/SwiftUI or prove microphone prompts, audio encoding, background
 transitions, Data Protection while locked, accessibility, or physical-device
 behavior; those remain owner-only Xcode and device checks.
 
+## Verified local voice playback
+
+Archive shows playback only for an immutable audio attachment reference. The
+iPhone model asks the actor-isolated attachment store for
+`verifiedContentURL(for:)`; that boundary requires a committed manifest, an
+exact capture reference, a regular non-symlink file, the recorded byte count,
+and a fresh SHA-256 match before returning the opaque local URL. The UI never
+renders that path or original filename.
+
+`CaptureAudioPlayer` activates a spoken-audio playback session only after the
+owner taps Play, supports pause/resume/stop and bounded progress, and releases
+the player and audio session when the detail disappears or the app leaves the
+active foreground. A cancelled asynchronous verification request cannot start
+stale playback. Decode, integrity, and session failures remain local and expose
+only generic owner guidance. Playback does not transcribe, interpret, upload,
+or make the local-only object remotely recoverable.
+
+The same portable attachment tests prove that staged objects are unreadable,
+committed bytes resolve, and post-commit tampering fails verification. Linux
+parser validation does not type-check `AVAudioPlayer`, audio routing,
+interruptions, accessibility, locked-device behavior, or physical playback;
+those remain in the owner handoff protocol.
+
 ## Ephemeral picker handoff
 
 Photo and document providers may expose a selected file URL only for the
@@ -186,5 +209,5 @@ updates and bounded file reads, with NIST known-answer and chunk-boundary tests.
 The protected object and durable media-capture coordinator are implemented.
 The guarded iPhone AVFoundation recorder is source-implemented, and the
 protected ephemeral import buffer is portable-tested. Selected-only photo/file
-chooser UI is source-implemented. Playback, repair UI, and the attachment
-lifecycle/tombstone flow follow in separate Milestone 1.2 slices.
+chooser UI and verified local voice playback are source-implemented. Repair UI
+and the attachment lifecycle/tombstone flow remain future slices.
