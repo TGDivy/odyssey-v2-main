@@ -104,17 +104,17 @@ version is intentionally local-only and does not claim encrypted upload or
 remote restore. A tested coordinator now copies bytes first, commits exactly one
 capture/ledger/outbox transaction, promotes the manifest afterward, cleans up a
 known failed handoff, and reports post-commit finalization for startup recovery.
-The iPhone Capture sheet now makes Text and Voice an explicit choice. Its voice
-path requests microphone access only after an owner action, records protected
-AAC audio for at most five minutes, stops when the app leaves the foreground,
-and hands a saved recording to that durable coordinator. Permission denial
-leaves text capture available and offers a route to Settings. The UI explicitly
-states that audio is not transcribed, uploaded, or remotely restorable. Picker,
-playback, Xcode, accessibility, and physical-device validation follow. A new
-native import buffer already provides the prerequisite for picker URLs: it
-streams only the selected file into opaque, owner-only, backup-excluded
-temporary storage with the same 128 MiB limit, and bootstrap deletes any known
-uncommitted leftovers. The actual photo/file chooser follows separately. See
+The iPhone Capture sheet now makes Text, Voice, Photo, and File explicit
+choices. Voice requests microphone access only after an owner action, records
+protected AAC audio for at most five minutes, and stops outside the foreground.
+Photo uses Apple's single-selection picker without declaring broad Photo Library
+access; File uses the system document picker. Both stream only the selected item
+into an opaque, owner-only, backup-excluded import buffer with the same 128 MiB
+limit. Save then hands the prepared bytes to the durable coordinator, while
+cancel, replacement, stale callbacks, and next bootstrap remove known temporary
+copies. The UI discloses unchanged embedded metadata and that local media is not
+uploaded, opened by interpretation, or remotely restorable. Playback, Xcode,
+accessibility, and physical-device validation follow. See
 [`docs/architecture/local-capture-attachments.md`](docs/architecture/local-capture-attachments.md).
 
 ## Accepted orientation state

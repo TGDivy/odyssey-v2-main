@@ -5,6 +5,7 @@ import OdysseyIntelligence
 import OdysseySync
 import SwiftUI
 import UIKit
+import UniformTypeIdentifiers
 
 private enum PrimarySpace: Hashable {
     case now
@@ -844,6 +845,8 @@ private struct NowView: View {
 private enum CaptureInputMode: String, CaseIterable, Identifiable {
     case text
     case voice
+    case photo
+    case file
 
     var id: String { rawValue }
 
@@ -853,6 +856,10 @@ private enum CaptureInputMode: String, CaseIterable, Identifiable {
             "Text"
         case .voice:
             "Voice"
+        case .photo:
+            "Photo"
+        case .file:
+            "File"
         }
     }
 }
@@ -866,9 +873,18 @@ private struct CaptureSheet: View {
     @State private var mode = CaptureInputMode.text
     @State private var text = ""
     @State private var isSubmitting = false
+    @State private var preparedMedia: PreparedCaptureMediaSelection?
+    @State private var activeImportRequestID: UUID?
+    @State private var isPhotoPickerPresented = false
+    @State private var isFileImporterPresented = false
+    @State private var importError: String?
 
     private var isSaving: Bool {
         isSubmitting || model.state.capturePhase == .saving
+    }
+
+    private var isImporting: Bool {
+        activeImportRequestID != nil
     }
 
     private var canSave: Bool {
@@ -877,6 +893,10 @@ private struct CaptureSheet: View {
             !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         case .voice:
             voiceRecorder.preparedRecordingURL != nil
+        case .photo:
+            preparedMedia?.kind == .imageReference
+        case .file:
+            preparedMedia?.kind == .fileReference
         }
     }
 
@@ -892,6 +912,7 @@ private struct CaptureSheet: View {
                     .pickerStyle(.segmented)
                     .disabled(
                         isSaving
+                            || isImporting
                             || voiceRecorder.isRecording
                             || voiceRecorder.state == .requestingPermission
                     )
@@ -902,6 +923,10 @@ private struct CaptureSheet: View {
                     textSection
                 case .voice:
                     voiceSection
+                case .photo:
+                    photoSection
+                case .file:
+                    fileSection
                 }
 
                 if case let .failed(message) = model.state.capturePhase {
@@ -921,12 +946,13 @@ private struct CaptureSheet: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(saveButtonTitle, action: save)
-                        .disabled(isSaving || !canSave)
+                        .disabled(isSaving || isImporting || !canSave)
                 }
             }
             .onAppear { isFocused = true }
             .onChange(of: mode) { _, newMode in
                 isFocused = newMode == .text
+                resetMediaDrafts(for: newMode)
             }
             .onChange(of: scenePhase) { _, newPhase in
                 if newPhase == .active {
@@ -937,9 +963,29 @@ private struct CaptureSheet: View {
             }
             .onDisappear {
                 if !isSaving {
-                    voiceRecorder.cancel()
+                    discardAllDraftMedia()
                 }
             }
+            .sheet(isPresented: $isPhotoPickerPresented) {
+                if let importBuffer = model.captureImportBuffer,
+                   let requestID = activeImportRequestID
+                {
+                    PhotoCapturePicker(
+                        importBuffer: importBuffer,
+                        requestID: requestID,
+                        onCompletion: finishImport
+                    )
+                    .ignoresSafeArea()
+                } else {
+                    ProgressView("Opening photo picker…")
+                }
+            }
+            .fileImporter(
+                isPresented: $isFileImporterPresented,
+                allowedContentTypes: [.item],
+                allowsMultipleSelection: false,
+                onCompletion: handleFileImporterResult
+            )
         }
     }
 
@@ -1026,11 +1072,100 @@ private struct CaptureSheet: View {
         }
     }
 
+    private var photoSection: some View {
+        Section {
+            importSelectionContent(
+                expectedKind: .imageReference,
+                emptyTitle: "No photo selected",
+                readyTitle: "Photo ready",
+                chooseTitle: "Choose Photo",
+                chooseAgainTitle: "Choose Another Photo",
+                systemImage: "photo",
+                action: startPhotoImport
+            )
+        } header: {
+            Text("Choose one photo")
+        } footer: {
+            Text(
+                "Odyssey receives only the photo you choose and keeps the selected "
+                    + "representation, including its embedded metadata, unchanged in "
+                    + "protected local storage. Save commits an opaque reference. It is "
+                    + "not uploaded, opened by interpretation, or remotely restorable."
+            )
+        }
+    }
+
+    private var fileSection: some View {
+        Section {
+            importSelectionContent(
+                expectedKind: .fileReference,
+                emptyTitle: "No file selected",
+                readyTitle: "File ready",
+                chooseTitle: "Choose File",
+                chooseAgainTitle: "Choose Another File",
+                systemImage: "doc",
+                action: startFileImport
+            )
+        } header: {
+            Text("Choose one file")
+        } footer: {
+            Text(
+                "Odyssey copies only the file you choose into protected local storage and "
+                    + "keeps its bytes unchanged. The manifest does not add its source name "
+                    + "or provider path. Save commits an opaque reference. The file is not "
+                    + "uploaded, opened by interpretation, or remotely restorable."
+            )
+        }
+    }
+
+    @ViewBuilder
+    private func importSelectionContent(
+        expectedKind: CapturePayloadKind,
+        emptyTitle: String,
+        readyTitle: String,
+        chooseTitle: String,
+        chooseAgainTitle: String,
+        systemImage: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        if isImporting {
+            ProgressView("Preparing selected item…")
+        } else if let preparedMedia, preparedMedia.kind == expectedKind {
+            Label(
+                "\(readyTitle) · \(formattedByteCount(preparedMedia.preparedImport.byteCount))",
+                systemImage: "checkmark.circle"
+            )
+            Text(preparedMedia.mediaType)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Button(chooseAgainTitle, action: action)
+                .disabled(isSaving)
+        } else {
+            Label(emptyTitle, systemImage: systemImage)
+                .foregroundStyle(.secondary)
+            Button(chooseTitle, action: action)
+                .disabled(isSaving)
+        }
+        if let importError {
+            Label(importError, systemImage: "exclamationmark.triangle")
+                .foregroundStyle(.red)
+        }
+    }
+
     private var saveButtonTitle: String {
         if isSaving {
             return "Saving…"
         }
-        return mode == .voice ? "Save Voice" : "Save"
+        switch mode {
+        case .text:
+            return "Save"
+        case .voice:
+            return "Save Voice"
+        case .photo:
+            return "Save Photo"
+        case .file:
+            return "Save File"
+        }
     }
 
     private func save() {
@@ -1040,6 +1175,7 @@ private struct CaptureSheet: View {
         let selectedMode = mode
         let selectedText = text
         let selectedVoiceURL = voiceRecorder.preparedRecordingURL
+        let selectedMedia = preparedMedia
         Task {
             let saved: Bool
             switch selectedMode {
@@ -1051,20 +1187,155 @@ private struct CaptureSheet: View {
                     return
                 }
                 saved = await model.captureVoiceRecording(at: selectedVoiceURL)
+            case .photo:
+                guard let selectedMedia,
+                      selectedMedia.kind == .imageReference
+                else {
+                    isSubmitting = false
+                    return
+                }
+                saved = await model.captureImportedMedia(
+                    at: selectedMedia.preparedImport.fileURL,
+                    kind: selectedMedia.kind,
+                    mediaType: selectedMedia.mediaType
+                )
+            case .file:
+                guard let selectedMedia,
+                      selectedMedia.kind == .fileReference
+                else {
+                    isSubmitting = false
+                    return
+                }
+                saved = await model.captureImportedMedia(
+                    at: selectedMedia.preparedImport.fileURL,
+                    kind: selectedMedia.kind,
+                    mediaType: selectedMedia.mediaType
+                )
             }
             guard saved else {
                 isSubmitting = false
                 return
             }
             voiceRecorder.completeSave()
+            discardPreparedMedia(selectedMedia)
             UINotificationFeedbackGenerator().notificationOccurred(.success)
             dismiss()
         }
     }
 
     private func cancel() {
-        voiceRecorder.cancel()
+        discardAllDraftMedia()
         dismiss()
+    }
+
+    private func startPhotoImport() {
+        guard activeImportRequestID == nil, !isSaving else { return }
+        guard model.captureImportBuffer != nil else {
+            importError = "Protected local import storage is unavailable."
+            return
+        }
+        activeImportRequestID = UUID()
+        importError = nil
+        isPhotoPickerPresented = true
+    }
+
+    private func startFileImport() {
+        guard activeImportRequestID == nil, !isSaving else { return }
+        guard model.captureImportBuffer != nil else {
+            importError = "Protected local import storage is unavailable."
+            return
+        }
+        activeImportRequestID = UUID()
+        importError = nil
+        isFileImporterPresented = true
+    }
+
+    private func handleFileImporterResult(_ result: Result<[URL], Error>) {
+        guard let requestID = activeImportRequestID,
+              let importBuffer = model.captureImportBuffer
+        else { return }
+        switch result {
+        case let .success(urls):
+            guard let sourceURL = urls.first else {
+                finishImport(requestID, .cancelled)
+                return
+            }
+            Task {
+                let outcome = await Task.detached {
+                    CaptureMediaImportPreparer.prepare(
+                        sourceURL: sourceURL,
+                        kind: .fileReference,
+                        importBuffer: importBuffer
+                    )
+                }.value
+                finishImport(requestID, outcome)
+            }
+        case let .failure(error):
+            let cocoaError = error as NSError
+            if cocoaError.domain == NSCocoaErrorDomain,
+               cocoaError.code == NSUserCancelledError
+            {
+                finishImport(requestID, .cancelled)
+            } else {
+                finishImport(requestID, .failed("The selected file could not be opened."))
+            }
+        }
+    }
+
+    private func finishImport(_ requestID: UUID, _ outcome: CaptureMediaImportOutcome) {
+        guard activeImportRequestID == requestID else {
+            if case let .selected(selection) = outcome {
+                discardPreparedMedia(selection)
+            }
+            return
+        }
+        isPhotoPickerPresented = false
+        isFileImporterPresented = false
+        activeImportRequestID = nil
+        switch outcome {
+        case let .selected(selection):
+            discardPreparedMedia(preparedMedia)
+            preparedMedia = selection
+            importError = nil
+        case .cancelled:
+            importError = nil
+        case let .failed(message):
+            importError = message
+        }
+    }
+
+    private func resetMediaDrafts(for newMode: CaptureInputMode) {
+        importError = nil
+        if newMode != .voice {
+            voiceRecorder.cancel()
+        }
+        guard let preparedMedia else { return }
+        let keepsSelection = switch newMode {
+        case .photo:
+            preparedMedia.kind == .imageReference
+        case .file:
+            preparedMedia.kind == .fileReference
+        case .text, .voice:
+            false
+        }
+        if !keepsSelection {
+            discardPreparedMedia(preparedMedia)
+            self.preparedMedia = nil
+        }
+    }
+
+    private func discardAllDraftMedia() {
+        activeImportRequestID = nil
+        isPhotoPickerPresented = false
+        isFileImporterPresented = false
+        voiceRecorder.cancel()
+        discardPreparedMedia(preparedMedia)
+        preparedMedia = nil
+    }
+
+    private func discardPreparedMedia(_ selection: PreparedCaptureMediaSelection?) {
+        guard let selection, let importBuffer = model.captureImportBuffer else { return }
+        try? importBuffer.discard(selection.preparedImport)
     }
 
     private func openSettings() {
@@ -1075,5 +1346,9 @@ private struct CaptureSheet: View {
     private func voiceDuration(_ duration: TimeInterval) -> String {
         let totalSeconds = max(0, Int(duration.rounded(.down)))
         return String(format: "%d:%02d", totalSeconds / 60, totalSeconds % 60)
+    }
+
+    private func formattedByteCount(_ byteCount: Int64) -> String {
+        ByteCountFormatter.string(fromByteCount: byteCount, countStyle: .file)
     }
 }

@@ -33,6 +33,10 @@ final class OdysseyAppModel: ObservableObject {
     private var workshopDraftFactory: LifeModelWorkshopDraftFactory?
     private var isBootstrapping = false
 
+    var captureImportBuffer: LocalCaptureImportBuffer? {
+        localServices?.captureImportBuffer
+    }
+
     static var backgroundRefreshIdentifier: String {
         if let configured = Bundle.main.object(
             forInfoDictionaryKey: "ODYSSEY_BACKGROUND_REFRESH_IDENTIFIER"
@@ -134,14 +138,42 @@ final class OdysseyAppModel: ObservableObject {
     }
 
     func captureVoiceRecording(at sourceURL: URL) async -> Bool {
+        await captureMediaFile(
+            at: sourceURL,
+            kind: .audio,
+            mediaType: "audio/mp4",
+            failureMessage: "The voice capture was not saved."
+        )
+    }
+
+    func captureImportedMedia(
+        at sourceURL: URL,
+        kind: CapturePayloadKind,
+        mediaType: String
+    ) async -> Bool {
+        guard kind == .imageReference || kind == .fileReference else { return false }
+        return await captureMediaFile(
+            at: sourceURL,
+            kind: kind,
+            mediaType: mediaType,
+            failureMessage: "The selected item was not saved."
+        )
+    }
+
+    private func captureMediaFile(
+        at sourceURL: URL,
+        kind: CapturePayloadKind,
+        mediaType: String,
+        failureMessage: String
+    ) async -> Bool {
         guard let localServices, state.canCapture else { return false }
         apply(.captureStarted)
         do {
             let receipt = try await localServices.mediaCaptureService.record(
                 LocalMediaCaptureDraft(
                     source: .file(sourceURL),
-                    kind: .audio,
-                    mediaType: "audio/mp4",
+                    kind: kind,
+                    mediaType: mediaType,
                     timeZoneID: TimeZone.current.identifier,
                     locationPermissionState: currentLocationPermissionState(),
                     invokingSurface: .iPhoneGlobalCapture
@@ -150,9 +182,9 @@ final class OdysseyAppModel: ObservableObject {
             await completeCapture(receipt.captureReceipt)
             return true
         } catch let error as LocalizedError {
-            apply(.captureFailed(error.errorDescription ?? "The voice capture was not saved."))
+            apply(.captureFailed(error.errorDescription ?? failureMessage))
         } catch {
-            apply(.captureFailed("The voice capture was not saved."))
+            apply(.captureFailed(failureMessage))
         }
         return false
     }

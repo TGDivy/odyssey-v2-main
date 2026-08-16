@@ -63,7 +63,6 @@ targets:
         NSCalendarsFullAccessUsageDescription: Odyssey mirrors selected calendar context for planning and preparation.
         NSCalendarsWriteOnlyAccessUsageDescription: Odyssey creates calendar items only after the required confirmation.
         NSLocationWhenInUseUsageDescription: Odyssey uses broad location context while you use the app and avoids continuous precise history.
-        NSPhotoLibraryUsageDescription: Odyssey links only the photos you choose to source-linked archive episodes.
         NSMicrophoneUsageDescription: Odyssey records audio only when you start a voice capture.
         ODYSSEY_API_BASE_URL: $(ODYSSEY_API_BASE_URL)
         ODYSSEY_APPLE_CLIENT_ID: $(ODYSSEY_APPLE_CLIENT_ID)

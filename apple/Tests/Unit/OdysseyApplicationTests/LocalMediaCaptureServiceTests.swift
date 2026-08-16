@@ -86,6 +86,47 @@ func mediaCaptureCopiesContentBeforeOneDurableCaptureCommit() async throws {
 }
 
 @Test
+func preparedProviderImportCommitsDurablyBeforeTemporaryDiscard() async throws {
+    let directory = mediaCaptureTemporaryDirectory("prepared-import")
+    defer { try? FileManager.default.removeItem(at: directory) }
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    let sourceURL = directory.appendingPathComponent("provider-selected-name.jpeg")
+    let sourceData = Data("synthetic selected image representation".utf8)
+    try sourceData.write(to: sourceURL)
+    let services = try await NativeLocalServices.bootstrap(
+        configuration: NativeLocalConfiguration(
+            applicationIdentifier: "com.example.odyssey.app",
+            applicationSupportDirectory: directory.appendingPathComponent("ApplicationSupport")
+        ),
+        vault: MediaCaptureMemoryVault(deviceID: try mediaCaptureIdentifier(5))
+    )
+    let prepared = try services.captureImportBuffer.prepareFile(at: sourceURL)
+
+    let receipt = try await services.mediaCaptureService.record(LocalMediaCaptureDraft(
+        source: .file(prepared.fileURL),
+        kind: .imageReference,
+        mediaType: "image/jpeg",
+        timeZoneID: "UTC",
+        locationPermissionState: .unavailable,
+        invokingSurface: .iPhoneGlobalCapture
+    ))
+
+    #expect(FileManager.default.fileExists(atPath: prepared.fileURL.path))
+    try services.captureImportBuffer.discard(prepared)
+    #expect(!FileManager.default.fileExists(atPath: prepared.fileURL.path))
+    #expect(FileManager.default.fileExists(atPath: sourceURL.path))
+    #expect(receipt.captureReceipt.capture.originalPayload.kind == .imageReference)
+    #expect(receipt.finalizationState == .committed)
+    let reference = try receipt.attachment.captureReference
+    let durableURL = try await services.captureAttachmentStore.verifiedContentURL(
+        for: reference
+    )
+    #expect(try Data(contentsOf: durableURL) == sourceData)
+    #expect(!durableURL.path.contains("provider-selected-name"))
+    #expect(try services.recentCaptures().count == 1)
+}
+
+@Test
 func mediaCaptureFailureDiscardsUnreferencedStaging() async throws {
     let directory = mediaCaptureTemporaryDirectory("rollback")
     defer { try? FileManager.default.removeItem(at: directory) }

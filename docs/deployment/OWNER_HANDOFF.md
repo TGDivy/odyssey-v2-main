@@ -9,11 +9,11 @@ personal data.
 
 ## Current evidence boundary
 
-As of 2026-08-15, repository validation proves the credential-free contracts;
+As of 2026-08-16, repository validation proves the credential-free contracts;
 it does not prove an owner deployment:
 
-- The current backend baseline passes 195 tests at 86.81% coverage. Schema
-  generation verifies 67 artifacts, and OpenTofu 1.10.6 validates all five
+- The current backend baseline passes 213 tests at 86.79% coverage. Schema
+  generation verifies 76 artifacts, and OpenTofu 1.10.6 validates all five
   mocked plans including encrypted-export wiring. Run the complete
   cross-platform `make verify` again from the release commit before deployment.
 - OpenTofu 1.10.6 and Google provider 7.44.0 were separately validated against
@@ -24,8 +24,8 @@ it does not prove an owner deployment:
   environment.
 - No Apple-platform package build, Xcode archive, signing operation, TestFlight
   upload, or physical-device test has been performed. The portable Swift
-  package has been compiled and its 45 deterministic tests have run under a temporary
-  Linux Swift 6.1 toolchain; that is not Apple-platform validation.
+  package has been compiled and its 100 deterministic tests have run under the
+  official Linux Swift 6.1 toolchain; that is not Apple-platform validation.
 - The cloud model remains `deterministic`. Adding a model-provider key alone
   enables nothing; no evaluated cloud-model adapter is implemented.
 - External OAuth connectors and webhook handlers are not implemented. Their
@@ -34,18 +34,19 @@ it does not prove an owner deployment:
   AuthenticationServices, exchange, refresh, and Keychain components now
   exist. Their Security/AuthenticationServices branches have not been compiled
   with Xcode or exercised with a real Apple credential. The Apple data package
-  now has a
-  GRDB ledger, migration-v2 preflight backup, immutable remote receipts,
-  atomic push/pull persistence, projection rebuild, verified backup, and owner
-  export. An authenticated HTTPS-only `URLSession` sync transport is also
-  implemented and contract-tested. A portable application coordinator now
-  connects that transport to durable push-result and resumable pull-page
-  persistence, including exact local diagnostics and bounded retries. The
-  iPhone shell now instantiates local services before optional remote services,
-  exposes nonce-bound Apple enrollment, durable text capture, manual sync,
-  integrity verification, projection rebuild, and an opportunistic app-refresh
-  entry. None of those Apple-platform paths has been Xcode-built or
-  device-tested.
+  now has a GRDB ledger, migration preflight backup, immutable remote receipts,
+  atomic push/pull persistence, projection rebuild, verified backup, owner
+  export, protected local-only attachment storage, bounded provider-import
+  buffering, and durable media-capture composition. An authenticated HTTPS-only
+  `URLSession` sync transport is also implemented and contract-tested. A
+  portable application coordinator connects that transport to durable
+  push-result and resumable pull-page persistence, including exact local
+  diagnostics and bounded retries. The iPhone shell instantiates local services
+  before optional remote services and exposes nonce-bound Apple enrollment,
+  explicit text/voice/photo/file capture, source-inspectable Archive review,
+  manual sync, integrity verification, projection rebuild, and an
+  opportunistic app-refresh entry. None of those Apple-platform paths has been
+  Xcode-built or device-tested.
   The device/refresh Keychain vault, in-memory access-token refresh session,
   native Apple ceremony, and auth HTTP exchange are implemented as package
   boundaries. Recovery UI, server-side device-revocation UI, and physical
@@ -1116,17 +1117,41 @@ Do not enter real owner data. Then execute this staged flow:
    nonce to Apple, validates challenge ID in Apple `state`, exchanges the raw
    nonce plus identity token, stores only the refresh credential in Keychain,
    and keeps the access token in memory.
-4. Enable airplane mode. Capture a synthetic marker such as
+4. Enable airplane mode. In **Capture → Text**, save a synthetic marker such as
    `STAGING OFFLINE CAPTURE <timestamp>`. Confirm the success haptic appears only
    after the local transaction and Workshop reports one queued operation.
-5. Force-quit and relaunch while offline. Confirm the local ledger opens, the
-   queue remains, and the Keychain credential is reported as stored.
-6. Restore networking and choose **Sync Now**. Confirm the queue reaches zero,
+5. In **Capture → Voice**, confirm no microphone prompt appears until **Start
+   Recording**. Record only a synthetic phrase, stop, and save. Repeat once by
+   starting a recording and backgrounding the app; confirm recording stops.
+   Deny microphone access in Settings, confirm the sheet explains the denial and
+   links back to Settings, and confirm Text remains usable. Restore access. In a
+   separate synthetic run, leave recording active for five minutes and confirm
+   the hard stop. Do not use real conversation or ambient private audio.
+6. In **Capture → Photo**, choose one purpose-made synthetic image. Confirm the
+   system selected-only picker appears without a broad Photo Library permission
+   prompt; confirm the disclosure says unchanged embedded metadata remains; then
+   save. Choose another synthetic image but cancel Capture before Save. Choose a
+   third image, replace it, and save only the replacement.
+7. In **Capture → File**, select one synthetic document from local Files and one
+   from an enabled document provider such as iCloud Drive. Confirm the UI shows
+   only media type and byte count, never the source filename or provider path.
+   Cancel one selection and save the other. A synthetic file over 128 MiB must
+   fail with a bounded-size error and must not create a capture.
+8. With Xcode's device-container tooling, inspect only structure and permissions:
+   successful Save/cancel/replacement leaves `CaptureImports/Temporary/v1`
+   empty; durable objects use opaque directories/files; no evidence artifact may
+   contain media bytes, filenames, provider paths, or embedded metadata. Confirm
+   successful media captures report zero attachment-repair backlog. Do not claim
+   upload, cross-device availability, transcription, preview, or remote restore.
+9. Force-quit and relaunch while offline. Confirm the local ledger opens, all
+   saved synthetic captures remain source-inspectable, cancelled drafts do not
+   appear, the queue remains, and the Keychain credential is reported as stored.
+10. Restore networking and choose **Sync Now**. Confirm the queue reaches zero,
    push/pull timestamps appear, and device/server cursors advance.
-7. Run **Verify local integrity**, then **Rebuild projections from ledger** and
+11. Run **Verify local integrity**, then **Rebuild projections from ledger** and
    verify both complete without changing the immutable ledger or losing the
-   synthetic capture.
-8. Background the app and retain the app-refresh scheduling/debug evidence. Do
+   synthetic captures.
+12. Background the app and retain the app-refresh scheduling/debug evidence. Do
    not claim timing guarantees; the OS may defer or cancel the task.
 
 Follow `docs/architecture/authentication.md` for the matching backend and token
@@ -1137,9 +1162,12 @@ the backend owner runbook until a device-registry UI is implemented.
 
 - Required evidence: signed app installs without entitlement crash; one active
   server enrollment exists; the local credential survives force-quit/relaunch;
-  offline capture commits and remains queued; authenticated push/pull clears the
-  queue; cursors advance; integrity/rebuild succeed; app refresh is observed as
-  opportunistic rather than exact.
+  text/voice/photo/file capture commits offline; microphone denial and
+  backgrounding degrade safely; Photos remains selected-only; Files provider
+  scope succeeds; cancel/replacement/oversize paths create no capture or
+  temporary residue; authenticated push/pull clears the queue; cursors advance;
+  integrity/rebuild succeed; app refresh is observed as opportunistic rather
+  than exact.
 - Still-unavailable evidence: uninstall/reinstall recovery, second-device
   convergence, server revocation from native UI, attachment transfer, and all
   HealthKit/Watch/widget/background production behaviors.
@@ -1151,6 +1179,12 @@ the backend owner runbook until a device-registry UI is implemented.
 - A launch-only result is not enrollment, capture, sync, or background evidence.
 - If local capture fails when the staging API is unreachable, stop: the
   local-first contract has regressed.
+- If Photos requests broad library access, a cancelled/replaced provider item
+  remains buffered, a filename/provider path enters a manifest, or media bytes
+  appear remotely, stop: the selected-only/local-only boundary has regressed.
+- If a backgrounded voice recorder continues capturing, a delayed permission
+  result starts recording after cancellation, or microphone denial disables
+  Text, stop and retain only payload-free diagnostic evidence.
 - If Workshop reports a placeholder host, fix the ignored staging xcconfig;
   never weaken HTTPS validation outside development loopback.
 - Do not substitute a simulator for HealthKit, background, APNs, Watch, or
@@ -1159,8 +1193,10 @@ the backend owner runbook until a device-registry UI is implemented.
 **Evidence retained**
 
 - Device model/OS and hashed UDID reference, build/archive hash, install result,
-  launch log, entitlement check, future device UUID/status, and refresh test
-  status. No health data, token, Keychain item, or screenshot with private data.
+  launch log, entitlement/privacy-key check, capture-kind/count results,
+  payload-free temporary/durable path checks, future device UUID/status, and
+  refresh test status. No media, embedded metadata, filename, provider path,
+  health data, token, Keychain item, or screenshot with private data.
 
 ## 15. Run integration smoke tests
 

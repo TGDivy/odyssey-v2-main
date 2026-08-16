@@ -76,8 +76,8 @@ attachment recovery pass does not disable text capture or the primary ledger.
 
 ## Voice recording surface
 
-The iPhone Capture sheet makes Text and Voice separate, explicit modes. Voice
-recording begins only after the owner selects Start Recording. The recorder
+The iPhone Capture sheet makes Voice an explicit mode alongside Text, Photo, and
+File. Recording begins only after the owner selects Start Recording. The recorder
 reads `AVAudioApplication.shared.recordPermission` and uses
 `AVAudioApplication.requestRecordPermission()` only when the state is
 undetermined. Denial keeps the sheet usable, leaves text capture available, and
@@ -130,13 +130,38 @@ complete Data Protection, and the root is excluded from backup. A cancelled or
 replaced selection can be discarded by its exact typed handle without touching
 the source file.
 
-This buffer is deliberately not a capture or attachment manifest. A future
-picker surface must still require an explicit Save, copy the prepared file
-through `LocalMediaCaptureService`, and discard the temporary handle only after
-that durable handoff succeeds. Portable tests prove the bounded copy,
-permissions, opaque naming, unsafe-source rejection, exact discard, and
-bootstrap cleanup. PhotosUI, document-provider callback behavior, and Apple Data
-Protection remain unproved until Xcode/device validation.
+This buffer is deliberately not a capture or attachment manifest. The iPhone
+Capture sheet composes it with two selected-only surfaces:
+
+- Photo presents `PHPickerViewController`, filters to one image, and asks the
+  provider for a file representation. The target does not declare broad Photo
+  Library usage permission.
+- File presents SwiftUI's system file importer for one owner-selected item.
+  Security-scoped access lasts only through metadata resolution and the bounded
+  buffer copy.
+
+The media type comes from the delivered extension, resource type, or provider
+type declaration; Odyssey does not claim byte-level type verification. It does
+not preview or execute the selection in this slice. The selected representation
+is copied unchanged, so embedded image/file metadata remains even though the
+buffer and durable manifest add no source filename or provider path. This is
+disclosed before Save.
+
+Each picker request carries a fresh identifier. Cancel, mode change, sheet
+dismissal, or replacement discards the known prepared handle. A result arriving
+for an invalidated request is discarded instead of replacing a newer draft.
+Save first establishes a sheet-local submission guard, then copies the prepared
+file through `LocalMediaCaptureService`; only a successful durable handoff
+allows the temporary handle to be removed and the sheet to close. A portable
+integration test exercises selected source → protected buffer → immutable
+attachment/ledger → temporary discard.
+
+Portable tests prove the bounded copy, permissions, opaque naming,
+unsafe-source rejection, exact discard, bootstrap cleanup, and durable handoff.
+Swift parser validation proves source structure only. PhotosUI, system importer,
+security-scope behavior, Apple Data Protection, SwiftUI rendering,
+accessibility, and device lifecycle remain unproved until Xcode/device
+validation.
 
 ## Protection boundary
 
@@ -160,6 +185,6 @@ The default object limit is 128 MiB. The SHA-256 utility supports incremental
 updates and bounded file reads, with NIST known-answer and chunk-boundary tests.
 The protected object and durable media-capture coordinator are implemented.
 The guarded iPhone AVFoundation recorder is source-implemented, and the
-protected ephemeral import buffer is portable-tested. Photo/file chooser UI,
-playback, repair UI, and the attachment lifecycle/tombstone flow follow in
-separate Milestone 1.2 slices.
+protected ephemeral import buffer is portable-tested. Selected-only photo/file
+chooser UI is source-implemented. Playback, repair UI, and the attachment
+lifecycle/tombstone flow follow in separate Milestone 1.2 slices.

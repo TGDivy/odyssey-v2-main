@@ -131,18 +131,23 @@ capture ledger: bytes publish first, one capture/projection/outbox transaction
 commits second, and manifest promotion follows with explicit recovery state.
 Known failed ledger handoffs discard only their own staging; bootstrap promotes
 referenced staging and preserves uncertain data for repair. The iPhone Capture
-sheet now offers explicit Text and Voice modes. Voice recording uses the stable
-microphone-permission API, a five-minute `AVAudioRecorder` ceiling, protected
-temporary storage, foreground lifecycle stopping, and stale permission/delegate
-callback guards before routing Save through `LocalMediaCaptureService`.
+sheet now offers explicit Text, Voice, Photo, and File modes. Voice recording
+uses the stable microphone-permission API, a five-minute `AVAudioRecorder`
+ceiling, protected temporary storage, foreground lifecycle stopping, and stale
+permission/delegate callback guards before routing Save through
+`LocalMediaCaptureService`.
 Permission denial offers Settings without disabling text capture, and the sheet
 discloses that this audio is not transcribed, uploaded, or remotely restorable.
 `LocalCaptureImportBuffer` now supplies the safe prerequisite for ephemeral
 photo/document-provider URLs: it obtains security-scoped access only for a
 bounded streaming copy, uses opaque names and owner-only permissions, applies
 complete Data Protection, excludes the root from backup, and removes known
-uncommitted leftovers during native bootstrap. Photo/file picker UI and playback
-are not wired yet. See
+uncommitted leftovers during native bootstrap. The UI now composes that buffer
+with a one-photo `PHPickerViewController` and a one-file system importer, exact
+request-generation guards, explicit Save, and cancel/replacement cleanup. It
+declares no broad Photo Library usage permission and performs no preview,
+content sniffing, interpretation-byte access, upload, or remote restore.
+Playback remains unwired. See
 [`docs/architecture/local-capture-attachments.md`](../docs/architecture/local-capture-attachments.md).
 
 `NativeLocalServices` opens the stable Keychain device identity, protected
@@ -156,15 +161,15 @@ disable remote work without disabling offline capture or acceptance queueing.
 
 The iPhone shell now uses the tested application reducer for bootstrap,
 capture, Workshop loading/edit/review/queue/delivery, enrollment, sync,
-diagnostics, and repair state. Global text and saved voice capture return only
-after the ledger/projection/outbox transaction, trigger sync afterward without
-awaiting it, and schedule an opportunistic app-refresh request. Workshop shows
-both dedicated normative-command and generic-sync queue/conflict state, offers
-Apple device enrollment and local credential removal without claiming server
-revocation, and exposes integrity verification and projection rebuild. These
-SwiftUI, AVFoundation, BackgroundTasks, Security, AuthenticationServices, and
-UIKit paths have not been Xcode-built or run on Apple hardware in this
-environment.
+diagnostics, and repair state. Global text and saved voice/photo/file capture
+return only after the ledger/projection/outbox transaction, trigger sync
+afterward without awaiting it, and schedule an opportunistic app-refresh
+request. Workshop shows both dedicated normative-command and generic-sync
+queue/conflict state, offers Apple device enrollment and local credential
+removal without claiming server revocation, and exposes integrity verification
+and projection rebuild. These SwiftUI, PhotosUI, Uniform Type Identifiers,
+AVFoundation, BackgroundTasks, Security, AuthenticationServices, and UIKit paths
+have not been Xcode-built or run on Apple hardware in this environment.
 
 On a Mac with Swift 6.1 or newer and Xcode installed:
 
@@ -173,7 +178,7 @@ swift test --package-path apple
 ../tools/apple/generate-project.sh
 ```
 
-The portable package currently reports 99 tests passing under the official
+The portable package currently reports 100 tests passing under the official
 Swift 6.1 release toolchain on Linux. That result does not type-check SwiftUI or
 replace the required Xcode, simulator, accessibility, signing, and device runs.
 
