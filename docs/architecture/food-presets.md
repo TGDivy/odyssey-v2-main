@@ -97,10 +97,10 @@ active pages or ranking. Current active reads are bounded to 500 presets.
 Malformed projection identity, revision, tombstone, dates, actor metadata, or
 domain content fails closed before it reaches ranking.
 
-## Occurrence contract
+## Durable occurrence lifecycle
 
-`FoodOccurrence` is the immutable semantic record planned for each durable food
-or drink log. It snapshots the selected preset ID and exact preset revision,
+`FoodOccurrence` is the immutable semantic record for each durable food or
+drink log. It snapshots the selected preset ID and exact preset revision,
 name, and serving description so later preset edits cannot rewrite history. It
 also carries a finite serving quantity, optional total nutrient values in the
 same explicit units/source contract, occurrence time, named IANA time zone, and
@@ -114,26 +114,39 @@ metadata, unsupported zones, and mismatched offsets fail closed. Preset
 nutrition corrections require an explicit future occurrence revision; changing
 a preset alone never mutates an existing occurrence snapshot.
 
+`FoodOccurrenceService` is composed during native local bootstrap. Record,
+correct, and void each make one atomic commit containing an immutable
+`food.consumed.v1` or `food.consumption_corrected.v1` local ledger entry, the
+next complete `food_occurrence` projection, and a sequence-ordered sync-outbox
+operation. Record requires the exact active preset revision and calculates total
+nutrients once from that revision. Correction requires both exact occurrence
+and preset revisions, sends only changed top-level fields, and never mutates a
+prior ledger entry. Void advances the occurrence revision and writes a true
+tombstone with an empty delete payload; it cannot be restored through this
+service. Active, bounded occurrence pages provide the ranker's deterministic
+usage history.
+
 ## Current boundary
 
-This slice does **not** provide meal occurrence storage, a quick-log UI,
-HealthKit writes, a cross-stack domain-event consumer, or a live experiment
-assignment. Generated schemas now register both preset event names. Backend
+This slice does **not** provide a quick-log UI, HealthKit writes, registered
+cross-stack occurrence-event schemas/consumers, or a live experiment assignment.
+Generated schemas register both preset event names. Backend
 integration proves that native-shaped disjoint edits normalize mechanical
 metadata and converge while overlapping owner fields remain conflicts; a
 portable pull-persistence regression proves the resulting canonical document is
 still a valid `FoodPreset`. No authenticated physical two-device run has been
-performed, so live convergence remains owner evidence. Meal ledger, native UI,
-permission, and integration slices remain. In particular, the presence of
+performed, so live convergence remains owner evidence. Native UI, permission,
+and integration slices remain. In particular, the presence of
 optional nutrient values does not authorize HealthKit access or write anything
 to Apple Health.
 
-Thirteen focused tests cover value validation, time-zone-aware context derivation,
+Sixteen focused tests cover value validation, time-zone-aware context derivation,
 both ranking strategies, threshold behavior, deterministic ordering, excluded
 history, idempotent deduplication, fail-closed identity handling, atomic preset
 lifecycle commits, partial/null sync payloads, optimistic revision, and
 tombstones, including server-normalized pull materialization, immutable
-occurrence snapshots, DST-aware offsets, and malformed nutrient rejection. The
-full portable Swift package reports 113 tests passing under the official Swift
+occurrence snapshots, DST-aware offsets, malformed nutrient rejection, and
+atomic occurrence record/correct/void behavior. The full portable Swift package
+reports 116 tests passing under the official Swift
 6.1 Linux toolchain. This does not type-check SwiftUI or prove Xcode, HealthKit,
 signing, simulator, accessibility, or physical-device behavior.

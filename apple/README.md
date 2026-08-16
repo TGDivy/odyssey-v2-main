@@ -127,8 +127,7 @@ lookback windows, explainable counts, and stable ties. `FoodPresetService` now
 persists create, optimistic revision, and archive as one atomic
 ledger/projection/sync-outbox commit, preserves immutable identity and
 provenance, emits changed-field sync updates, and prevents tombstone
-resurrection. It has no durable meal occurrence service, native quick-log
-surface, HealthKit write, or experiment assignment yet. See
+resurrection. See
 [`docs/architecture/food-presets.md`](../docs/architecture/food-presets.md).
 Generated event contracts now register create/revise payloads. A backend
 native-document test normalizes mechanical metadata during disjoint merges, and
@@ -136,8 +135,12 @@ a portable pull-persistence test decodes the resulting canonical revision;
 overlapping owner fields remain explicit conflicts.
 `OdysseyDomain` also defines a validated `FoodOccurrence` snapshot with the
 selected preset revision, serving quantity, source-labeled nutrient totals,
-occurrence time, IANA zone, and original UTC offset. That value has no durable
-service, correction path, UI, or HealthKit side effect in this contract slice.
+occurrence time, IANA zone, and original UTC offset. `FoodOccurrenceService` is
+composed during native bootstrap and atomically records, optimistically
+corrects, or tombstones occurrences across the ledger, current projection, and
+sync outbox. Active occurrences produce deterministic ranking history without
+rewriting older preset snapshots. A native quick-log surface, HealthKit side
+effect, and live ranking experiment remain absent.
 
 `LocalCaptureAttachmentStore` now supplies the protected local object boundary
 needed by voice/photo/file capture. It copies files through a bounded stream,

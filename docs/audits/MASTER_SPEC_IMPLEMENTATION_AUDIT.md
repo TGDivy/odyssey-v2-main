@@ -31,7 +31,7 @@ deployment, external account configuration, or physical-device behavior.
 | §§1–5 product thesis, Constitution, premise, research consequences | `documented` | `docs/constitution.md`, `docs/ASSUMPTIONS.md`, master specification | Add automated copy/invariant checks where behavior becomes executable. |
 | §6 good-life model | `partial` | deliberate owner-only immutable Charter revisions, optimistic supersession/history, provenance/ledger/outbox, as-of context resolution, local-only typed drafts, editable commission seed, semantic review, offline acceptance ceremony and immutable native history | Direction service, explicit recommendation citations, Xcode proof and owner-lived Charter. |
 | §7 life-stage and season model | `partial` | owner-reviewed descriptive life-stage versions; Charter-bound typed season editor, legal terminal state machine, hash-bound frozen outgoing summary, optional accepted/skipped retrospective, explicit successor drafts, local-first acceptance, immutable history, terminal conflict UI and accepted-history-only season map | Direction service, Xcode and two-device proof. |
-| §8 ontology and knowledge model | `partial` | provenance, temporal, assertion, event, person and relationship contracts; simple food presets have validated create/revise/tombstone projections and `FoodOccurrence` snapshots preserve preset revision, total nutrients, zone and UTC offset | Food occurrence durability plus broader admission, supersession, graph derivation, contradiction, redaction, and retrieval services. |
+| §8 ontology and knowledge model | `partial` | provenance, temporal, assertion, event, person and relationship contracts; simple food presets have validated create/revise/tombstone projections and durable `FoodOccurrence` record/correct/void snapshots preserve preset revision, total nutrients, zone and UTC offset | Registered cross-stack occurrence events plus broader admission, supersession, graph derivation, contradiction, redaction, and retrieval services. |
 | §9 decision architecture | `partial` | decision contracts/events, B.5 immutable context-bound preparation and B.7 idempotent recommendation feedback/event-only assertion supersession with exact durable-change reporting | Full lifecycle/choice/outcome service, future-learning correction consumption, replay and product UI. |
 | §10 temporal consequence engine | `partial` | versioned bounded graph traversal with time/depth/path limits, cycle/accumulation controls, uncertainty propagation, causal-status preservation, correlated-path collapse and deterministic ranking | Domain rule registry, direct-effect services, calibration reports, persistence, APIs, narrative/UI and historical replay suite. |
 | §11 intent/intervention engine | `partial` | deterministic versioned silence/delivery policy plus B.6 owner-only evaluation of synced opportunities/intents, global pause, delivery-time client state, durable budgets and immutable audit | Opportunity generation, scheduling, response/outcome learning and platform delivery surfaces. |
@@ -86,7 +86,7 @@ deployment, external account configuration, or physical-device behavior.
 | 0.3 cloud core/sync | `verified` | Auth, sync, attachments, conflicts and convergence/fault tests exist; live cloud proof is owner-only. |
 | 0.4 durability/observability | `implemented` | Tools/runbooks/IaC exist; isolated live restore and external alert evidence are owner-only. |
 | 1.1 Charter/Season Workshop | `implemented` | Server acceptance/history/context loop, typed local draft ledger/editors, editable seed, semantic review ceremony, immutable native history, frozen outgoing summaries, optional retrospectives, explicit successor flow, offline queue, authenticated delivery, terminal conflict guidance and accepted-history-only plain/Canvas map exist; Xcode/accessibility and two-device proof remain owner-only. |
-| 1.2 capture/personal library | `partial` | Offline durable text capture, local source-inspectable Archive review, protected local-only file/data ingestion with tested ledger handoff/recovery, bounded protected provider-import buffering, selected-only iPhone photo/file pickers, five-minute foreground-only voice recording, source-linked interpretation versions, coalesced async execution, optimistic append-only owner review, atomic food-preset lifecycle/ranking, and immutable nutrient/time-zone occurrence contracts exist; playback, provider interpretation, durable meal occurrences/corrections, quick-log UI and HealthKit write remain. |
+| 1.2 capture/personal library | `partial` | Offline durable text capture, local source-inspectable Archive review, protected local-only file/data ingestion with tested ledger handoff/recovery, bounded protected provider-import buffering, selected-only iPhone photo/file pickers, five-minute foreground-only voice recording, source-linked interpretation versions, coalesced async execution, optimistic append-only owner review, atomic food-preset lifecycle/ranking, and durable nutrient/time-zone occurrence record/correct/void exist; playback, provider interpretation, quick-log UI, registered occurrence events, and HealthKit write remain. |
 | 1.3 Apple context adapters | `missing` | Targets/seams exist without real incremental HealthKit/calendar/location adapters. |
 | 1.4 Now/Tomorrow Map v1 | `partial` | Quiet Now, C.7 re-entry policy and immutable deterministic model-free server context assembly exist; Tomorrow Map and rendered re-entry do not. |
 | 1.5 telemetry/review | `contract-only` | Schemas exist; declared questions and product review loop do not. |
@@ -175,15 +175,15 @@ At this snapshot:
   mocked plans, including encrypted-export secret, storage, IAM and worker
   wiring across seventeen migrations. OpenTofu is unavailable for a current
   rerun in this environment.
-- The complete portable Swift package reports 113 tests passing under the
+- The complete portable Swift package reports 116 tests passing under the
   official Swift 6.1 release toolchain in a local Ubuntu container. This includes
   typed Workshop/editor/reducer coverage, deterministic Season map, durable
   source-linked capture interpretation, protected local attachment storage and
   filesystem/ledger recovery, bounded protected provider-import buffering and
   its durable handoff, atomic food-preset lifecycle, deterministic ranking and
-  canonical merge materialization, immutable food occurrence temporal/nutrient
-  contracts, streaming SHA-256 known answers, and temporal/acronym codec
-  regressions.
+  canonical merge materialization, durable food occurrence record/correct/void,
+  immutable temporal/nutrient snapshots, streaming SHA-256 known answers, and
+  temporal/acronym codec regressions.
 - iOS sources, including guarded voice and selected-only photo/file capture,
   passed Swift parser/structure validation and `apple/project.yml` passed YAML
   structure checks; SwiftUI, PhotosUI and AVFoundation still require Xcode

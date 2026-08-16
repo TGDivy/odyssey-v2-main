@@ -116,6 +116,9 @@ public enum SyncJSONCoding {
             if value == "url" {
                 return "URL"
             }
+            if value == "utc" {
+                return "UTC"
+            }
             if value == "sha256" {
                 return "SHA256"
             }

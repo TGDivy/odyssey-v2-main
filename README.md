@@ -125,8 +125,8 @@ protein grams, caffeine milligrams, and alcohol grams. A versioned pure ranker
 orders active presets from a 90-day usage window using repeated coarse local
 context, recent and total frequency, recency, and stable lexical/UUID ties; its
 frequency-only fallback uses the same auditable outputs. This slice has no
-meal occurrence storage, quick-log UI, HealthKit write, recipe/restaurant model,
-or live experiment assignment. Preset create, optimistic revision, and archive
+quick-log UI, HealthKit write, recipe/restaurant model, or live experiment
+assignment. Preset create, optimistic revision, and archive
 now commit an immutable local ledger event, current projection, and sync-outbox
 operation atomically; updates send only changed fields and archives are true
 tombstones. See
@@ -135,10 +135,14 @@ The matching created/revised domain events are registered in generated schemas,
 and backend/native regressions preserve disjoint edits while surfacing
 overlapping owner fields for review; physical two-device convergence is not yet
 claimed.
-An immutable `FoodOccurrence` value now defines the next boundary: exact preset
-revision/name/serving snapshots, serving quantity, total kcal/protein/caffeine/
-alcohol values, occurrence time, IANA zone, and original UTC offset. It is not
-durably logged or written to HealthKit yet.
+`FoodOccurrenceService` now records those immutable snapshots durably, corrects
+them only through an optimistic next revision, and voids them with a true
+tombstone. Every mutation atomically commits its local ledger event, complete
+projection, and ordered sync operation; active occurrences also supply the
+ranker's usage history. Existing occurrence snapshots retain their exact preset
+revision/name/serving, quantity, total kcal/protein/caffeine/alcohol values,
+occurrence time, IANA zone, and original UTC offset. No native quick-log surface
+or permission-gated HealthKit write exists yet.
 
 ## Accepted orientation state
 

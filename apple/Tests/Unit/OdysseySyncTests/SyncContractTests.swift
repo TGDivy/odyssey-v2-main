@@ -9,6 +9,7 @@ private let fixtureDate = Date(timeIntervalSince1970: 1_786_752_000.125)
 private struct AcronymCodingFixture: Codable, Equatable {
     let documentSHA256: String
     let sourceEventID: UUIDv7
+    let originalUTCOffsetSeconds: Int
 }
 
 @Test
@@ -53,7 +54,8 @@ func jsonValueRoundTripPreservesTemporalEnumPayloadKeys() throws {
 func syncCodingRestoresDeclaredWireAcronyms() throws {
     let fixture = AcronymCodingFixture(
         documentSHA256: String(repeating: "a", count: 64),
-        sourceEventID: try identifier(77)
+        sourceEventID: try identifier(77),
+        originalUTCOffsetSeconds: -14_400
     )
     let encoded = try SyncJSONCoding.makeEncoder().encode(fixture)
     let object = try #require(
@@ -66,6 +68,10 @@ func syncCodingRestoresDeclaredWireAcronyms() throws {
 
     #expect(object["document_sha256"] as? String == fixture.documentSHA256)
     #expect(object["source_event_id"] as? String == fixture.sourceEventID.description)
+    #expect(
+        object["original_utc_offset_seconds"] as? Int
+            == fixture.originalUTCOffsetSeconds
+    )
     #expect(decoded == fixture)
 }
 
