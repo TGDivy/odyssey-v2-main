@@ -91,7 +91,8 @@ struct RootView: View {
             NavigationStack {
                 NowView(
                     openCapture: presentCapture,
-                    openFood: { presentFoodLog() }
+                    openFood: { presentFoodLog() },
+                    openWorkshop: { selection = .workshop }
                 )
             }
             .tabItem { Label("Now", systemImage: "location.fill") }
@@ -1013,94 +1014,455 @@ private func captureJSONDescription(_ value: JSONValue) -> String {
 
 private struct NowView: View {
     @EnvironmentObject private var model: OdysseyAppModel
+    @State private var isPresentingCorrection = false
+    @State private var isRespondingToReentry = false
+
     let openCapture: () -> Void
     let openFood: () -> Void
-
-    private let context = DeterministicContextProjector().project(
-        DeterministicContextInput(
-            unresolvedDecisionCount: 0,
-            preparationDeadlineCount: 0,
-            materialHealthConstraintCount: 0,
-            disruptionCount: 0,
-            explicitlyOpen: false
-        )
-    )
+    let openWorkshop: () -> Void
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 20) {
-                ContentUnavailableView {
-                    Label("Nothing requires attention", systemImage: "water.waves")
-                } description: {
-                    Text("Odyssey is intentionally quiet. Your current state is \(context.rawValue).")
-                } actions: {
-                    HStack {
-                        Button("Log Food", action: openFood)
-                            .buttonStyle(.borderedProminent)
-                        Button("Capture", action: openCapture)
-                            .buttonStyle(.bordered)
-                    }
+            VStack(alignment: .leading, spacing: 18) {
+                if let reentry = model.reentrySurface {
+                    reentryCard(reentry)
                 }
 
-                if let diagnostics = model.state.diagnostics,
-                   diagnostics.operationsQueued > 0
-                {
-                    Label(
-                        "\(diagnostics.operationsQueued) local change"
-                            + "\(diagnostics.operationsQueued == 1 ? "" : "s") safely queued",
-                        systemImage: "arrow.triangle.2.circlepath"
-                    )
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .accessibilityLabel(
-                        "\(diagnostics.operationsQueued) changes safely queued for sync"
-                    )
-                }
-
-                if case let .saved(_, capturedAt) = model.state.capturePhase {
-                    Label(
-                        "Saved locally \(capturedAt.formatted(date: .omitted, time: .shortened))",
-                        systemImage: "checkmark.circle.fill"
-                    )
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                }
-
-                if let measurement = model.foodWarmPathMeasurement {
-                    Button {
-                        model.dismissFoodWarmPathMeasurement()
-                    } label: {
-                        Label(
-                            foodWarmPathStatus(measurement),
-                            systemImage: measurement.meetsTarget
-                                ? "timer.circle.fill"
-                                : "timer.circle"
+                if let projection = model.nowContextProjection {
+                    currentContextCard(projection.now)
+                    tomorrowMapCard(projection.tomorrow)
+                } else {
+                    ContentUnavailableView {
+                        Label("Current context unavailable", systemImage: "location.slash")
+                    } description: {
+                        Text(
+                            model.nowExperienceMessage
+                                ?? "Odyssey is still building a bounded view from local state."
                         )
-                        .font(.subheadline)
-                        .foregroundStyle(
-                            measurement.meetsTarget ? Color.green : Color.secondary
-                        )
+                    } actions: {
+                        Button("Retry") {
+                            Task { await model.refreshNowExperience() }
+                        }
+                        .buttonStyle(.borderedProminent)
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityHint("Dismisses this food quick-log timing result.")
                 }
 
-                if let message = model.extensionCommandMessage {
-                    Button {
-                        model.dismissExtensionCommandMessage()
-                    } label: {
-                        Label(message, systemImage: "tray.and.arrow.down")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityHint("Dismisses this extension command status.")
-                }
+                operationalStatus
             }
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .padding()
         }
         .navigationTitle("Now")
+        .refreshable { await model.refreshNowExperience() }
+        .sheet(isPresented: $isPresentingCorrection) {
+            NowStateCorrectionSheet(
+                initialState: model.nowContextProjection?.now.state ?? .clear
+            ) { state, reason in
+                await model.setNowStateCorrection(state: state, reason: reason)
+            }
+        }
+    }
+
+    private func reentryCard(_ surface: ReentrySurface) -> some View {
+        GroupBox {
+            VStack(alignment: .leading, spacing: 12) {
+                Text(
+                    "No backlog is waiting. Here are only the changes that remain relevant now."
+                )
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+                if surface.summary.isEmpty {
+                    Label(
+                        "No current material change needs replay.",
+                        systemImage: "checkmark.circle"
+                    )
+                } else {
+                    ForEach(surface.summary, id: \.changeID) { item in
+                        Label(item.summary, systemImage: "arrow.trianglehead.2.clockwise")
+                            .font(.subheadline)
+                    }
+                }
+
+                if let question = surface.oneQuestion {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("One useful question")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        Text(question)
+                    }
+                }
+
+                ViewThatFits(in: .horizontal) {
+                    HStack {
+                        reentryButtons(surface)
+                    }
+                    VStack(alignment: .leading) {
+                        reentryButtons(surface)
+                    }
+                }
+                .disabled(isRespondingToReentry)
+            }
+        } label: {
+            Label("Welcome back", systemImage: "sunrise")
+                .font(.headline)
+        }
+        .accessibilityElement(children: .contain)
+    }
+
+    @ViewBuilder
+    private func reentryButtons(_ surface: ReentrySurface) -> some View {
+        if surface.options.contains(.continue) {
+            Button("Continue") {
+                respondToReentry(.continue)
+            }
+            .buttonStyle(.borderedProminent)
+        }
+        if surface.options.contains(.reviseSeason) {
+            Button("Revise Season") {
+                respondToReentry(.reviseSeason)
+            }
+            .buttonStyle(.bordered)
+        }
+        if surface.options.contains(.stayQuiet) {
+            Button("Stay Quiet") {
+                respondToReentry(.stayQuiet)
+            }
+            .buttonStyle(.bordered)
+        }
+    }
+
+    private func currentContextCard(_ projection: NowContextProjection) -> some View {
+        GroupBox {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .firstTextBaseline) {
+                    Label(projection.state.ownerTitle, systemImage: projection.state.systemImage)
+                        .font(.title2.weight(.semibold))
+                        .foregroundStyle(projection.state.tint)
+                    Spacer()
+                    if projection.correction != nil {
+                        Text("Manual")
+                            .font(.caption.weight(.semibold))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(.thinMaterial, in: Capsule())
+                    }
+                }
+
+                Text(projection.summary)
+                    .font(.body)
+
+                if projection.isIntentionallySilent {
+                    Label("Intentional quiet", systemImage: "speaker.slash")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                } else if projection.state == .clear {
+                    Label(
+                        "This is an empty state, not an inference that silence is appropriate.",
+                        systemImage: "questionmark.circle"
+                    )
+                    .font(.subheadline)
+                    .foregroundStyle(.orange)
+                }
+
+                if let currentThread = projection.currentThread {
+                    Divider()
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Current thread")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        Text(currentThread)
+                    }
+                }
+
+                if let transition = projection.nextTransition {
+                    Divider()
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Next transition")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        HStack {
+                            Text(transition.label ?? "Calendar commitment")
+                            Spacer()
+                            Text(localTime(transition.startsAt, timeZoneID: projection.timeZoneID))
+                                .foregroundStyle(.secondary)
+                        }
+                        if transition.isTentative {
+                            Text("Tentative")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+
+                if !projection.hasEnoughContextForSilence {
+                    Divider()
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Context availability")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        ForEach(projection.sources, id: \.source) { source in
+                            HStack {
+                                Text(source.source.ownerTitle)
+                                Spacer()
+                                Text(source.state.ownerTitle)
+                                    .foregroundStyle(
+                                        source.state == .fresh ? Color.green : Color.secondary
+                                    )
+                            }
+                            .font(.caption)
+                        }
+                    }
+                }
+
+                Divider()
+                HStack {
+                    Button("Correct State", systemImage: "slider.horizontal.3") {
+                        isPresentingCorrection = true
+                    }
+                    .buttonStyle(.bordered)
+                    if let correction = projection.correction {
+                        Spacer()
+                        Button("Clear Correction", role: .destructive) {
+                            Task { await model.clearNowStateCorrection() }
+                        }
+                        .buttonStyle(.bordered)
+                        .accessibilityHint(
+                            "Removes the manual \(correction.state.ownerTitle) state immediately."
+                        )
+                    }
+                }
+
+                if let correction = projection.correction {
+                    Text(
+                        "Reason: \(correction.reason.ownerTitle). Expires "
+                            + correction.expiresAt.formatted(date: .abbreviated, time: .shortened)
+                            + "."
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                }
+            }
+        } label: {
+            Text("Current Context")
+                .font(.headline)
+        }
+    }
+
+    private func tomorrowMapCard(_ projection: TomorrowMapProjection) -> some View {
+        GroupBox {
+            VStack(alignment: .leading, spacing: 12) {
+                Text(projection.shape)
+
+                if projection.calendarState == .stale {
+                    Label(
+                        projection.calendarState.ownerExplanation,
+                        systemImage: "clock.badge.exclamationmark"
+                    )
+                    .font(.subheadline)
+                    .foregroundStyle(.orange)
+                }
+
+                if !projection.hasEnoughContext {
+                    Label(
+                        projection.calendarState.ownerExplanation,
+                        systemImage: "calendar.badge.exclamationmark"
+                    )
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                } else {
+                    if let pressurePoint = projection.pressurePoint {
+                        tomorrowMapRow(
+                            title: "Likely pressure point",
+                            value: pressurePoint,
+                            systemImage: "exclamationmark.triangle"
+                        )
+                    }
+                    if let preparationAction = projection.preparationAction {
+                        tomorrowMapRow(
+                            title: "High-leverage preparation",
+                            value: preparationAction,
+                            systemImage: "checklist"
+                        )
+                    }
+                    if let openPeriod = projection.protectedOpenPeriod {
+                        tomorrowMapRow(
+                            title: "Protected open period",
+                            value: localInterval(
+                                from: openPeriod.startsAt,
+                                to: openPeriod.endsAt,
+                                timeZoneID: projection.timeZoneID
+                            ),
+                            systemImage: "leaf"
+                        )
+                    }
+                    if projection.isIntentionallyOpen {
+                        Label(
+                            "Known Calendar context leaves tomorrow open; Odyssey will not "
+                                + "fill it automatically.",
+                            systemImage: "wind"
+                        )
+                        .font(.subheadline)
+                        .foregroundStyle(.green)
+                    }
+
+                    if !projection.transitions.isEmpty {
+                        Divider()
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Known transitions")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                            ForEach(projection.transitions, id: \.identifier) { transition in
+                                HStack(alignment: .firstTextBaseline) {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(transition.title ?? "Calendar commitment")
+                                            .lineLimit(2)
+                                        if transition.isTentative {
+                                            Text("Tentative")
+                                                .font(.caption2)
+                                                .foregroundStyle(.secondary)
+                                        }
+                                    }
+                                    Spacer()
+                                    Text(
+                                        transition.isAllDay
+                                            ? "All day"
+                                            : localTime(
+                                                transition.startsAt,
+                                                timeZoneID: projection.timeZoneID
+                                            )
+                                    )
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                    }
+
+                    if let thread = projection.currentSeasonThread {
+                        Divider()
+                        tomorrowMapRow(
+                            title: "Season thread",
+                            value: thread,
+                            systemImage: "point.topleft.down.to.point.bottomright.curvepath"
+                        )
+                    }
+                }
+            }
+        } label: {
+            HStack {
+                Label("Tomorrow Map", systemImage: "map")
+                Spacer()
+                Text(localDate(projection.localDay))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .font(.headline)
+        }
+    }
+
+    private func tomorrowMapRow(
+        title: String,
+        value: String,
+        systemImage: String
+    ) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: systemImage)
+                .frame(width: 20)
+                .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Text(value)
+                    .font(.subheadline)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var operationalStatus: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Button("Log Food", systemImage: "fork.knife", action: openFood)
+                    .buttonStyle(.borderedProminent)
+                Button("Capture", systemImage: "square.and.pencil", action: openCapture)
+                    .buttonStyle(.bordered)
+            }
+
+            if let message = model.nowExperienceMessage {
+                Label(message, systemImage: "info.circle")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+
+            if let diagnostics = model.state.diagnostics,
+               diagnostics.operationsQueued > 0
+            {
+                Label(
+                    "\(diagnostics.operationsQueued) local change"
+                        + "\(diagnostics.operationsQueued == 1 ? "" : "s") safely queued",
+                    systemImage: "arrow.triangle.2.circlepath"
+                )
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .accessibilityLabel(
+                    "\(diagnostics.operationsQueued) changes safely queued for sync"
+                )
+            }
+
+            if case let .saved(_, capturedAt) = model.state.capturePhase {
+                Label(
+                    "Saved locally \(capturedAt.formatted(date: .omitted, time: .shortened))",
+                    systemImage: "checkmark.circle.fill"
+                )
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            }
+
+            if let measurement = model.foodWarmPathMeasurement {
+                Button {
+                    model.dismissFoodWarmPathMeasurement()
+                } label: {
+                    Label(
+                        foodWarmPathStatus(measurement),
+                        systemImage: measurement.meetsTarget
+                            ? "timer.circle.fill"
+                            : "timer.circle"
+                    )
+                    .font(.subheadline)
+                    .foregroundStyle(
+                        measurement.meetsTarget ? Color.green : Color.secondary
+                    )
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint("Dismisses this food quick-log timing result.")
+            }
+
+            if let message = model.extensionCommandMessage {
+                Button {
+                    model.dismissExtensionCommandMessage()
+                } label: {
+                    Label(message, systemImage: "tray.and.arrow.down")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint("Dismisses this extension command status.")
+            }
+        }
+    }
+
+    private func respondToReentry(_ option: ReentryOption) {
+        guard !isRespondingToReentry else { return }
+        isRespondingToReentry = true
+        Task {
+            let succeeded = await model.respondToReentry(option)
+            isRespondingToReentry = false
+            if succeeded, option == .reviseSeason {
+                openWorkshop()
+            }
+        }
     }
 
     private func foodWarmPathStatus(_ measurement: WarmPathMeasurement) -> String {
@@ -1130,8 +1492,186 @@ private struct NowView: View {
             "Watch"
         }
     }
+
+    private func localDate(_ value: LocalDate) -> String {
+        String(format: "%04d-%02d-%02d", value.year, value.month, value.day)
+    }
+
+    private func localTime(_ value: Date, timeZoneID: String) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = .autoupdatingCurrent
+        formatter.timeZone = TimeZone(identifier: timeZoneID)
+        formatter.dateStyle = .none
+        formatter.timeStyle = .short
+        return formatter.string(from: value)
+    }
+
+    private func localInterval(
+        from start: Date,
+        to end: Date,
+        timeZoneID: String
+    ) -> String {
+        "\(localTime(start, timeZoneID: timeZoneID))–"
+            + localTime(end, timeZoneID: timeZoneID)
+    }
 }
 
+private struct NowStateCorrectionSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var state: NowState
+    @State private var reason: NowStateCorrectionReason = .situationChanged
+    @State private var isSaving = false
+
+    let save: (NowState, NowStateCorrectionReason) async -> Void
+
+    init(
+        initialState: NowState,
+        save: @escaping (NowState, NowStateCorrectionReason) async -> Void
+    ) {
+        _state = State(initialValue: initialState)
+        self.save = save
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("State") {
+                    Picker("Current state", selection: $state) {
+                        ForEach(NowState.allCases, id: \.self) { state in
+                            Label(state.ownerTitle, systemImage: state.systemImage)
+                                .tag(state)
+                        }
+                    }
+                    .disabled(reason == .ownerRequestedQuiet)
+                }
+
+                Section("Reason") {
+                    Picker("Why is the projection wrong?", selection: $reason) {
+                        ForEach(NowStateCorrectionReason.allCases, id: \.self) { reason in
+                            Text(reason.ownerTitle).tag(reason)
+                        }
+                    }
+                    .onChange(of: reason) { _, value in
+                        if value == .ownerRequestedQuiet {
+                            state = .clear
+                        }
+                    }
+                }
+
+                Section {
+                    Text(
+                        "This explicit local correction expires after 24 hours. It does not "
+                            + "rewrite Calendar, Health, Season, or other source history."
+                    )
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                }
+            }
+            .navigationTitle("Correct Current State")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                        .disabled(isSaving)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Apply") {
+                        isSaving = true
+                        Task {
+                            await save(state, reason)
+                            isSaving = false
+                            dismiss()
+                        }
+                    }
+                    .disabled(isSaving)
+                }
+            }
+        }
+    }
+}
+
+private extension NowState {
+    var ownerTitle: String {
+        switch self {
+        case .clear: "Clear"
+        case .choice: "Choice"
+        case .preparation: "Preparation"
+        case .recovery: "Recovery"
+        case .open: "Open"
+        case .disrupted: "Disrupted"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .clear: "water.waves"
+        case .choice: "arrow.triangle.branch"
+        case .preparation: "checklist"
+        case .recovery: "heart.text.square"
+        case .open: "wind"
+        case .disrupted: "exclamationmark.triangle"
+        }
+    }
+
+    var tint: Color {
+        switch self {
+        case .clear: .teal
+        case .choice: .orange
+        case .preparation: .blue
+        case .recovery: .mint
+        case .open: .green
+        case .disrupted: .red
+        }
+    }
+}
+
+private extension NowStateCorrectionReason {
+    var ownerTitle: String {
+        switch self {
+        case .situationChanged: "Situation changed"
+        case .capacityChanged: "Capacity changed"
+        case .planChanged: "Plan changed"
+        case .ownerRequestedQuiet: "I want quiet"
+        case .other: "Other"
+        }
+    }
+}
+
+private extension CurrentContextSource {
+    var ownerTitle: String {
+        switch self {
+        case .season: "Season"
+        case .calendar: "Calendar"
+        case .health: "Health"
+        case .weather: "Weather"
+        case .location: "Location"
+        }
+    }
+}
+
+private extension CurrentContextSourceState {
+    var ownerTitle: String {
+        switch self {
+        case .fresh: "Fresh"
+        case .stale: "Stale"
+        case .missing: "Not connected"
+        case .denied: "Denied"
+        case .unavailable: "Unavailable"
+        }
+    }
+}
+
+private extension TomorrowCalendarState {
+    var ownerExplanation: String {
+        switch self {
+        case .fresh: "Calendar context is fresh."
+        case .stale: "The Tomorrow Map uses stale local Calendar context."
+        case .missing: "No local Calendar context is available."
+        case .denied: "Calendar access is denied; no open day is inferred."
+        case .unavailable: "Calendar context is unavailable on this device."
+        }
+    }
+}
 private enum CaptureInputMode: String, CaseIterable, Identifiable {
     case text
     case voice
