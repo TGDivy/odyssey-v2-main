@@ -186,6 +186,18 @@ app-refresh imports are composed; HealthKit observer/background-delivery setup,
 Xcode type-checking, and physical-device proof remain open. See
 [`docs/architecture/apple-capabilities.md`](docs/architecture/apple-capabilities.md).
 
+The EventKit calendar vertical slice mirrors a bounded local window from 14 days
+before through 180 days after refresh. Reading requires explicit full calendar
+access; write-only access is reported as partial and never treated as readable.
+Each local event retains opaque EventKit references, calendar/source metadata,
+last-modified source version, confirmed/tentative/canceled state, availability,
+recurrence presence, and timed or exclusive-end all-day zone semantics. Snapshot
+reconciliation atomically inserts, updates, and removes only the local mirror;
+it never moves or deletes external events and never enters the sync outbox.
+Denial preserves the prior mirror, while explicit local revocation removes the
+mirror and refresh marker without changing EventKit permission or source data.
+See [`docs/architecture/calendar-context.md`](docs/architecture/calendar-context.md).
+
 The portable `OdysseyExtensionBridge` now supplies the protected atomic handoff
 needed by App Intents, controls, widgets, and same-device extensions. It queues
 bounded text or opaque-ID food commands as one Data-Protected, backup-excluded

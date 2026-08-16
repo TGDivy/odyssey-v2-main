@@ -24,7 +24,7 @@ it does not prove an owner deployment:
   environment.
 - No Apple-platform package build, Xcode archive, signing operation, TestFlight
   upload, or physical-device test has been performed. The portable Swift
-  package has been compiled and its 149 deterministic tests have run under the
+  package has been compiled and its 155 deterministic tests have run under the
   official Linux Swift 6.1 toolchain; that is not Apple-platform validation.
 - The cloud model remains `deterministic`. Adding a model-provider key alone
   enables nothing; no evaluated cloud-model adapter is implemented.
@@ -69,6 +69,13 @@ it does not prove an owner deployment:
   rejection, contribution, import, and local-removal controls. The guarded
   HealthKit and SwiftUI sources are parser-validated only; no Apple SDK build,
   authorization, observer delivery, or physical sample behavior is claimed.
+  A guarded EventKit reader and durable mutable calendar coordinator also exist.
+  They require explicit full access, treat write-only as unreadable, mirror only
+  a bounded local window, retain source/version/cancellation/timezone semantics,
+  reconcile source deletion without modifying external events, and support
+  local-only revocation. EventKit and Calendar SwiftUI paths are parser-validated
+  only; no Apple SDK build, account, permission, recurrence, cancellation, or
+  travel-timezone behavior is claimed.
   A portable protected App Group command queue also exists for bounded text and
   opaque-preset food handoff with idempotency and crash recovery. The text App
   Intent queues without opening Odyssey, the food intent opens only the private
@@ -1233,9 +1240,28 @@ Do not enter real owner data. Then execute this staged flow:
    Apple Health samples and system permission remain unchanged. Re-import only
    if the test protocol requires it. This is local mirror revocation, not a
    HealthKit permission reset.
-19. Background the app and retain the app-refresh scheduling/debug evidence. Do
+19. In **Workshop → Calendar Context**, confirm status inspection causes no
+   permission prompt and shows no event titles. Choose **Request Full Calendar
+   Access** only from this explicit action. On a disposable install, deny first:
+   Capture, Food, Workshop, and any prior local mirror must remain usable. If
+   only write-only permission exists, Odyssey must report partial access and
+   must not query events.
+20. Grant full access and create only synthetic timed, all-day, recurring,
+   tentative, and canceled events across two synthetic calendars. Include one
+   event whose named zone differs from the device zone. Choose **Refresh Local
+   Calendar Mirror** and verify the 14-day-back/180-day-forward window, local
+   count, last refresh, newest source version, lag, and rejected count. Edit and
+   cancel an event, delete another at the source, then refresh: changed records
+   must update, cancellation must remain explicit while returned by EventKit,
+   and source deletion must remove only the local observation. Confirm all-day
+   exclusive-end dates and timed UTC offsets survive a force-quit/relaunch.
+21. Choose **Remove Local Calendar Mirror** and accept the warning. Confirm local
+   records and the refresh marker disappear while source events, calendar
+   membership, and system permission remain unchanged. Re-import only if the
+   test protocol requires it. Never use a real work, family, or travel calendar.
+22. Background the app and retain the app-refresh scheduling/debug evidence. Do
    not claim timing guarantees; the OS may defer or cancel the task.
-20. On a paired disposable Watch, open Food on iPhone to publish synthetic ranked
+23. On a paired disposable Watch, open Food on iPhone to publish synthetic ranked
    presets. Disconnect phone reachability, save one synthetic Watch note and one
    synthetic food command, and confirm both report pending without waiting.
    Force-quit/relaunch Watch and confirm pending commands survive. Reconnect;
@@ -1301,7 +1327,9 @@ the backend owner runbook until a device-registry UI is implemented.
   authorized exact energy/protein/caffeine samples replace idempotently while
   alcohol and foreign samples remain untouched; permitted Health context uses
   anchored UUID deduplication/deletion, reports privacy-safe health, and local
-  mirror removal leaves Apple Health unchanged; authenticated push/pull clears
+  mirror removal leaves Apple Health unchanged; full-access calendar refresh
+  preserves mutable source/version/cancellation/timezone behavior and local
+  removal leaves source calendars unchanged; authenticated push/pull clears
   the queue; cursors advance; integrity/rebuild succeed; app refresh is observed
   as opportunistic rather than exact; all forty predeclared ranked-food trials
   meet the strict warm-path rule and all four negative controls stay unmeasured.
@@ -1333,6 +1361,11 @@ the backend owner runbook until a device-registry UI is implemented.
   deletion is ignored, imported records enter the sync queue, or local mirror
   removal changes Apple Health/system permission, stop and retain only
   payload-free counts and timestamps.
+- If calendar status inspection prompts, write-only access is used to read,
+  denial erases prior context, an unchanged refresh duplicates records, a source
+  edit/cancellation/deletion is missed, all-day or zone semantics drift, any
+  mirrored event enters sync, or local removal changes EventKit, stop and retain
+  only synthetic counts, opaque identifiers, and timestamps.
 - A timing miss, missing result, wrong source, duplicate occurrence, or result
   after a negative control is a failed warm-path protocol. Preserve the full
   predeclared table, investigate on the same build, and rerun a newly declared

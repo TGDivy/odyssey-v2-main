@@ -9,7 +9,7 @@ permission to use the corresponding data or perform an external action.
 | App Groups | iOS, Watch, widgets, intents, share, Mac | Register one group per environment | Store only extension-safe caches and queued commands; only the main app writes SQLite | Direct in-app capture remains available; unavailable extension handoff is reported |
 | Sign in with Apple | iOS | Enable on the main App ID; use that bundle ID as the backend audience | Exchange nonce-bound Apple identity tokens only | No cloud sync; local capture remains available |
 | HealthKit | iOS, Watch | Enable HealthKit on both identifiers | Ask by data type at the moment of value; anchored reads and Odyssey-owned writes stay separate | Existing local context, manual context, and all non-Health workflows remain available |
-| EventKit | iOS | Add calendar usage descriptions | Read and write permissions are separate | User-entered commitments and imported files |
+| EventKit | iOS | Add calendar usage descriptions | Full access is required for the bounded read mirror; write-only is never treated as readable | Prior local mirror, user-entered commitments, and imported files remain available |
 | Notifications/APNs | iOS | Enable push and upload APNs signing key to backend secret store | Visible delivery remains budgeted and optional | In-app, widget, and local pre-scheduled surfaces |
 | Background tasks | iOS | Register refresh and maintenance identifiers | Opportunistic only; never a deadline clock | Foreground reconciliation and server reevaluation |
 | Significant location | iOS | Enable location background mode only after owner review | Broad, sparse context; no continuous precise history | Calendar/timezone/manual place context |
@@ -58,6 +58,10 @@ samples and system permission untouched. Foreground launch, owner refresh, and
 opportunistic app refresh invoke the same coordinator. HealthKit observer-query
 registration/background delivery, Xcode compilation, and physical device
 authorization/deduplication/deletion evidence remain owner work.
+
+The EventKit read path and its local-only bounded reconciliation are specified in
+`docs/architecture/calendar-context.md`. It is independent from any future
+write-only event-creation flow.
 
 `apple/Config/*.xcconfig` intentionally contains placeholder bundle IDs and
 domains. Exact account registration and replacement steps belong in
