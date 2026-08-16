@@ -4,6 +4,7 @@ import OdysseyCalendar
 import OdysseyData
 import OdysseyDomain
 import OdysseyHealth
+import OdysseyLocation
 import OdysseySync
 import OdysseyWeather
 
@@ -194,6 +195,7 @@ public struct NativeLocalServices: Sendable {
     public let foodOccurrenceService: FoodOccurrenceService
     public let calendarMirrorCoordinator: CalendarMirrorCoordinator
     public let healthImportCoordinator: HealthImportCoordinator
+    public let locationContextCoordinator: LocationContextCoordinator
     public let weatherMirrorCoordinator: WeatherMirrorCoordinator
     public let lifeModelWorkshopService: LifeModelWorkshopService
     public let attachmentRecoveryState: LocalCaptureAttachmentRecoveryState
@@ -212,6 +214,7 @@ public struct NativeLocalServices: Sendable {
         vault: any CredentialVault,
         healthImporter: (any IncrementalHealthImporting)? = nil,
         calendarAdapter: (any CalendarContextProviding)? = nil,
+        locationAdapter: (any LocationContextProviding)? = nil,
         weatherAdapter: (any WeatherContextProviding)? = nil
     ) async throws -> Self {
         let deviceID = try await vault.loadOrCreateDeviceID()
@@ -272,6 +275,16 @@ public struct NativeLocalServices: Sendable {
             adapter: resolvedCalendarAdapter,
             store: ledgerStore
         )
+        let resolvedLocationAdapter: any LocationContextProviding
+        if let locationAdapter {
+            resolvedLocationAdapter = locationAdapter
+        } else {
+            resolvedLocationAdapter = SystemLocationAdapter.make()
+        }
+        let locationContextCoordinator = LocationContextCoordinator(
+            adapter: resolvedLocationAdapter,
+            store: ledgerStore
+        )
         let resolvedWeatherAdapter: any WeatherContextProviding
         if let weatherAdapter {
             resolvedWeatherAdapter = weatherAdapter
@@ -300,6 +313,7 @@ public struct NativeLocalServices: Sendable {
             foodOccurrenceService: foodOccurrenceService,
             calendarMirrorCoordinator: calendarMirrorCoordinator,
             healthImportCoordinator: healthImportCoordinator,
+            locationContextCoordinator: locationContextCoordinator,
             weatherMirrorCoordinator: weatherMirrorCoordinator,
             lifeModelWorkshopService: lifeModelWorkshopService,
             attachmentRecoveryState: await attachmentRecoveryState(
