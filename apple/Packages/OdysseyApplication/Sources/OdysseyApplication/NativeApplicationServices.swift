@@ -4,6 +4,7 @@ import OdysseyCalendar
 import OdysseyData
 import OdysseyDomain
 import OdysseyHealth
+import OdysseyIntelligence
 import OdysseyLocation
 import OdysseySync
 import OdysseyWeather
@@ -199,6 +200,7 @@ public struct NativeLocalServices: Sendable {
     public let weatherMirrorCoordinator: WeatherMirrorCoordinator
     public let foregroundContextRefreshCoordinator: ForegroundContextRefreshCoordinator
     public let lifeModelWorkshopService: LifeModelWorkshopService
+    public let nowExperienceService: NowExperienceService
     public let attachmentRecoveryState: LocalCaptureAttachmentRecoveryState
 
     public static func bootstrap(
@@ -305,6 +307,7 @@ public struct NativeLocalServices: Sendable {
             deviceID: deviceID,
             ownerActorID: configuration.ownerActorID
         )
+        let nowExperienceService = NowExperienceService(store: ledgerStore)
         return Self(
             credentialVault: vault,
             deviceID: deviceID,
@@ -322,6 +325,7 @@ public struct NativeLocalServices: Sendable {
             weatherMirrorCoordinator: weatherMirrorCoordinator,
             foregroundContextRefreshCoordinator: foregroundContextRefreshCoordinator,
             lifeModelWorkshopService: lifeModelWorkshopService,
+            nowExperienceService: nowExperienceService,
             attachmentRecoveryState: await attachmentRecoveryState(
                 store: captureAttachmentStore,
                 ledgerStore: ledgerStore
