@@ -137,7 +137,12 @@ temporary storage, foreground lifecycle stopping, and stale permission/delegate
 callback guards before routing Save through `LocalMediaCaptureService`.
 Permission denial offers Settings without disabling text capture, and the sheet
 discloses that this audio is not transcribed, uploaded, or remotely restorable.
-Photo/file pickers and playback are not wired yet. See
+`LocalCaptureImportBuffer` now supplies the safe prerequisite for ephemeral
+photo/document-provider URLs: it obtains security-scoped access only for a
+bounded streaming copy, uses opaque names and owner-only permissions, applies
+complete Data Protection, excludes the root from backup, and removes known
+uncommitted leftovers during native bootstrap. Photo/file picker UI and playback
+are not wired yet. See
 [`docs/architecture/local-capture-attachments.md`](../docs/architecture/local-capture-attachments.md).
 
 `NativeLocalServices` opens the stable Keychain device identity, protected
@@ -168,7 +173,7 @@ swift test --package-path apple
 ../tools/apple/generate-project.sh
 ```
 
-The portable package currently reports 96 tests passing under the official
+The portable package currently reports 99 tests passing under the official
 Swift 6.1 release toolchain on Linux. That result does not type-check SwiftUI or
 replace the required Xcode, simulator, accessibility, signing, and device runs.
 

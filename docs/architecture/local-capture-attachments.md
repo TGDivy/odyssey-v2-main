@@ -111,6 +111,33 @@ AVFoundation/SwiftUI or prove microphone prompts, audio encoding, background
 transitions, Data Protection while locked, accessibility, or physical-device
 behavior; those remain owner-only Xcode and device checks.
 
+## Ephemeral picker handoff
+
+Photo and document providers may expose a selected file URL only for the
+duration of their callback. `LocalCaptureImportBuffer` provides the narrow
+handoff needed before picker UI can safely use those URLs. Native bootstrap owns
+one versioned buffer under Application Support and removes all prior entries
+before exposing local services, because these temporary copies have not entered
+the ledger or durable attachment store and therefore have no ambiguous owner
+history to preserve.
+
+Preparing an import obtains security-scoped access only for the copy where the
+platform supplies it, rejects empty, oversized, non-file, non-regular, and
+symbolic-link sources, and streams at most 128 MiB in 64 KiB chunks. It writes to
+an opaque UUIDv7 filename without retaining the provider path or source name.
+The root uses `0700`, each file uses `0600`, Apple mobile targets require
+complete Data Protection, and the root is excluded from backup. A cancelled or
+replaced selection can be discarded by its exact typed handle without touching
+the source file.
+
+This buffer is deliberately not a capture or attachment manifest. A future
+picker surface must still require an explicit Save, copy the prepared file
+through `LocalMediaCaptureService`, and discard the temporary handle only after
+that durable handoff succeeds. Portable tests prove the bounded copy,
+permissions, opaque naming, unsafe-source rejection, exact discard, and
+bootstrap cleanup. PhotosUI, document-provider callback behavior, and Apple Data
+Protection remain unproved until Xcode/device validation.
+
 ## Protection boundary
 
 Directories use owner-only `0700` permissions and content/manifests use `0600`.
@@ -132,6 +159,7 @@ enabled.
 The default object limit is 128 MiB. The SHA-256 utility supports incremental
 updates and bounded file reads, with NIST known-answer and chunk-boundary tests.
 The protected object and durable media-capture coordinator are implemented.
-The guarded iPhone AVFoundation recorder is source-implemented. Picker imports,
+The guarded iPhone AVFoundation recorder is source-implemented, and the
+protected ephemeral import buffer is portable-tested. Photo/file chooser UI,
 playback, repair UI, and the attachment lifecycle/tombstone flow follow in
 separate Milestone 1.2 slices.

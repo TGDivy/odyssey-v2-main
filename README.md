@@ -110,7 +110,11 @@ AAC audio for at most five minutes, stops when the app leaves the foreground,
 and hands a saved recording to that durable coordinator. Permission denial
 leaves text capture available and offers a route to Settings. The UI explicitly
 states that audio is not transcribed, uploaded, or remotely restorable. Picker,
-playback, Xcode, accessibility, and physical-device validation follow. See
+playback, Xcode, accessibility, and physical-device validation follow. A new
+native import buffer already provides the prerequisite for picker URLs: it
+streams only the selected file into opaque, owner-only, backup-excluded
+temporary storage with the same 128 MiB limit, and bootstrap deletes any known
+uncommitted leftovers. The actual photo/file chooser follows separately. See
 [`docs/architecture/local-capture-attachments.md`](docs/architecture/local-capture-attachments.md).
 
 ## Accepted orientation state

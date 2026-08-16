@@ -91,6 +91,13 @@ public struct NativeLocalConfiguration: Sendable {
             .appendingPathComponent("v1", isDirectory: true)
     }
 
+    public var captureImportDirectory: URL {
+        applicationSupportDirectory
+            .appendingPathComponent("CaptureImports", isDirectory: true)
+            .appendingPathComponent("Temporary", isDirectory: true)
+            .appendingPathComponent("v1", isDirectory: true)
+    }
+
     public var keychainConfiguration: KeychainCredentialConfiguration {
         KeychainCredentialConfiguration(
             service: "\(applicationIdentifier).credentials",
@@ -177,6 +184,7 @@ public struct NativeLocalServices: Sendable {
     public let ledgerStore: SQLiteLedgerStore
     public let captureService: ManualCaptureService
     public let captureAttachmentStore: LocalCaptureAttachmentStore
+    public let captureImportBuffer: LocalCaptureImportBuffer
     public let mediaCaptureService: LocalMediaCaptureService
     public let captureInterpretationService: CaptureInterpretationService
     public let lifeModelWorkshopService: LifeModelWorkshopService
@@ -213,6 +221,11 @@ public struct NativeLocalServices: Sendable {
                 rootDirectory: configuration.attachmentDirectory
             )
         )
+        let captureImportBuffer = try LocalCaptureImportBuffer(
+            configuration: LocalCaptureImportBufferConfiguration(
+                rootDirectory: configuration.captureImportDirectory
+            )
+        )
         let mediaCaptureService = LocalMediaCaptureService(
             attachmentStore: captureAttachmentStore,
             captureService: captureService
@@ -231,6 +244,7 @@ public struct NativeLocalServices: Sendable {
             ledgerStore: ledgerStore,
             captureService: captureService,
             captureAttachmentStore: captureAttachmentStore,
+            captureImportBuffer: captureImportBuffer,
             mediaCaptureService: mediaCaptureService,
             captureInterpretationService: captureInterpretationService,
             lifeModelWorkshopService: lifeModelWorkshopService,
