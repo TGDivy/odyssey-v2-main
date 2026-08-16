@@ -16,10 +16,12 @@ push results and pull pages transactionally, reconciles same-device optimistic
 state, and records other-device changes in both the ledger and projection
 history. Schema v3 adds a dedicated immutable owner-acceptance command queue,
 separate delivery state, and immutable cached Charter/life-stage/season
-receipts; these commands never enter generic document sync. Export format v3
-includes sync receipts, structured operation results, acceptance attempts, and
-cached life-model history. The checked-in `Package.resolved` makes dependency
-resolution reproducible.
+receipts; these commands never enter generic document sync. Schema v4 adds
+hash-verified local-only integration mirrors and cursors. Schema v5 adds bounded
+hash-verified local application state for Now visits and corrections. Export
+format v3 includes sync receipts, structured operation results, acceptance
+attempts, and cached life-model history. The checked-in `Package.resolved`
+makes dependency resolution reproducible.
 
 `OdysseySync` now includes backend-shaped wire contracts and an actor-isolated
 `URLSessionSyncTransport`. It obtains a bearer token per request, refuses plain
@@ -69,6 +71,22 @@ first-class Plain Language presentation that lists the complete projection;
 visual limits never hide policy from the alternative. Drafts and queued
 proposals cannot appear as current orientation. See
 [`docs/architecture/season-map-prototype.md`](../docs/architecture/season-map-prototype.md).
+
+The native Now runtime deterministically composes accepted Season, Calendar,
+Health, Weather, and broad Location state into the priority order Disrupted,
+Recovery, Preparation, Choice, Open, then Clear. Missing context remains
+distinct from intentional silence. The owner can apply a reason-coded 24-hour
+state correction without rewriting source records. A named-zone Tomorrow
+projector bounds the surface to three transitions, one pressure point and
+preparation action, and a protected known-open period of at least 90 minutes.
+After three days away, a privacy-bounded re-entry projector returns at most
+three current material changes and one generic question with Continue, Revise
+Season, and Stay Quiet actions. The app refreshes these projections after local
+mutations and lifecycle reconciliation while discarding stale asynchronous
+results. It publishes a privacy-sensitive, at-most-16-KiB App Group snapshot
+for a real current/stale/unavailable widget; no model or network dependency is
+on this path. See
+[`docs/architecture/now-tomorrow-context.md`](../docs/architecture/now-tomorrow-context.md).
 
 `OdysseyAuth` defines the closed challenge, exchange, refresh, recovery, and
 device lifecycle values. Its actor-isolated access-token session keeps access
@@ -200,7 +218,9 @@ with a one-photo `PHPickerViewController` and a one-file system importer, exact
 request-generation guards, explicit Save, and cancel/replacement cleanup. It
 declares no broad Photo Library usage permission and performs no preview,
 content sniffing, interpretation-byte access, upload, or remote restore.
-Playback remains unwired. See
+Archive voice playback verifies the opaque attachment through the local store
+before opening it with a spoken-audio session, stops outside the foreground or
+when the detail closes, and never transcribes, interprets, or uploads it. See
 [`docs/architecture/local-capture-attachments.md`](../docs/architecture/local-capture-attachments.md).
 
 `NativeLocalServices` opens the stable Keychain device identity, protected
@@ -231,7 +251,7 @@ swift test --package-path apple
 ../tools/apple/generate-project.sh
 ```
 
-The portable package currently reports 133 tests passing under the official
+The portable package currently reports 200 tests passing under the official
 Swift 6.1 release toolchain on Linux. That result does not type-check SwiftUI or
 replace the required Xcode, simulator, accessibility, signing, and device runs.
 

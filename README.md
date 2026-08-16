@@ -252,6 +252,28 @@ data through SQL or treat model output as accepted. See
 and
 [`docs/architecture/season-map-prototype.md`](docs/architecture/season-map-prototype.md).
 
+## Native Now and Tomorrow
+
+The iPhone Now surface is a bounded local projection rather than a feed. Its
+deterministic priority is Disrupted, Recovery, Preparation, Choice, Open, then
+Clear. It composes inspectable accepted Season, Calendar, Health, Weather, and
+broad Location state without requiring a network or model response, keeps
+missing context distinct from intentional silence, and supports an explicit
+reason-coded correction that expires after 24 hours. The current composition
+does not infer decisions or recovery needs from captures or raw Health values.
+
+The same runtime generates a named-zone one-screen Tomorrow Map with at most
+three transitions, one pressure point and preparation action, and a protected
+known-open period of at least 90 minutes. After a natural absence of at least
+three days, it can show at most three privacy-bounded material changes, one
+generic question, and Continue, Revise Season, or Stay Quiet without backlog or
+absence penalties. Schema v5 stores only bounded, hash-verified local visit and
+correction state. A privacy-sensitive App Group snapshot gives the widget
+current, stale, and unavailable states without private titles, payloads,
+coordinates, health values, or source identifiers. Widget timelines and
+background refresh remain best-effort operating-system hints. See
+[`docs/architecture/now-tomorrow-context.md`](docs/architecture/now-tomorrow-context.md).
+
 ## Safety invariants
 
 - Local capture and core state never depend on network or model availability.

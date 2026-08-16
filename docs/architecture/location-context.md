@@ -39,8 +39,9 @@ diagnostics while preserving the prior broad context.
 
 The cursor contains only last attempt, last successful refresh, outcome, and
 rejected count. It never contains coordinates, accuracy, or the newly requested
-place. The schema-v4 integration store hashes the document, and Location never
-creates a ledger event or sync-outbox operation.
+place. The current schema-v5 store hashes the document; schema v4 introduced
+the integration-mirror tables. Location never creates a ledger event or
+sync-outbox operation.
 
 Explicit **Remove Local Broad-Place Context** stops any pending request and
 clears the local record and cursor. It does not change system permission. A

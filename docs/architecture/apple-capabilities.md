@@ -51,8 +51,9 @@ type was granted. Query authorization errors become explicit denied outcomes.
 
 `HealthImportCoordinator` loads the per-type anchor before every query, converts
 valid samples to deterministic sorted-key JSON, and atomically applies inserted
-records, source deletions, and the next anchor to the schema-v4 local integration
-mirror. The persistence layer computes and verifies each document SHA-256.
+records, source deletions, and the next anchor to the current schema-v5 local
+store. Schema v4 introduced these integration-mirror tables; the persistence
+layer computes and verifies each document SHA-256.
 HealthKit UUIDs are immutable source identities: exact replay is counted as a
 duplicate; a conflicting document is rejected rather than overwriting source
 history. The next anchor still commits after a conflict so a poison page cannot

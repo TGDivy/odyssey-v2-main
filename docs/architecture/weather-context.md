@@ -63,11 +63,11 @@ never acquire Location or refresh Weather.
 6. on unavailable/rate-limited results, update only bounded attempt diagnostics
    while preserving the previous record.
 
-The schema-v4 SQLite integration store computes and verifies the document
-SHA-256. Weather records never create ledger events or sync-outbox operations.
-Explicit **Remove Local Weather Mirror** clears the local document and cursor;
-it does not modify WeatherKit, Apple account state, source data, or location
-permission.
+The current schema-v5 SQLite store computes and verifies the document SHA-256;
+schema v4 introduced the integration-mirror tables. Weather records never
+create ledger events or sync-outbox operations. Explicit **Remove Local Weather
+Mirror** clears the local document and cursor; it does not modify WeatherKit,
+Apple account state, source data, or location permission.
 
 The cursor records only last attempt, last successful refresh, outcome,
 rate-limit state, and rejected count. It contains no coordinates or newly

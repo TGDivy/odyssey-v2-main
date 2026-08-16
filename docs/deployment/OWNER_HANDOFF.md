@@ -24,7 +24,7 @@ it does not prove an owner deployment:
   environment.
 - No Apple-platform package build, Xcode archive, signing operation, TestFlight
   upload, or physical-device test has been performed. The portable Swift
-  package has been compiled and its 175 deterministic tests have run under the
+  package has been compiled and its 200 deterministic tests have run under the
   official Linux Swift 6.1 toolchain; that is not Apple-platform validation.
 - The cloud model remains `deterministic`. Adding a model-provider key alone
   enables nothing; no evaluated cloud-model adapter is implemented.
@@ -107,6 +107,14 @@ it does not prove an owner deployment:
   locally, uses immediate/background WatchConnectivity with UUID receipts, and
   consumes an expiring four-preset iPhone snapshot. These sources are
   parser-validated only; no paired-device behavior may be claimed yet.
+  Milestone 1.4 also has a portable-tested six-state Now projection, explicit
+  missing-versus-intentional-silence semantics, bounded reason-coded correction,
+  named-zone Tomorrow Map, three-day guilt-free re-entry, schema-v5 durable local
+  application state, and a privacy-sensitive freshness-aware App Group widget
+  snapshot. The SwiftUI and WidgetKit sources are parser-validated only. No
+  accessibility, App Group entitlement, Data Protection, lock-screen redaction,
+  timeline scheduling, background timing, or physical-device behavior is
+  claimed.
   The device/refresh Keychain vault, in-memory access-token refresh session,
   native Apple ceremony, and auth HTTP exchange are implemented as package
   boundaries. Recovery UI, server-side device-revocation UI, and physical
@@ -1374,6 +1382,49 @@ Do not enter real owner data. Then execute this staged flow:
    Watch app, stale choices disable, and no complication/notification exposes
    them. Retain synthetic UUID/count/timing evidence only; an accepted Watch
    receipt is not proof of cloud sync or HealthKit completion.
+28. In Now, use **Correct State** with synthetic context to select each of Clear,
+   Open, Choice, Preparation, Recovery, and Disrupted. Verify every state has
+   distinct accessible text, the selected reason is visible, source records are
+   unchanged, relaunch preserves the correction, **Clear Correction** restores
+   the deterministic projection, and an untouched correction expires after 24
+   hours. Do not alter the database or device clock to manufacture expiry.
+29. Remove the local Calendar mirror and confirm Now labels context as missing or
+   unavailable rather than calling the day intentionally quiet or open. Import a
+   fresh synthetic Calendar with no busy event and confirm the projection can
+   distinguish known open time and intentional Clear from absent evidence. Deny
+   access on a disposable install and confirm prior context degrades without
+   becoming owner-requested silence. Choose **Stay Quiet** only as an explicit
+   owner action and verify that choice survives relaunch for its bounded period.
+30. Build tomorrow using only synthetic timed, all-day, canceled, free,
+   tentative, overlapping, cross-zone, and daylight-saving-boundary events.
+   Verify the Tomorrow Map shows at most three chronological transitions, at
+   most one inspectable pressure point and preparation action, and protects only
+   a known open period of at least 90 minutes. Stale context must be labeled
+   cached; missing, denied, or unavailable Calendar context must not claim an
+   open day.
+31. Complete a natural re-entry run: open Now once, leave the app unopened for at
+   least 72 hours without changing the device clock or local database, make only
+   purpose-built synthetic Calendar/Season changes during the absence, then
+   reopen. Confirm at most three payload-safe summaries, at most one generic
+   question, no accumulated backlog or absence penalty, and Continue, Revise
+   Season, and Stay Quiet. Confirm each response is durable before the card
+   disappears and that reopening without a material change does not fabricate a
+   new summary.
+32. With the signed App Group entitlement, add the Now widget after the app has
+   published a synthetic projection. Confirm it reads the shared snapshot,
+   renders current, stale, unavailable, and preview states distinctly, marks
+   projection content for system privacy redaction, and exposes only generic
+   Capture/Food actions. Inspect a stopped synthetic app container only for path,
+   byte count, protection class, mode, and JSON keys. The file at
+   `NowWidgetSnapshot/v1/current.json` must be at most 16 KiB and must contain no
+   Calendar/Season title, capture payload, health value, coordinate, or source
+   identifier.
+33. Create a synthetic next transition soon enough to observe freshness rollover,
+   then background and relaunch normally. Confirm a newer app publication
+   replaces the snapshot atomically and older asynchronous work cannot overwrite
+   a correction or re-entry response. Treat widget reload and app refresh as
+   best-effort: record requested and observed times, accept OS deferral or
+   coalescing, and make no exact scheduling or background-execution claim.
 
 **Warm-path food timing protocol**
 
@@ -1440,8 +1491,12 @@ the backend owner runbook until a device-registry UI is implemented.
   preserves each connector independently on failure, and leaves no coordinate
   or sync artifact; authenticated push/pull clears
   the queue; cursors advance; integrity/rebuild succeed; app refresh is observed
-  as opportunistic rather than exact; all forty predeclared ranked-food trials
-  meet the strict warm-path rule and all four negative controls stay unmeasured.
+  as opportunistic rather than exact; Now preserves all six bounded states and
+  missing-versus-intentional-silence semantics; corrections, Tomorrow Map, and
+  natural re-entry remain durable and bounded; the signed widget reads a
+  redacted freshness-aware App Group snapshot without private fields; all forty
+  predeclared ranked-food trials meet the strict warm-path rule and all four
+  negative controls stay unmeasured.
 - Still-unavailable evidence: uninstall/reinstall recovery, second-device
   convergence, server revocation from native UI, attachment transfer, and all
   unexecuted HealthKit/Watch/widget/background production behaviors.
@@ -1488,8 +1543,10 @@ the backend owner runbook until a device-registry UI is implemented.
 
 - Device model/OS and hashed UDID reference, build/archive hash, install result,
   launch log, entitlement/privacy-key check, capture-kind/count results,
-  payload-free temporary/durable path and voice-playback checks, future device
-  UUID/status, refresh test status, and the complete payload-free
+  payload-free temporary/durable path and voice-playback checks, six-state and
+  silence-boundary results, correction/re-entry timestamps, bounded Tomorrow
+  shape, widget freshness/redaction/App Group metadata, future device UUID/status,
+  refresh request/observation status, and the complete payload-free
   warm-path/negative-control table. No media, embedded metadata, filename,
   provider path, health data, token, Keychain item, or screenshot with private
   data.
