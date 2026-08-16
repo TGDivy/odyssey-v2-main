@@ -128,9 +128,26 @@ func clearStateDistinguishesIntentionalSilenceFromMissingContext() throws {
         signals: signals,
         hasEnoughContextForSilence: true
     ))
+    let quietCorrection = try NowStateCorrection(
+        state: .clear,
+        reason: .ownerRequestedQuiet,
+        createdAt: currentContextDate.addingTimeInterval(-60),
+        expiresAt: currentContextDate.addingTimeInterval(3_600)
+    )
+    let ownerQuiet = NowContextProjector().project(
+        try NowContextInput(
+            generatedAt: currentContextDate,
+            localDay: LocalDate(year: 2026, month: 8, day: 15),
+            timeZoneID: "UTC",
+            signals: signals
+        ),
+        correction: quietCorrection
+    )
 
     #expect(!empty.isIntentionallySilent)
     #expect(silent.isIntentionallySilent)
+    #expect(ownerQuiet.isIntentionallySilent)
+    #expect(ownerQuiet.summary == "You asked Odyssey to stay quiet for now.")
     #expect(empty.summary != silent.summary)
 }
 

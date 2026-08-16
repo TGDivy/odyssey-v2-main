@@ -8,6 +8,7 @@ public enum NowWidgetSnapshotStoreError: Error, Equatable, Sendable {
 }
 
 public final class NowWidgetSnapshotStore: @unchecked Sendable {
+    public static let widgetKind = "OdysseyNowWidget"
     public static let maximumPayloadBytes = 16 * 1_024
 
     private let fileManager: FileManager

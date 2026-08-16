@@ -245,6 +245,7 @@ public struct NowContextProjector: Sendable {
         let activeCorrection = correction.flatMap {
             $0.isActive(at: input.generatedAt) ? $0 : nil
         }
+        let ownerRequestedQuiet = activeCorrection?.reason == .ownerRequestedQuiet
         let state = activeCorrection?.state ?? inferredState
         return NowContextProjection(
             generatedAt: input.generatedAt,
@@ -254,27 +255,33 @@ public struct NowContextProjector: Sendable {
             state: state,
             summary: summary(
                 for: state,
-                hasEnoughContextForSilence: input.hasEnoughContextForSilence
+                hasEnoughContextForSilence: input.hasEnoughContextForSilence,
+                ownerRequestedQuiet: ownerRequestedQuiet
             ),
             currentThread: input.currentThread,
             nextTransition: input.nextTransition,
             sources: input.sources,
             correction: activeCorrection,
             isIntentionallySilent: state == .clear
-                && input.hasEnoughContextForSilence,
+                && (input.hasEnoughContextForSilence || ownerRequestedQuiet),
             hasEnoughContextForSilence: input.hasEnoughContextForSilence
         )
     }
 
     private func summary(
         for state: NowState,
-        hasEnoughContextForSilence: Bool
+        hasEnoughContextForSilence: Bool,
+        ownerRequestedQuiet: Bool
     ) -> String {
         switch state {
         case .clear:
-            hasEnoughContextForSilence
-                ? "Nothing requires attention. The known shape of the day is coherent."
-                : "No current attention claim is available from the context Odyssey can inspect."
+            if ownerRequestedQuiet {
+                "You asked Odyssey to stay quiet for now."
+            } else if hasEnoughContextForSilence {
+                "Nothing requires attention. The known shape of the day is coherent."
+            } else {
+                "No current attention claim is available from the context Odyssey can inspect."
+            }
         case .choice:
             "One live trade-off needs attention; the rest can stay quiet."
         case .preparation:

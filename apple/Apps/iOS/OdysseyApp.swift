@@ -18,7 +18,7 @@ struct OdysseyApp: App {
                         model.scheduleBackgroundRefresh()
                     } else if newPhase == .active {
                         Task {
-                            await model.processPendingExtensionCommands()
+                            await model.resumeForegroundExperience()
                         }
                     }
                 }

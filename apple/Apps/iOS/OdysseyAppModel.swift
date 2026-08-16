@@ -10,6 +10,7 @@ import OdysseyData
 import OdysseyDomain
 import OdysseyExtensionBridge
 import OdysseyHealth
+import OdysseyIntelligence
 import OdysseyIntegrations
 import OdysseyLocation
 import OdysseySync
@@ -17,6 +18,7 @@ import OdysseyTelemetry
 import OdysseyWatchConnectivity
 import OdysseyWeather
 import UIKit
+import WidgetKit
 
 private enum CaptureReviewApplicationError: Error, LocalizedError {
     case localDataUnavailable
@@ -44,6 +46,9 @@ final class OdysseyAppModel: ObservableObject {
     @Published private(set) var calendarContextState = CalendarContextIntegrationState()
     @Published private(set) var locationContextState = LocationContextIntegrationState()
     @Published private(set) var weatherContextState = WeatherContextIntegrationState()
+    @Published private(set) var nowContextProjection: NativeNowContextProjection?
+    @Published private(set) var reentrySurface: ReentrySurface?
+    @Published private(set) var nowExperienceMessage: String?
 
     private var localServices: NativeLocalServices?
     private var remoteServices: NativeRemoteServices?
@@ -52,6 +57,7 @@ final class OdysseyAppModel: ObservableObject {
     private var isDrainingExtensionCommands = false
     private var extensionCommandQueue: ExtensionCommandQueue?
     private var extensionCommandProcessor: ExtensionCommandProcessor?
+    private var nowWidgetSnapshotStore: NowWidgetSnapshotStore?
     private var watchCommandReceiver: PhoneWatchCommandReceiver?
     private let telemetryRecorder: any TelemetryRecording
 
@@ -138,10 +144,14 @@ final class OdysseyAppModel: ObservableObject {
         workshopDraftFactory = nil
         extensionCommandQueue = nil
         extensionCommandProcessor = nil
+        nowWidgetSnapshotStore = nil
         watchCommandReceiver = nil
         foodWarmPathMeasurement = nil
         extensionCommandMessage = nil
         extensionPresentationRequest = nil
+        nowContextProjection = nil
+        reentrySurface = nil
+        nowExperienceMessage = nil
         healthContextState = HealthContextIntegrationState()
         calendarContextState = CalendarContextIntegrationState()
         locationContextState = LocationContextIntegrationState()
@@ -164,7 +174,11 @@ final class OdysseyAppModel: ObservableObject {
                 foodOccurrenceService: local.foodOccurrenceService
             )
             do {
-                let queue = try makeExtensionCommandQueue()
+                let rootDirectory = try makeAppGroupRoot()
+                let queue = try ExtensionCommandQueue(rootDirectory: rootDirectory)
+                nowWidgetSnapshotStore = try NowWidgetSnapshotStore(
+                    rootDirectory: rootDirectory
+                )
                 extensionCommandQueue = queue
                 if let receiver = PhoneWatchCommandReceiver(commandQueue: queue) {
                     receiver.onCommandAccepted = { [weak self] in
@@ -176,6 +190,8 @@ final class OdysseyAppModel: ObservableObject {
             } catch {
                 extensionCommandMessage =
                     "Extension quick capture is unavailable until the App Group is configured."
+                nowExperienceMessage =
+                    "The Now widget cache is unavailable until the App Group is configured."
             }
             apply(.localReady)
             await refreshDiagnostics()
@@ -187,6 +203,7 @@ final class OdysseyAppModel: ObservableObject {
             await refreshLocationContextStatus()
             await refreshWeatherContextStatus()
             await drainExtensionCommands()
+            await refreshNowExperience(markSeen: true)
             if foodHealthAuthorization == .authorized {
                 Task { [weak self] in
                     await self?.reconcileFoodHealthWrites()
@@ -550,6 +567,7 @@ final class OdysseyAppModel: ObservableObject {
                 "The local Apple Health mirror could not be inspected safely."
             )
         }
+        await refreshNowExperience(markSeen: false)
     }
 
     func requestHealthContextAuthorization() async {
@@ -598,6 +616,7 @@ final class OdysseyAppModel: ObservableObject {
                 "Apple Health access could not be completed. No permission was assumed."
             )
         }
+        await refreshNowExperience(markSeen: false)
     }
 
     func importHealthContext() async {
@@ -626,6 +645,7 @@ final class OdysseyAppModel: ObservableObject {
                 "The local Apple Health mirror could not be removed safely."
             )
         }
+        await refreshNowExperience(markSeen: false)
     }
 
     func dismissHealthContextMessage() {
@@ -647,6 +667,7 @@ final class OdysseyAppModel: ObservableObject {
                 "The local calendar mirror could not be inspected safely."
             )
         }
+        await refreshNowExperience(markSeen: false)
     }
 
     func requestCalendarContextAuthorization() async {
@@ -696,6 +717,7 @@ final class OdysseyAppModel: ObservableObject {
                 "Calendar access could not be completed. No permission was assumed."
             )
         }
+        await refreshNowExperience(markSeen: false)
     }
 
     func refreshCalendarContext() async {
@@ -723,6 +745,7 @@ final class OdysseyAppModel: ObservableObject {
                 "The local calendar mirror could not be removed safely."
             )
         }
+        await refreshNowExperience(markSeen: false)
     }
 
     func dismissCalendarContextMessage() {
@@ -744,6 +767,7 @@ final class OdysseyAppModel: ObservableObject {
                 "The local broad-place context could not be inspected safely."
             )
         }
+        await refreshNowExperience(markSeen: false)
     }
 
     func requestLocationContextAuthorization() async {
@@ -794,6 +818,7 @@ final class OdysseyAppModel: ObservableObject {
                 "Location access changed, but its local status could not be inspected safely."
             )
         }
+        await refreshNowExperience(markSeen: false)
     }
 
     func refreshLocationContext() async {
@@ -839,6 +864,7 @@ final class OdysseyAppModel: ObservableObject {
                 "Broad-place context could not be refreshed. Prior local context remains intact."
             )
         }
+        await refreshNowExperience(markSeen: false)
     }
 
     func removeLocalLocationContext() async {
@@ -861,6 +887,7 @@ final class OdysseyAppModel: ObservableObject {
                 "The local broad-place context could not be removed safely."
             )
         }
+        await refreshNowExperience(markSeen: false)
     }
 
     func dismissLocationContextMessage() {
@@ -882,6 +909,7 @@ final class OdysseyAppModel: ObservableObject {
                 "The local weather mirror could not be inspected safely."
             )
         }
+        await refreshNowExperience(markSeen: false)
     }
 
     func removeLocalWeatherContext() async {
@@ -904,6 +932,7 @@ final class OdysseyAppModel: ObservableObject {
                 "The local weather mirror could not be removed safely."
             )
         }
+        await refreshNowExperience(markSeen: false)
     }
 
     func dismissWeatherContextMessage() {
@@ -918,9 +947,79 @@ final class OdysseyAppModel: ObservableObject {
         extensionPresentationRequest = nil
     }
 
+    func resumeForegroundExperience() async {
+        await processPendingExtensionCommands()
+        await refreshNowExperience(markSeen: true)
+    }
+
+    func refreshNowExperience() async {
+        await refreshNowExperience(markSeen: true)
+    }
+
+    func setNowStateCorrection(
+        state: NowState,
+        reason: NowStateCorrectionReason
+    ) async {
+        guard let service = localServices?.nowExperienceService else { return }
+        let createdAt = Date()
+        do {
+            let correction = try NowStateCorrection(
+                state: state,
+                reason: reason,
+                createdAt: createdAt,
+                expiresAt: createdAt.addingTimeInterval(24 * 60 * 60)
+            )
+            _ = try await service.setCorrection(correction)
+            await refreshNowExperience(markSeen: false)
+        } catch {
+            nowExperienceMessage =
+                "The manual state correction could not be saved to local state."
+        }
+    }
+
+    func clearNowStateCorrection() async {
+        guard let service = localServices?.nowExperienceService else { return }
+        do {
+            _ = try await service.clearCorrection()
+            await refreshNowExperience(markSeen: false)
+        } catch {
+            nowExperienceMessage =
+                "The manual state correction could not be cleared safely."
+        }
+    }
+
+    @discardableResult
+    func respondToReentry(_ option: ReentryOption) async -> Bool {
+        guard reentrySurface?.options.contains(option) == true,
+              let service = localServices?.nowExperienceService
+        else {
+            return false
+        }
+        let respondedAt = Date()
+        do {
+            if option == .stayQuiet {
+                _ = try await service.setCorrection(NowStateCorrection(
+                    state: .clear,
+                    reason: .ownerRequestedQuiet,
+                    createdAt: respondedAt,
+                    expiresAt: respondedAt.addingTimeInterval(24 * 60 * 60)
+                ))
+            }
+            _ = try await service.recordVisit(at: respondedAt)
+            reentrySurface = nil
+            await refreshNowExperience(markSeen: false)
+            return true
+        } catch {
+            nowExperienceMessage =
+                "The re-entry choice could not be saved to local state."
+            return false
+        }
+    }
+
     func refreshCaptureArchive() async {
         refreshRecentCaptures()
         await refreshDiagnostics()
+        await refreshNowExperience(markSeen: true)
     }
 
     func reviewCapture(
@@ -996,6 +1095,7 @@ final class OdysseyAppModel: ObservableObject {
             await refreshDiagnostics()
             refreshRecentCaptures()
             await deliverLifeModelAcceptances()
+            await refreshNowExperience(markSeen: false)
             scheduleBackgroundRefresh()
         } catch AuthSessionError.notEnrolled,
                 AuthSessionError.refreshCredentialExpired
@@ -1022,6 +1122,7 @@ final class OdysseyAppModel: ObservableObject {
             showCompletionMessage: false,
             requiresExistingMirror: true
         )
+        await refreshNowExperience(markSeen: false)
         guard let remoteServices, state.canSynchronize else { return }
         await withTaskCancellationHandler {
             await synchronize()
@@ -1085,6 +1186,7 @@ final class OdysseyAppModel: ObservableObject {
         do {
             let snapshot = try await localServices.lifeModelWorkshopService.snapshot()
             apply(.workshopLoaded(snapshot))
+            await refreshNowExperience(markSeen: false)
         } catch {
             apply(.workshopFailed(
                 "The local Workshop history could not be loaded safely."
@@ -1253,6 +1355,115 @@ final class OdysseyAppModel: ObservableObject {
         apply(.workshopReviewDismissed)
     }
 
+    private func refreshNowExperience(markSeen: Bool) async {
+        guard let localServices else { return }
+        let generatedAt = Date()
+        do {
+            var record = try await localServices.nowExperienceService.record()
+            if let correction = record.correction,
+               !correction.isActive(at: generatedAt)
+            {
+                record = try await localServices.nowExperienceService.clearCorrection()
+            }
+            let calendarSnapshot = try await localServices.calendarMirrorCoordinator
+                .localSnapshot()
+            let acceptedSeasons = acceptedSeasonVersions
+            let recentCaptures = state.recentCaptures
+            let projection = try NativeNowContextProjector().project(
+                NativeNowContextInput(
+                    generatedAt: generatedAt,
+                    deviceTimeZoneID: TimeZone.current.identifier,
+                    calendarSnapshot: calendarSnapshot,
+                    calendarOverview: calendarContextState.overview,
+                    healthOverview: healthContextState.overview,
+                    healthLastSuccessfulImportAt: healthContextState.lastSuccessfulImportAt,
+                    weatherOverview: weatherContextState.overview,
+                    locationOverview: locationContextState.overview,
+                    season: currentAcceptedSeason,
+                    correction: record.correction
+                )
+            )
+            let reentry = try NativeReentryProjector().project(
+                NativeReentryInput(
+                    lastSeenAt: record.lastSeenAt,
+                    generatedAt: generatedAt,
+                    deviceTimeZoneID: TimeZone.current.identifier,
+                    acceptedSeasonVersions: acceptedSeasons,
+                    recentCaptures: recentCaptures,
+                    calendarSnapshot: calendarSnapshot,
+                    locationOverview: locationContextState.overview
+                )
+            )
+            if markSeen, reentry == nil {
+                _ = try await localServices.nowExperienceService.recordVisit(
+                    at: generatedAt
+                )
+            }
+            nowContextProjection = projection
+            reentrySurface = reentry
+            publishNowWidgetSnapshot(projection)
+        } catch {
+            nowExperienceMessage = nowContextProjection == nil
+                ? "Current context could not be built from the local cache."
+                : "Current context could not be refreshed; the last local result remains visible."
+        }
+    }
+
+    private func publishNowWidgetSnapshot(
+        _ projection: NativeNowContextProjection
+    ) {
+        guard let nowWidgetSnapshotStore else {
+            nowExperienceMessage =
+                "Current context is available, but the widget cache needs a configured App Group."
+            return
+        }
+        do {
+            let maximumExpiration = projection.now.generatedAt.addingTimeInterval(
+                6 * 60 * 60
+            )
+            let expiresAt = projection.now.nextTransition.map {
+                min(maximumExpiration, $0.startsAt)
+            } ?? maximumExpiration
+            let snapshot = try NowWidgetSnapshot(
+                generatedAt: projection.now.generatedAt,
+                expiresAt: expiresAt,
+                timeZoneID: projection.now.timeZoneID,
+                state: projection.now.state,
+                summary: projection.now.summary,
+                tomorrowSummary: projection.tomorrow.shape,
+                nextTransitionAt: projection.now.nextTransition?.startsAt,
+                privacySensitive: true
+            )
+            try nowWidgetSnapshotStore.write(snapshot)
+            WidgetCenter.shared.reloadTimelines(
+                ofKind: NowWidgetSnapshotStore.widgetKind
+            )
+            nowExperienceMessage = nil
+        } catch {
+            nowExperienceMessage =
+                "Current context is available, but its private widget cache could not be updated."
+        }
+    }
+
+    private var acceptedSeasonVersions: [CachedLifeModelVersion] {
+        state.workshopSnapshot?.acceptedVersions
+            .filter { $0.kind == .season }
+            .sorted {
+                if $0.acceptanceSequence != $1.acceptanceSequence {
+                    return $0.acceptanceSequence > $1.acceptanceSequence
+                }
+                return $0.versionID.description < $1.versionID.description
+            } ?? []
+    }
+
+    private var currentAcceptedSeason: Season? {
+        guard let version = acceptedSeasonVersions.first else { return nil }
+        return try? SyncJSONCoding.makeDecoder().decode(
+            Season.self,
+            from: version.document
+        )
+    }
+
     private func refreshDiagnostics() async {
         guard let localServices else { return }
         do {
@@ -1353,6 +1564,7 @@ final class OdysseyAppModel: ObservableObject {
         if latestSuccessfulImport != nil, maintainObservation {
             await startHealthChangeObservationIfNeeded()
         }
+        await refreshNowExperience(markSeen: false)
         guard showCompletionMessage else { return }
         if failedKindCount > 0 {
             healthContextState.message =
@@ -1472,6 +1684,7 @@ final class OdysseyAppModel: ObservableObject {
                 "Calendar context could not be refreshed. Prior local events remain intact."
             )
         }
+        await refreshNowExperience(markSeen: false)
     }
 
     private func applyForegroundWeatherRefresh(
@@ -1748,6 +1961,7 @@ final class OdysseyAppModel: ObservableObject {
     private func refreshAfterCaptureMutation() async {
         refreshRecentCaptures()
         await refreshDiagnostics()
+        await refreshNowExperience(markSeen: false)
         scheduleBackgroundRefresh()
         if state.canSynchronize {
             Task { [weak self] in
@@ -1778,6 +1992,7 @@ final class OdysseyAppModel: ObservableObject {
             _ = try await remoteServices.lifeModelAcceptanceCoordinator.synchronize()
             let snapshot = try await localServices.lifeModelWorkshopService.snapshot()
             apply(.workshopDeliveryFinished(snapshot))
+            await refreshNowExperience(markSeen: false)
         } catch {
             apply(.workshopFailed(
                 "Life-model delivery did not complete. The reviewed command remains local "
@@ -1836,7 +2051,7 @@ final class OdysseyAppModel: ObservableObject {
         )
     }
 
-    private func makeExtensionCommandQueue() throws -> ExtensionCommandQueue {
+    private func makeAppGroupRoot() throws -> URL {
         guard let appGroup = Bundle.main.object(
             forInfoDictionaryKey: "ODYSSEY_APP_GROUP"
         ) as? String,
@@ -1844,9 +2059,7 @@ final class OdysseyAppModel: ObservableObject {
         else {
             throw ExtensionCommandError.appGroupUnavailable
         }
-        return try ExtensionCommandQueue(
-            rootDirectory: ExtensionCommandQueue.appGroupRoot(identifier: appGroup)
-        )
+        return try ExtensionCommandQueue.appGroupRoot(identifier: appGroup)
     }
 
     private func drainExtensionCommands(limit: Int = 50) async {
@@ -1925,6 +2138,7 @@ final class OdysseyAppModel: ObservableObject {
                 refreshRecentCaptures()
                 await refreshFoodQuickLog()
                 await refreshDiagnostics()
+                await refreshNowExperience(markSeen: false)
                 scheduleBackgroundRefresh()
             }
         } catch {
