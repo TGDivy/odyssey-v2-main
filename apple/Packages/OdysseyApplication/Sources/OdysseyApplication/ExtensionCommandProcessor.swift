@@ -16,6 +16,12 @@ extension SQLiteLedgerStore: ExtensionCommandProjectionStore {}
 public enum ExtensionCommandProcessingError: Error, Equatable, Sendable {
     case invalidPayload
     case idempotencyConflict
+    case expiredPresentation
+}
+
+public enum ExtensionCommandPresentation: Hashable, Sendable {
+    case capture
+    case food
 }
 
 public enum ExtensionCommandProcessingResult: Hashable, Sendable {
@@ -23,30 +29,37 @@ public enum ExtensionCommandProcessingResult: Hashable, Sendable {
     case captureAlreadyCommitted(CaptureRecord)
     case foodCommitted(FoodOccurrenceCommitReceipt)
     case foodAlreadyCommitted(FoodOccurrence)
+    case presentationRequested(ExtensionCommandPresentation)
 
     public var committedNewMutation: Bool {
         switch self {
         case .captureCommitted, .foodCommitted:
             true
-        case .captureAlreadyCommitted, .foodAlreadyCommitted:
+        case .captureAlreadyCommitted, .foodAlreadyCommitted, .presentationRequested:
             false
         }
     }
 }
 
 public actor ExtensionCommandProcessor {
+    public static let maximumPresentationAge: TimeInterval = 5 * 60
+    public static let maximumFutureClockSkew: TimeInterval = 60
+
     private let store: any ExtensionCommandProjectionStore
     private let captureService: ManualCaptureService
     private let foodOccurrenceService: FoodOccurrenceService
+    private let clock: @Sendable () -> Date
 
     public init(
         store: any ExtensionCommandProjectionStore,
         captureService: ManualCaptureService,
-        foodOccurrenceService: FoodOccurrenceService
+        foodOccurrenceService: FoodOccurrenceService,
+        clock: @escaping @Sendable () -> Date = Date.init
     ) {
         self.store = store
         self.captureService = captureService
         self.foodOccurrenceService = foodOccurrenceService
+        self.clock = clock
     }
 
     public func process(
@@ -63,7 +76,25 @@ public actor ExtensionCommandProcessor {
             )
         case .logFood:
             try await processFood(command)
+        case .presentCapture:
+            try presentationResult(for: command, presentation: .capture)
+        case .presentFood:
+            try presentationResult(for: command, presentation: .food)
         }
+    }
+
+    private func presentationResult(
+        for command: ExtensionCommand,
+        presentation: ExtensionCommandPresentation
+    ) throws -> ExtensionCommandProcessingResult {
+        let now = clock()
+        guard now.timeIntervalSinceReferenceDate.isFinite,
+              command.createdAt <= now.addingTimeInterval(Self.maximumFutureClockSkew),
+              now.timeIntervalSince(command.createdAt) <= Self.maximumPresentationAge
+        else {
+            throw ExtensionCommandProcessingError.expiredPresentation
+        }
+        return .presentationRequested(presentation)
     }
 
     private func processText(

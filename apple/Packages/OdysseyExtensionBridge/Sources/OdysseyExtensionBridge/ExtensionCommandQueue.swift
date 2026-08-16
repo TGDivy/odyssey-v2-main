@@ -11,6 +11,8 @@ public enum ExtensionInvokingSurface: String, Codable, CaseIterable, Hashable, S
 public enum ExtensionCommandKind: String, Codable, CaseIterable, Hashable, Sendable {
     case captureText = "capture_text"
     case logFood = "log_food"
+    case presentCapture = "present_capture"
+    case presentFood = "present_food"
 }
 
 public enum ExtensionCommandError: Error, Equatable, Sendable {
@@ -84,6 +86,53 @@ public struct ExtensionCommand: Codable, Hashable, Sendable {
         )
     }
 
+    public static func presentCapture(
+        commandID: UUIDv7 = UUIDv7(),
+        createdAt: Date = Date(),
+        invokingSurface: ExtensionInvokingSurface
+    ) throws -> Self {
+        try presentation(
+            kind: .presentCapture,
+            commandID: commandID,
+            createdAt: createdAt,
+            invokingSurface: invokingSurface
+        )
+    }
+
+    public static func presentFood(
+        commandID: UUIDv7 = UUIDv7(),
+        createdAt: Date = Date(),
+        invokingSurface: ExtensionInvokingSurface
+    ) throws -> Self {
+        try presentation(
+            kind: .presentFood,
+            commandID: commandID,
+            createdAt: createdAt,
+            invokingSurface: invokingSurface
+        )
+    }
+
+    private static func presentation(
+        kind: ExtensionCommandKind,
+        commandID: UUIDv7,
+        createdAt: Date,
+        invokingSurface: ExtensionInvokingSurface
+    ) throws -> Self {
+        try Self(
+            schemaVersion: currentSchemaVersion,
+            commandID: commandID,
+            createdAt: createdAt,
+            invokingSurface: invokingSurface,
+            kind: kind,
+            text: nil,
+            presetID: nil,
+            expectedPresetRevision: nil,
+            quantity: nil,
+            occurredAt: nil,
+            timeZoneID: nil
+        )
+    }
+
     private init(
         schemaVersion: Int,
         commandID: UUIDv7,
@@ -133,6 +182,16 @@ public struct ExtensionCommand: Codable, Hashable, Sendable {
                   TimeZone(identifier: timeZoneID) != nil
             else {
                 throw ExtensionCommandError.invalidFoodLog
+            }
+        case .presentCapture, .presentFood:
+            guard text == nil,
+                  presetID == nil,
+                  expectedPresetRevision == nil,
+                  quantity == nil,
+                  occurredAt == nil,
+                  timeZoneID == nil
+            else {
+                throw ExtensionCommandError.invalidCommand
             }
         }
         self.schemaVersion = schemaVersion

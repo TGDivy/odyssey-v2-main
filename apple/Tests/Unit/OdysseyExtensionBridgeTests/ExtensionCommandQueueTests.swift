@@ -20,6 +20,20 @@ func extensionCommandsValidateSensitivePayloadShapes() throws {
     #expect(food.kind == .logFood)
     #expect(food.text == nil)
     #expect(food.quantity == 1.5)
+    let capturePresentation = try ExtensionCommand.presentCapture(
+        commandID: extensionIdentifier(3),
+        createdAt: extensionDate,
+        invokingSurface: .control
+    )
+    let foodPresentation = try ExtensionCommand.presentFood(
+        commandID: extensionIdentifier(4),
+        createdAt: extensionDate,
+        invokingSurface: .widget
+    )
+    #expect(capturePresentation.kind == .presentCapture)
+    #expect(foodPresentation.kind == .presentFood)
+    #expect(capturePresentation.text == nil)
+    #expect(foodPresentation.presetID == nil)
     #expect(throws: ExtensionCommandError.invalidText) {
         try ExtensionCommand.captureText(
             " ",

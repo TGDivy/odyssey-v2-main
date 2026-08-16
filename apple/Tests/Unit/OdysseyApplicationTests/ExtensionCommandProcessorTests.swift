@@ -95,6 +95,61 @@ func extensionProcessorReplaysFoodCommandWithoutDuplicateMutation() async throws
     #expect(try await fixture.store.pendingSyncOperations().count == 2)
 }
 
+@Test
+func extensionProcessorRoutesPresentationWithoutLedgerMutation() async throws {
+    let fixture = try ExtensionCommandProcessorFixture()
+    defer { fixture.remove() }
+    let capture = try ExtensionCommand.presentCapture(
+        commandID: extensionProcessingIdentifier(30),
+        createdAt: extensionProcessingCreatedAt,
+        invokingSurface: .widget
+    )
+    let food = try ExtensionCommand.presentFood(
+        commandID: extensionProcessingIdentifier(31),
+        createdAt: extensionProcessingCreatedAt,
+        invokingSurface: .control
+    )
+
+    let captureResult = try await fixture.processor.process(
+        capture,
+        captureTimeZoneID: "UTC",
+        captureLocationPermissionState: .unavailable
+    )
+    let foodResult = try await fixture.processor.process(
+        food,
+        captureTimeZoneID: "UTC",
+        captureLocationPermissionState: .unavailable
+    )
+
+    #expect(captureResult == .presentationRequested(.capture))
+    #expect(foodResult == .presentationRequested(.food))
+    #expect(try fixture.store.storedEntries().isEmpty)
+    #expect(try await fixture.store.pendingSyncOperations().isEmpty)
+}
+
+@Test
+func extensionProcessorRejectsExpiredPresentationWithoutMutation() async throws {
+    let fixture = try ExtensionCommandProcessorFixture()
+    defer { fixture.remove() }
+    let command = try ExtensionCommand.presentCapture(
+        commandID: extensionProcessingIdentifier(32),
+        createdAt: extensionProcessingRecordedAt.addingTimeInterval(
+            -(ExtensionCommandProcessor.maximumPresentationAge + 1)
+        ),
+        invokingSurface: .control
+    )
+
+    await #expect(throws: ExtensionCommandProcessingError.expiredPresentation) {
+        try await fixture.processor.process(
+            command,
+            captureTimeZoneID: "UTC",
+            captureLocationPermissionState: .unavailable
+        )
+    }
+    #expect(try fixture.store.storedEntries().isEmpty)
+    #expect(try await fixture.store.pendingSyncOperations().isEmpty)
+}
+
 private struct ExtensionCommandProcessorFixture {
     let directory: URL
     let store: SQLiteLedgerStore
@@ -129,7 +184,8 @@ private struct ExtensionCommandProcessorFixture {
         processor = ExtensionCommandProcessor(
             store: store,
             captureService: captureService,
-            foodOccurrenceService: occurrenceService
+            foodOccurrenceService: occurrenceService,
+            clock: { extensionProcessingRecordedAt }
         )
     }
 
