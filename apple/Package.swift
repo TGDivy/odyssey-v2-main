@@ -165,6 +165,11 @@ let package = Package(
             path: "Tests/Unit/OdysseyHealthTests"
         ),
         .testTarget(
+            name: "OdysseyTelemetryTests",
+            dependencies: ["OdysseyTelemetry"],
+            path: "Tests/Unit/OdysseyTelemetryTests"
+        ),
+        .testTarget(
             name: "OdysseyExtensionBridgeTests",
             dependencies: ["OdysseyExtensionBridge", "OdysseyDomain"],
             path: "Tests/Unit/OdysseyExtensionBridgeTests"
