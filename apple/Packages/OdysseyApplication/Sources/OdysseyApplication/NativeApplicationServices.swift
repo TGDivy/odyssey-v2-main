@@ -245,6 +245,7 @@ public struct NativeLocalServices: Sendable {
     public let ledgerStore: SQLiteLedgerStore
     public let productTelemetryRecorder: ProductTelemetryRecorder
     public let weeklyProductReviewService: WeeklyProductReviewService
+    public let productTelemetryPrivacyService: ProductTelemetryPrivacyService
     public let captureService: ManualCaptureService
     public let captureAttachmentStore: LocalCaptureAttachmentStore
     public let captureImportBuffer: LocalCaptureImportBuffer
@@ -311,6 +312,15 @@ public struct NativeLocalServices: Sendable {
                 try ledgerStore.resolveFeatureConfiguration(
                     assignmentSubject: deviceID.description
                 ).assignments
+            }
+        )
+        let productTelemetryPrivacyService = ProductTelemetryPrivacyService(
+            store: ledgerStore,
+            recorder: productTelemetryRecorder,
+            featureConfiguration: {
+                try ledgerStore.resolveFeatureConfiguration(
+                    assignmentSubject: deviceID.description
+                )
             }
         )
         let captureService = try ManualCaptureService(
@@ -401,6 +411,7 @@ public struct NativeLocalServices: Sendable {
             ledgerStore: ledgerStore,
             productTelemetryRecorder: productTelemetryRecorder,
             weeklyProductReviewService: weeklyProductReviewService,
+            productTelemetryPrivacyService: productTelemetryPrivacyService,
             captureService: captureService,
             captureAttachmentStore: captureAttachmentStore,
             captureImportBuffer: captureImportBuffer,

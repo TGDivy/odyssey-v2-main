@@ -53,6 +53,9 @@ final class OdysseyAppModel: ObservableObject {
     @Published private(set) var weeklyProductReview: WeeklyProductReviewArtifact?
     @Published private(set) var weeklyProductReviewMessage: String?
     @Published private(set) var isLoadingWeeklyProductReview = false
+    @Published private(set) var productTelemetryPrivacySnapshot: ProductTelemetryPrivacySnapshot?
+    @Published private(set) var productTelemetryPrivacyMessage: String?
+    @Published private(set) var isLoadingProductTelemetryPrivacy = false
 
     private var localServices: NativeLocalServices?
     private var remoteServices: NativeRemoteServices?
@@ -168,6 +171,9 @@ final class OdysseyAppModel: ObservableObject {
         weeklyProductReview = nil
         weeklyProductReviewMessage = nil
         isLoadingWeeklyProductReview = false
+        productTelemetryPrivacySnapshot = nil
+        productTelemetryPrivacyMessage = nil
+        isLoadingProductTelemetryPrivacy = false
         healthContextState = HealthContextIntegrationState()
         calendarContextState = CalendarContextIntegrationState()
         locationContextState = LocationContextIntegrationState()
@@ -1071,6 +1077,77 @@ final class OdysseyAppModel: ObservableObject {
 
     func dismissProductTelemetryMessage() {
         productTelemetryMessage = nil
+    }
+
+    func refreshProductTelemetryPrivacy() async {
+        guard let service = localServices?.productTelemetryPrivacyService,
+              !isLoadingProductTelemetryPrivacy
+        else {
+            return
+        }
+        isLoadingProductTelemetryPrivacy = true
+        defer { isLoadingProductTelemetryPrivacy = false }
+        do {
+            productTelemetryPrivacySnapshot = try await service.snapshot()
+            productTelemetryPrivacyMessage = nil
+        } catch {
+            productTelemetryPrivacyMessage =
+                "Local product telemetry controls could not be read safely."
+        }
+    }
+
+    func updateProductTelemetryPreferences(
+        collectionMode: ProductTelemetryCollectionMode,
+        enabledQuestions: [ProductTelemetryQuestionID],
+        retentionDays: Int
+    ) async {
+        guard let service = localServices?.productTelemetryPrivacyService,
+              !isLoadingProductTelemetryPrivacy
+        else {
+            return
+        }
+        isLoadingProductTelemetryPrivacy = true
+        defer { isLoadingProductTelemetryPrivacy = false }
+        do {
+            let preferences = try ProductTelemetryPreferences(
+                collectionMode: collectionMode,
+                enabledQuestions: enabledQuestions,
+                retentionDays: retentionDays
+            )
+            try await service.updatePreferences(preferences)
+            productTelemetryPrivacySnapshot = try await service.snapshot()
+            productTelemetryPrivacyMessage =
+                "Local product telemetry preferences were saved and retention was applied."
+            await refreshWeeklyProductReview()
+        } catch {
+            productTelemetryPrivacyMessage =
+                "Local product telemetry preferences could not be saved."
+        }
+    }
+
+    func deleteAllProductTelemetry() async {
+        guard let service = localServices?.productTelemetryPrivacyService,
+              !isLoadingProductTelemetryPrivacy
+        else {
+            return
+        }
+        isLoadingProductTelemetryPrivacy = true
+        defer { isLoadingProductTelemetryPrivacy = false }
+        do {
+            let deletedCount = try await service.deleteAllEvents()
+            productTelemetryPrivacySnapshot = try await service.snapshot()
+            productTelemetryPrivacyMessage =
+                "Deleted \(deletedCount) local product telemetry event"
+                + "\(deletedCount == 1 ? "" : "s"). Captures and personal history were unchanged."
+            await refreshWeeklyProductReview()
+        } catch {
+            productTelemetryPrivacyMessage =
+                "Local product telemetry could not be deleted safely."
+        }
+    }
+
+    func dismissProductTelemetryPrivacyMessage() {
+        productTelemetryPrivacyMessage = nil
     }
 
     func setNowStateCorrection(

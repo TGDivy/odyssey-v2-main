@@ -1,6 +1,6 @@
 import Foundation
 
-public enum ProductTelemetryCollectionMode: String, Codable, CaseIterable, Sendable {
+public enum ProductTelemetryCollectionMode: String, Codable, CaseIterable, Hashable, Sendable {
     case off
     case localOnly = "local_only"
 }

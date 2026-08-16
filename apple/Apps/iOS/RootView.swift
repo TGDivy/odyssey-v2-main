@@ -207,6 +207,11 @@ private struct ArchiveView: View {
                     )
                     .foregroundStyle(.secondary)
                 }
+                NavigationLink {
+                    ProductTelemetryPrivacyView()
+                } label: {
+                    Label("Telemetry & Privacy", systemImage: "hand.raised.square")
+                }
             }
 
             Section("Captures") {
@@ -460,6 +465,300 @@ private struct WeeklyProductReviewView: View {
         artifact.periodStart.formatted(date: .abbreviated, time: .omitted)
             + " – "
             + artifact.periodEnd.formatted(date: .abbreviated, time: .omitted)
+    }
+}
+
+private struct ProductTelemetryPrivacyView: View {
+    @EnvironmentObject private var model: OdysseyAppModel
+    @State private var collectionMode: ProductTelemetryCollectionMode = .off
+    @State private var enabledQuestions = Set(ProductTelemetryQuestionID.allCases)
+    @State private var retentionDays = 7
+    @State private var confirmsDeletion = false
+    @State private var hasLoadedDraft = false
+
+    var body: some View {
+        Group {
+            if let snapshot = model.productTelemetryPrivacySnapshot {
+                privacyList(snapshot)
+            } else if model.isLoadingProductTelemetryPrivacy {
+                ProgressView("Reading local telemetry controls…")
+            } else {
+                ContentUnavailableView {
+                    Label("Telemetry controls unavailable", systemImage: "hand.raised.square")
+                } description: {
+                    Text(
+                        model.productTelemetryPrivacyMessage
+                            ?? "The local telemetry preference record is not available yet."
+                    )
+                } actions: {
+                    Button("Retry") {
+                        Task { await model.refreshProductTelemetryPrivacy() }
+                    }
+                }
+            }
+        }
+        .navigationTitle("Telemetry & Privacy")
+        .navigationBarTitleDisplayMode(.inline)
+        .task {
+            if model.productTelemetryPrivacySnapshot == nil {
+                await model.refreshProductTelemetryPrivacy()
+            }
+        }
+        .onChange(of: model.productTelemetryPrivacySnapshot, initial: true) { _, snapshot in
+            guard let snapshot else { return }
+            apply(snapshot.summary.preferences)
+        }
+        .confirmationDialog(
+            "Delete all local product telemetry?",
+            isPresented: $confirmsDeletion,
+            titleVisibility: .visible
+        ) {
+            Button("Delete Product Telemetry", role: .destructive) {
+                Task { await model.deleteAllProductTelemetry() }
+            }
+            Button("Keep Events", role: .cancel) {}
+        } message: {
+            Text(
+                "This permanently removes governed product events from this device. Captures, "
+                    + "Calendar context, Health data, preferences, and personal history are "
+                    + "not deleted."
+            )
+        }
+    }
+
+    private func privacyList(_ snapshot: ProductTelemetryPrivacySnapshot) -> some View {
+        List {
+            Section("Collection") {
+                Toggle(
+                    "Local product telemetry",
+                    isOn: Binding(
+                        get: { collectionMode == .localOnly },
+                        set: { collectionMode = $0 ? .localOnly : .off }
+                    )
+                )
+                Label(
+                    collectionMode == .off
+                        ? "Off. New product events are not retained."
+                        : "Local only. No product telemetry upload path exists.",
+                    systemImage: collectionMode == .off ? "pause.circle" : "iphone.and.arrow.forward"
+                )
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            } footer: {
+                Text(
+                    "Collection is off by default. Technical crash or sync diagnostics are a "
+                        + "separate bounded system and do not make product telemetry opt-in."
+                )
+            }
+
+            Section("Questions") {
+                ForEach(ProductTelemetryQuestionID.allCases, id: \.rawValue) { questionID in
+                    Toggle(
+                        isOn: questionBinding(questionID)
+                    ) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(questionID.ownerTitle)
+                            Text(questionID.ownerStatement)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            } footer: {
+                Text(
+                    "Only the minimum governed events for enabled questions can be stored. "
+                        + "Captured text, media, titles, coordinates, and health values are "
+                        + "not telemetry properties."
+                )
+            }
+
+            Section("Retention") {
+                Stepper(
+                    "Keep events for \(retentionDays) day\(retentionDays == 1 ? "" : "s")",
+                    value: $retentionDays,
+                    in: 1 ... 30
+                )
+                Button("Save Preferences") {
+                    Task {
+                        await model.updateProductTelemetryPreferences(
+                            collectionMode: collectionMode,
+                            enabledQuestions: enabledQuestions.sorted {
+                                $0.rawValue < $1.rawValue
+                            },
+                            retentionDays: retentionDays
+                        )
+                    }
+                }
+                .disabled(model.isLoadingProductTelemetryPrivacy)
+                if model.isLoadingProductTelemetryPrivacy {
+                    ProgressView("Applying local retention…")
+                }
+            } footer: {
+                Text(
+                    "Shortening retention prunes expired events immediately. Turning collection "
+                        + "off stops new events but keeps unexpired events until deletion or expiry."
+                )
+            }
+
+            Section("Stored Events") {
+                LabeledContent(
+                    "Retained",
+                    value: String(snapshot.summary.retainedEventCount)
+                )
+                LabeledContent(
+                    "Oldest",
+                    value: telemetryDate(snapshot.summary.oldestEventAt)
+                )
+                LabeledContent(
+                    "Newest",
+                    value: telemetryDate(snapshot.summary.newestEventAt)
+                )
+                LabeledContent(
+                    "Next expiry",
+                    value: telemetryDate(snapshot.summary.nextExpiryAt)
+                )
+                Button("Delete All Product Telemetry", role: .destructive) {
+                    confirmsDeletion = true
+                }
+                .disabled(snapshot.summary.retainedEventCount == 0)
+            }
+
+            Section("Effective Feature Gates") {
+                if let featureConfiguration = snapshot.featureConfiguration {
+                    LabeledContent(
+                        "Configuration source",
+                        value: featureConfiguration.source.ownerTitle
+                    )
+                    if let payload = featureConfiguration.payload {
+                        LabeledContent("Version", value: String(payload.version))
+                        LabeledContent("Expires", value: telemetryDate(payload.expiresAt))
+                    }
+                    ForEach(FeatureFlagKey.allCases, id: \.rawValue) { key in
+                        LabeledContent(
+                            key.ownerTitle,
+                            value: featureConfiguration.assignments[key] ?? "missing"
+                        )
+                    }
+                } else {
+                    Label(
+                        "Feature diagnostics are unavailable. Product events fail closed when "
+                            + "assignments cannot be resolved.",
+                        systemImage: "exclamationmark.shield"
+                    )
+                    .foregroundStyle(.orange)
+                }
+            } footer: {
+                Text(
+                    "Owner consent and feature assignment must both allow a question. A feature "
+                        + "flag can disable collection but cannot turn owner consent on."
+                )
+            }
+
+            Section("Recorder Diagnostics") {
+                let diagnostics = snapshot.recorderDiagnostics
+                LabeledContent("Attempted", value: String(diagnostics.attemptedEventCount))
+                LabeledContent("Recorded", value: String(diagnostics.recordedEventCount))
+                LabeledContent(
+                    "Preference skips",
+                    value: String(diagnostics.preferenceSkippedEventCount)
+                )
+                LabeledContent(
+                    "Feature-flag skips",
+                    value: String(diagnostics.featureFlagSkippedEventCount)
+                )
+                LabeledContent("Failures", value: String(diagnostics.failedEventCount))
+                if let lastFailure = diagnostics.lastFailure {
+                    LabeledContent("Last failure", value: lastFailure.ownerTitle)
+                    LabeledContent(
+                        "Failure time",
+                        value: telemetryDate(diagnostics.lastFailureAt)
+                    )
+                }
+            } footer: {
+                Text(
+                    "Recorder counters cover this app process only. Retained-event counts above "
+                        + "come from the durable local store."
+                )
+            }
+
+            Section("Local Integrity") {
+                Button("Verify Local Data") {
+                    Task { await model.verifyLocalData() }
+                }
+                .disabled(model.state.maintenancePhase == .running)
+                maintenanceStatus
+            } footer: {
+                Text(
+                    "Verification checks the ledger, product telemetry digests, feature cache, "
+                        + "and migration invariants without changing data."
+                )
+            }
+
+            if let message = model.productTelemetryPrivacyMessage {
+                Section("Status") {
+                    Button {
+                        model.dismissProductTelemetryPrivacyMessage()
+                    } label: {
+                        Label(message, systemImage: "info.circle")
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .refreshable { await model.refreshProductTelemetryPrivacy() }
+    }
+
+    @ViewBuilder
+    private var maintenanceStatus: some View {
+        switch model.state.maintenancePhase {
+        case .idle:
+            EmptyView()
+        case .running:
+            ProgressView("Verifying local data…")
+        case let .succeeded(message):
+            Button {
+                model.dismissMaintenanceStatus()
+            } label: {
+                Label(message, systemImage: "checkmark.shield")
+            }
+            .buttonStyle(.plain)
+        case let .failed(message):
+            Button {
+                model.dismissMaintenanceStatus()
+            } label: {
+                Label(message, systemImage: "exclamationmark.shield")
+                    .foregroundStyle(.red)
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private func questionBinding(
+        _ questionID: ProductTelemetryQuestionID
+    ) -> Binding<Bool> {
+        Binding(
+            get: { enabledQuestions.contains(questionID) },
+            set: { enabled in
+                if enabled {
+                    enabledQuestions.insert(questionID)
+                } else {
+                    enabledQuestions.remove(questionID)
+                }
+            }
+        )
+    }
+
+    private func apply(_ preferences: ProductTelemetryPreferences) {
+        guard !hasLoadedDraft || !model.isLoadingProductTelemetryPrivacy else { return }
+        collectionMode = preferences.collectionMode
+        enabledQuestions = Set(preferences.enabledQuestions)
+        retentionDays = preferences.retentionDays
+        hasLoadedDraft = true
+    }
+
+    private func telemetryDate(_ date: Date?) -> String {
+        guard let date else { return "None" }
+        return date.formatted(date: .abbreviated, time: .shortened)
     }
 }
 
@@ -2097,6 +2396,53 @@ private extension ProductTelemetryCollectionMode {
         switch self {
         case .off: "Off"
         case .localOnly: "Local only"
+        }
+    }
+}
+
+private extension ProductTelemetryQuestionID {
+    var ownerTitle: String {
+        switch self {
+        case .captureFriction: "Capture friction"
+        case .tomorrowMapValue: "Tomorrow Map value"
+        }
+    }
+
+    var ownerStatement: String {
+        ProductTelemetryRegistry.questions.first { $0.questionID == self }?.statement
+            ?? rawValue
+    }
+}
+
+private extension FeatureConfigurationResolutionSource {
+    var ownerTitle: String {
+        switch self {
+        case .verifiedCache: "Verified signed cache"
+        case .safeDefaultsUnconfigured: "Safe defaults · trust unconfigured"
+        case .safeDefaultsMissing: "Safe defaults · no cached envelope"
+        case .safeDefaultsInactive: "Safe defaults · envelope inactive"
+        case .safeDefaultsInvalid: "Safe defaults · envelope invalid"
+        }
+    }
+}
+
+private extension FeatureFlagKey {
+    var ownerTitle: String {
+        switch self {
+        case .captureTelemetryQuestion: "Capture question"
+        case .tomorrowMapTelemetryQuestion: "Tomorrow Map question"
+        case .weeklyProductReview: "Weekly review"
+        case .proactiveNotifications: "Proactive notifications"
+        }
+    }
+}
+
+private extension ProductTelemetryRecorderFailure {
+    var ownerTitle: String {
+        switch self {
+        case .featureConfiguration: "Feature configuration"
+        case .eventConstruction: "Event validation"
+        case .persistence: "Local persistence"
         }
     }
 }

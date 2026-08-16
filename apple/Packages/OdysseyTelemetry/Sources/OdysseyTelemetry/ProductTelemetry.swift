@@ -1,7 +1,7 @@
 import Foundation
 import OdysseyDomain
 
-public enum ProductTelemetryQuestionID: String, Codable, CaseIterable, Sendable {
+public enum ProductTelemetryQuestionID: String, Codable, CaseIterable, Hashable, Sendable {
     case captureFriction = "capture_friction_v1"
     case tomorrowMapValue = "tomorrow_map_value_v1"
 }
